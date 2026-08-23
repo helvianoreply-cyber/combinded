@@ -101,7 +101,7 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
 
   // Initialize all graphical entities
   useEffect(() => {
-    // 1. 240 Spectral Stars
+    // 1. 120 Spectral Stars (Optimized for 60 FPS)
     const spectralPalette: Array<[number, number, number]> = [
       [255, 255, 255],
       [195, 225, 255],
@@ -110,13 +110,13 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
       [255, 175, 150],
     ]
     const stars: Array<{ x: number; y: number; z: number; size: number; baseAlpha: number; twinkleSpeed: number; phase: number; r: number; g: number; b: number }> = []
-    for (let i = 0; i < 240; i++) {
+    for (let i = 0; i < 120; i++) {
       const col = spectralPalette[Math.floor(Math.random() * spectralPalette.length)]
       stars.push({
         x: Math.random(),
         y: Math.random() * 0.82,
         z: Math.random() * 0.85 + 0.15,
-        size: Math.random() * 2.0 + 0.4,
+        size: Math.random() * 1.8 + 0.4,
         baseAlpha: Math.random() * 0.8 + 0.2,
         twinkleSpeed: Math.random() * 2.8 + 1.2,
         phase: Math.random() * Math.PI * 2,
@@ -127,73 +127,66 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
     }
     starsRef.current = stars
 
-    // 2. 18 Photorealistic Volumetric Clouds
+    // 2. 10 Photorealistic Volumetric Clouds
     const clouds: Array<{ x: number; y: number; scale: number; speed: number; opacity: number; puffs: Array<{ ox: number; oy: number; r: number; alphaMult: number }> }> = []
-    for (let i = 0; i < 18; i++) {
-      const baseScale = Math.random() * 0.65 + 0.75
-      const puffCount = Math.floor(Math.random() * 8) + 8
+    for (let i = 0; i < 10; i++) {
+      const baseScale = Math.random() * 0.6 + 0.75
+      const puffCount = Math.floor(Math.random() * 4) + 4
       const puffs: Array<{ ox: number; oy: number; r: number; alphaMult: number }> = []
       
-      puffs.push({ ox: 0, oy: 0, r: 52, alphaMult: 1.0 })
+      puffs.push({ ox: 0, oy: 0, r: 48, alphaMult: 1.0 })
       
       for (let j = 0; j < puffCount; j++) {
         puffs.push({
-          ox: (Math.random() - 0.5) * 110,
-          oy: (Math.random() - 0.45) * 40,
-          r: Math.random() * 36 + 22,
+          ox: (Math.random() - 0.5) * 90,
+          oy: (Math.random() - 0.45) * 32,
+          r: Math.random() * 30 + 20,
           alphaMult: Math.random() * 0.45 + 0.55,
         })
       }
 
       clouds.push({
         x: Math.random() * 1.6 - 0.3,
-        y: Math.random() * 0.5 + 0.03,
+        y: Math.random() * 0.45 + 0.03,
         scale: baseScale,
         speed: (Math.random() * 0.00018 + 0.0001) * (i % 2 === 0 ? 1 : 0.85),
-        opacity: Math.random() * 0.35 + 0.6,
+        opacity: Math.random() * 0.3 + 0.6,
         puffs,
       })
     }
     cloudsRef.current = clouds
 
-    // 3. Pre-generate Realistic Mountain Terrain with Multiple Ridge Layers & Detailed Trees
+    // 3. Pre-generate Realistic Mountain Terrain & Trees
     const peaks: Array<{ x: number; y: number; snow: boolean }> = []
-    const peakCount = 80
+    const peakCount = 50
     for (let i = 0; i <= peakCount; i++) {
       const x = i / peakCount
-      // More natural jagged peaks with multiple harmonics
-      const y = Math.sin(x * 10) * 32
-        + Math.cos(x * 18.5) * 18
-        + Math.sin(x * 37 + 0.7) * 9
-        + Math.cos(x * 55) * 4
-        + Math.sin(x * 80 + 2.1) * 2.5
-      peaks.push({ x, y, snow: y < -14 })
+      const y = Math.sin(x * 10) * 30
+        + Math.cos(x * 18.5) * 16
+        + Math.sin(x * 37 + 0.7) * 8
+      peaks.push({ x, y, snow: y < -12 })
     }
 
-    // Multiple ridgeline layers for depth
     const midRidge: number[] = []
-    for (let i = 0; i <= 120; i++) {
+    for (let i = 0; i <= 80; i++) {
       midRidge.push(
-        Math.sin(i * 0.065 + 1.2) * 24
-        + Math.cos(i * 0.18) * 14
-        + Math.sin(i * 0.35 + 0.5) * 6
-        + Math.cos(i * 0.7) * 3
+        Math.sin(i * 0.065 + 1.2) * 22
+        + Math.cos(i * 0.18) * 12
       )
     }
 
-    // Detailed trees with more variety: 1=pine, 2=deciduous round, 3=tall pine, 4=bush
     const trees: Array<{ x: number; h: number; type: number; shade: number }> = []
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 60; i++) {
       trees.push({
         x: Math.random(),
-        h: Math.random() * 24 + 12,
+        h: Math.random() * 22 + 12,
         type: Math.random() < 0.4 ? 1 : Math.random() < 0.6 ? 2 : Math.random() < 0.8 ? 3 : 4,
         shade: Math.random() * 0.3 + 0.7,
       })
     }
     terrainRef.current = { peaks, midRidge, trees }
 
-    // 4. Grass blades covering all slopes and ridges of the Green Mountain
+    // 4. Grass blades covering Green Mountain Slopes
     const mtnGrass: Array<{
       x: number
       yOffset: number
@@ -205,13 +198,13 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
       shade: number
       flowerType: number
     }> = []
-    for (let i = 0; i < 280; i++) {
+    for (let i = 0; i < 90; i++) {
       mtnGrass.push({
         x: Math.random(),
-        yOffset: Math.random() * 65, // Distributed down the slope of the green mountain
-        height: Math.random() * 18 + 10,
-        width: Math.random() * 1.8 + 1.0,
-        lean: (Math.random() - 0.5) * 12,
+        yOffset: Math.random() * 60,
+        height: Math.random() * 16 + 9,
+        width: Math.random() * 1.6 + 1.0,
+        lean: (Math.random() - 0.5) * 10,
         bendSpeed: Math.random() * 2 + 1.4,
         phase: Math.random() * Math.PI * 2,
         shade: Math.random() * 0.35 + 0.75,
@@ -220,14 +213,14 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
     }
     mountainGrassRef.current = mtnGrass
 
-    // 5. 380 Realistic Swaying Grass Blades on Foreground Meadows with Wildflower Accents
+    // 5. 130 Realistic Swaying Grass Blades on Foreground Meadows
     const grassBlades: Array<{ x: number; height: number; width: number; lean: number; bendSpeed: number; phase: number; flowerType: number }> = []
-    for (let i = 0; i < 380; i++) {
+    for (let i = 0; i < 130; i++) {
       grassBlades.push({
         x: Math.random(),
-        height: Math.random() * 30 + 16,
-        width: Math.random() * 2.4 + 1.2,
-        lean: (Math.random() - 0.5) * 15,
+        height: Math.random() * 26 + 14,
+        width: Math.random() * 2.2 + 1.2,
+        lean: (Math.random() - 0.5) * 12,
         bendSpeed: Math.random() * 2 + 1.6,
         phase: Math.random() * Math.PI * 2,
         flowerType: Math.random() < 0.1 ? (Math.random() < 0.5 ? 1 : 2) : 0,
@@ -235,7 +228,7 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
     }
     grassBladesRef.current = grassBlades
 
-    // 6. 135 Interactive Cursor-Reactive Sakura Petals (Dynamic Flow & Multi-Depth)
+    // 6. 65 Interactive Cursor-Reactive Sakura Petals
     const petals: Array<{
       x: number
       y: number
@@ -249,7 +242,7 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
       size: number
       opacity: number
     }> = []
-    for (let i = 0; i < 135; i++) {
+    for (let i = 0; i < 65; i++) {
       petals.push({
         x: Math.random(),
         y: Math.random(),
@@ -260,13 +253,13 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
         rotSpeed: (Math.random() - 0.5) * 0.035,
         flip: Math.random() * Math.PI * 2,
         flipSpeed: Math.random() * 0.045 + 0.02,
-        size: Math.random() * 7 + 6,
+        size: Math.random() * 6 + 5,
         opacity: Math.random() * 0.4 + 0.6,
       })
     }
     sakuraPetalsRef.current = petals
 
-    // 7. 6 Animated 3D Fluttering Butterflies
+    // 7. 4 Animated 3D Fluttering Butterflies
     const butterflies: Array<{
       x: number
       y: number
@@ -280,7 +273,7 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
       scale: number
       type: number
     }> = []
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
       butterflies.push({
         x: Math.random() * 0.8 + 0.1,
         y: Math.random() * 0.5 + 0.3,
@@ -292,21 +285,21 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
         flapPhase: Math.random() * Math.PI * 2,
         flapSpeed: Math.random() * 0.15 + 0.25,
         scale: Math.random() * 0.35 + 0.75,
-        type: (i % 4) + 1, // 1: Monarch Orange, 2: Sakura Pink, 3: Azure Blue, 4: Mint
+        type: (i % 4) + 1,
       })
     }
     butterfliesRef.current = butterflies
 
-    // 8. 38 Bioluminescent Fireflies
+    // 8. 20 Bioluminescent Fireflies
     const fireflies: Array<{ x: number; y: number; vx: number; vy: number; phase: number; size: number }> = []
-    for (let i = 0; i < 38; i++) {
+    for (let i = 0; i < 20; i++) {
       fireflies.push({
         x: Math.random(),
         y: 0.7 + Math.random() * 0.26,
         vx: (Math.random() - 0.5) * 0.0014,
         vy: (Math.random() - 0.5) * 0.0014,
         phase: Math.random() * Math.PI * 2,
-        size: Math.random() * 2.2 + 1.5,
+        size: Math.random() * 2.0 + 1.2,
       })
     }
     firefliesRef.current = fireflies
