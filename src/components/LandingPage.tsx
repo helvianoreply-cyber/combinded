@@ -1044,34 +1044,7 @@ public async Task<ServiceResult<TokenResponse>> ValidateAuthSession(
               </div>
             </div>
 
-            <div className="plan-card stagger-2">
-              <div className="plan-badge">
-                <span>24-Hour Boost</span>
-              </div>
-              <p className="plan-name">1 Day Pro</p>
-              <p className="plan-price">
-                ₹169 <span>/ 24 hours</span>
-              </p>
-              <p className="plan-meta">Full stealth host access, unmetered remote control, and AI Screen Analysis for 24 hours.</p>
-              <ul className="plan-feature-list">
-                <li><CheckIcon /> <strong>Ans 💡 AI Screen Analysis</strong></li>
-                <li><CheckIcon /> Intelligent 3-Way Auto-Routing</li>
-                <li><CheckIcon /> Stealth Host Capture Protection</li>
-                <li><CheckIcon /> Unlimited 24h Global Remote Sessions</li>
-              </ul>
-              <div className="plan-cta">
-                <button
-                  className="secondary"
-                  type="button"
-                  onClick={signInWithGoogle}
-                  disabled={!isSupabaseConfigured || isAuthLoading}
-                >
-                  Sign in to Upgrade
-                </button>
-              </div>
-            </div>
-
-            <div className="plan-card popular stagger-3">
+            <div className="plan-card popular stagger-2">
               <div className="plan-badge popular-badge">
                 <CheckIcon />
                 <span>Best Value</span>
@@ -1080,12 +1053,14 @@ public async Task<ServiceResult<TokenResponse>> ValidateAuthSession(
               <p className="plan-price">
                 ₹999 <span>/ month</span>
               </p>
-              <p className="plan-meta">Unlimited monthly desktop access, priority AI auto-routing, and dedicated bandwidth.</p>
+              <p className="plan-meta">Unlimited monthly desktop access, priority AI auto-routing, and stealth host control.</p>
               <ul className="plan-feature-list">
-                <li><CheckIcon /> <strong>All 1-Day Pro Features</strong></li>
+                <li><CheckIcon /> <strong>Ans 💡 AI Screen Analysis</strong></li>
                 <li><CheckIcon /> Priority 3-Way AI Auto-Routing</li>
+                <li><CheckIcon /> Stealth Host Capture Protection</li>
                 <li><CheckIcon /> Dedicated High-Speed Bandwidth</li>
                 <li><CheckIcon /> Multi-Device Host Pairing</li>
+                <li><CheckIcon /> Unlimited 30-Day Global Remote Sessions</li>
               </ul>
               <div className="plan-cta">
                 <button

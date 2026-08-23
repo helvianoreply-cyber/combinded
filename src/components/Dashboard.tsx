@@ -341,26 +341,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </button>
               </div>
 
-              {/* 1 Day Pass */}
-              <div className={`dash-plan-tile ${!isPro ? 'recommended' : ''}`}>
-                <div className="dash-plan-header">
-                  <span className="dash-plan-name">1 Day Pass</span>
-                  <div className="dash-plan-price-wrap">
-                    <span className="dash-plan-price">₹169</span>
-                    <span className="dash-plan-period">/ 24h</span>
-                  </div>
-                </div>
-                <p className="dash-plan-info">24h unmetered remote power &amp; AI Copilot.</p>
-                <button
-                  className="dash-plan-btn primary"
-                  type="button"
-                  onClick={() => startUpgrade('24h')}
-                  disabled={isUpgrading || isPro}
-                >
-                  {isPro ? 'Active' : 'Get 1 Day'}
-                </button>
-              </div>
-              
               {/* 1 Month Pro */}
               <div className="dash-plan-tile featured">
                 <div className="dash-plan-badge-pill">Best Value</div>
@@ -371,7 +351,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <span className="dash-plan-period">/ month</span>
                   </div>
                 </div>
-                <p className="dash-plan-info">Full unmetered access for 30 days.</p>
+                <p className="dash-plan-info">Full unmetered access for 30 days &amp; AI Copilot.</p>
                 <button
                   className="dash-plan-btn primary featured"
                   type="button"
