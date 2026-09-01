@@ -7,6 +7,7 @@ interface DashboardProps {
   plan: string
   planExpiresAt: string | null
   startUpgrade: (duration: '24h' | 'month') => void
+  startDodoUpgrade?: () => void
   isUpgrading: boolean
   upgradeError: string | null
 }
@@ -60,6 +61,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   plan,
   planExpiresAt,
   startUpgrade,
+  startDodoUpgrade,
   isUpgrading,
   upgradeError,
 }) => {
@@ -68,10 +70,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [linkError, setLinkError] = useState<string | null>(null)
   const [linkSuccess, setLinkSuccess] = useState<string | null>(null)
   const [animated, setAnimated] = useState(false)
+  const [currentPlan, setCurrentPlan] = useState(plan)
+  const [currentExpiresAt, setCurrentExpiresAt] = useState(planExpiresAt)
+
+  useEffect(() => {
+    setCurrentPlan(plan)
+    setCurrentExpiresAt(planExpiresAt)
+  }, [plan, planExpiresAt])
 
   useEffect(() => {
     setAnimated(true)
     document.documentElement.setAttribute('data-sky-theme', 'morning')
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('payment') === 'success') {
+      setLinkSuccess('🎉 Payment Successful! Your 1 Month Pro Plan is activated.')
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
   }, [])
 
   const apiBase = useMemo(() => {
@@ -80,8 +95,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
       return configured.replace(/\/+$/, '')
     }
 
-    return 'https://dawn-cloud-c3c5.helvia-noreply.workers.dev'
+    return 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
   }, [])
+
+  // Auto-fetch profile on dashboard mount to ensure latest plan status
+  useEffect(() => {
+    const fetchLatestProfile = async () => {
+      const email = (sessionEmail || '').trim().toLowerCase()
+      if (!email) return
+      try {
+        const res = await fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}`)
+        if (res.ok) {
+          const json = (await res.json()) as { ok?: boolean; profile?: { plan?: string | null; plan_expires_at?: string | null } }
+          if (json?.profile) {
+            const rawPlan = (json.profile.plan || 'basic').toLowerCase()
+            const exp = json.profile.plan_expires_at || null
+            const isProActive = rawPlan === 'pro' && (!exp || new Date(exp).getTime() > Date.now())
+            setCurrentPlan(isProActive ? 'pro' : rawPlan)
+            setCurrentExpiresAt(exp)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync profile on dashboard:', err)
+      }
+    }
+    fetchLatestProfile()
+  }, [apiBase, sessionEmail])
 
   const submitLinkCode = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
@@ -141,12 +180,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   }
 
-  const isPro = plan === 'pro'
+  const isPro = currentPlan === 'pro'
   const firstName = displayName?.split(' ')[0] || displayName || sessionEmail?.split('@')[0] || 'User'
 
   const formatExpiry = (dateStr: string | null) => {
-    if (!dateStr) return null
-    const date = new Date(dateStr)
+    const target = dateStr || currentExpiresAt
+    if (!target) return null
+    const date = new Date(target)
     return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
@@ -162,6 +202,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {isPro ? <CrownIcon /> : <ShieldCheckIcon />}
                 {isPro ? 'Pro Plan Active' : 'Free Trial Mode'}
               </span>
+              {sessionEmail && (
+                <span className="user-email-pill" style={{ marginLeft: '0.5rem', fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
+                  ({sessionEmail})
+                </span>
+              )}
             </div>
             <h1>Welcome back, {firstName}</h1>
             <p className="dashboard-hero-subtitle">
@@ -291,77 +336,121 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
 
-            {!isPro && (
-              <div className="upgrade-benefits">
-                <div className="benefit-item">
-                  <CheckCircleIcon />
-                  <span>Unlimited session duration</span>
+            {isPro ? (
+              <div className="pro-active-dashboard-card">
+                <div className="pro-status-hero">
+                  <div className="pro-status-badge">
+                    <CrownIcon />
+                    <span>Pro Membership Active</span>
+                  </div>
+                  {planExpiresAt && (
+                    <p className="pro-expiry-text">
+                      <ClockIcon />
+                      <span>Valid until <strong>{formatExpiry(planExpiresAt)}</strong></span>
+                    </p>
+                  )}
                 </div>
-                <div className="benefit-item">
-                  <CheckCircleIcon />
-                  <span>Priority connection servers</span>
-                </div>
-                <div className="benefit-item">
-                  <CheckCircleIcon />
-                  <span>Ans 💡 AI Screen Copilot</span>
-                </div>
-                <div className="benefit-item">
-                  <CheckCircleIcon />
-                  <span>Multi-device connection pairing</span>
-                </div>
-              </div>
-            )}
 
-            {isPro && (
-              <div className="pro-status-box">
-                <div className="pro-badge-large">
-                  <CrownIcon />
-                  <span>Pro Member Active</span>
-                </div>
-                <p className="pro-thanks">Thank you for powering your remote workstation with Helvia!</p>
-              </div>
-            )}
-
-            <div className="dash-pricing-grid">
-              {/* 10 Min Trial */}
-              <div className="dash-plan-tile">
-                <div className="dash-plan-header">
-                  <span className="dash-plan-name">10 Min Trial</span>
-                  <div className="dash-plan-price-wrap">
-                    <span className="dash-plan-price free">Free</span>
+                <div className="pro-unlocked-features-grid">
+                  <div className="unlocked-feature-item">
+                    <CheckCircleIcon />
+                    <span>Unlimited 60 FPS remote sessions</span>
+                  </div>
+                  <div className="unlocked-feature-item">
+                    <CheckCircleIcon />
+                    <span>Ans 💡 AI Screen Copilot Analysis</span>
+                  </div>
+                  <div className="unlocked-feature-item">
+                    <CheckCircleIcon />
+                    <span>Stealth host capture protection</span>
+                  </div>
+                  <div className="unlocked-feature-item">
+                    <CheckCircleIcon />
+                    <span>Dedicated high-speed global bandwidth</span>
                   </div>
                 </div>
-                <p className="dash-plan-info">Basic remote desktop for quick verification.</p>
-                <button
-                  className="dash-plan-btn secondary"
-                  type="button"
-                  disabled
-                >
-                  {!isPro ? 'Active by default' : 'Included'}
-                </button>
-              </div>
 
-              {/* 1 Month Pro */}
-              <div className="dash-plan-tile featured">
-                <div className="dash-plan-badge-pill">Best Value</div>
-                <div className="dash-plan-header">
-                  <span className="dash-plan-name">1 Month Pro</span>
-                  <div className="dash-plan-price-wrap">
-                    <span className="dash-plan-price highlight">₹999</span>
-                    <span className="dash-plan-period">/ month</span>
+                <div className="pro-active-cta-bar">
+                  <button className="pro-active-btn" type="button" disabled>
+                    <CheckCircleIcon />
+                    <span>Current Active Plan (No action needed)</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="upgrade-benefits">
+                  <div className="benefit-item">
+                    <CheckCircleIcon />
+                    <span>Unlimited session duration</span>
+                  </div>
+                  <div className="benefit-item">
+                    <CheckCircleIcon />
+                    <span>Priority connection servers</span>
+                  </div>
+                  <div className="benefit-item">
+                    <CheckCircleIcon />
+                    <span>Ans 💡 AI Screen Copilot</span>
+                  </div>
+                  <div className="benefit-item">
+                    <CheckCircleIcon />
+                    <span>Multi-device connection pairing</span>
                   </div>
                 </div>
-                <p className="dash-plan-info">Full unmetered access for 30 days &amp; AI Copilot.</p>
-                <button
-                  className="dash-plan-btn primary featured"
-                  type="button"
-                  onClick={() => startUpgrade('month')}
-                  disabled={isUpgrading || isPro}
-                >
-                  {isPro ? 'Active' : 'Get Pro'}
-                </button>
-              </div>
-            </div>
+
+                <div className="dash-pricing-grid">
+                  {/* 10 Min Trial */}
+                  <div className="dash-plan-tile">
+                    <div className="dash-plan-header">
+                      <span className="dash-plan-name">10 Min Trial</span>
+                      <div className="dash-plan-price-wrap">
+                        <span className="dash-plan-price free">Free</span>
+                      </div>
+                    </div>
+                    <p className="dash-plan-info">Basic remote desktop for quick verification.</p>
+                    <button
+                      className="dash-plan-btn secondary"
+                      type="button"
+                      disabled
+                    >
+                      Active by default
+                    </button>
+                  </div>
+
+                  {/* 1 Month Pro */}
+                  <div className="dash-plan-tile featured">
+                    <div className="dash-plan-badge-pill">Best Value</div>
+                    <div className="dash-plan-header">
+                      <span className="dash-plan-name">1 Month Pro</span>
+                      <div className="dash-plan-price-wrap">
+                        <span className="dash-plan-price highlight">₹999</span>
+                        <span className="dash-plan-period">/ month</span>
+                      </div>
+                    </div>
+                    <p className="dash-plan-info">Full unmetered access for 30 days &amp; AI Copilot.</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.75rem' }}>
+                      <button
+                        className="dash-plan-btn primary featured"
+                        type="button"
+                        onClick={() => (startDodoUpgrade ? startDodoUpgrade() : startUpgrade('month'))}
+                        disabled={isUpgrading}
+                      >
+                        Upgrade with Card / Global (Dodo)
+                      </button>
+                      <button
+                        className="dash-plan-btn secondary"
+                        type="button"
+                        onClick={() => startUpgrade('month')}
+                        disabled={isUpgrading}
+                        style={{ fontSize: '0.74rem', padding: '0.4rem 0.6rem' }}
+                      >
+                        Pay via UPI / Netbanking
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {upgradeError && (
               <div className="dashboard-alert error" style={{ marginTop: '1rem' }}>

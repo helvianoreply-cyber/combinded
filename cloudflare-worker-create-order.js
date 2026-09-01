@@ -100,6 +100,61 @@ export default {
       }
     }
 
+    // =========================================================
+    // GET USER PROFILE BY EMAIL OR USER ID
+    // =========================================================
+    if ((url.pathname === '/get-profile' || url.pathname === '/profile') && (request.method === 'GET' || request.method === 'POST')) {
+      try {
+        let email = (url.searchParams.get('email') || '').trim().toLowerCase()
+        let userId = (url.searchParams.get('userId') || url.searchParams.get('id') || '').trim()
+
+        if (request.method === 'POST') {
+          const body = await request.json().catch(() => ({}))
+          if (!email && typeof body.email === 'string') email = body.email.trim().toLowerCase()
+          if (!userId && typeof body.userId === 'string') userId = body.userId.trim()
+          if (!userId && typeof body.id === 'string') userId = body.id.trim()
+        }
+
+        if (!email && !userId) {
+          return json({ ok: false, message: 'Missing email or userId parameter' }, 400, origin)
+        }
+
+        if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+          return json({ ok: false, message: 'Supabase not configured' }, 500, origin)
+        }
+
+        const supabaseBase = env.SUPABASE_URL.replace(/\/+$/, '')
+        const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
+
+        let query = ''
+        if (email) {
+          query = `email=eq.${encodeURIComponent(email)}`
+        } else {
+          query = `id=eq.${encodeURIComponent(userId)}`
+        }
+
+        const profileRes = await fetch(`${supabaseBase}/rest/v1/profiles?${query}&select=*`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+        })
+
+        if (!profileRes.ok) {
+          return json({ ok: false, message: 'Database query failed' }, profileRes.status, origin)
+        }
+
+        const rows = await profileRes.json()
+        const profile = Array.isArray(rows) && rows.length > 0 ? rows[0] : null
+
+        return json({ ok: true, profile }, 200, origin)
+      } catch (err) {
+        return json({ ok: false, message: err?.message || 'Failed to get profile' }, 500, origin)
+      }
+    }
+
     if ((url.pathname === '/link-complete' || url.pathname === '/link/complete') && request.method === 'POST') {
       try {
         const body = await request.json().catch(() => ({}))
@@ -427,6 +482,256 @@ export default {
           message = e.message
         }
         return json({ message }, 500, origin)
+      }
+    }
+
+    // =========================================================
+    // DODO PAYMENTS: CREATE SUBSCRIPTION CHECKOUT
+    // =========================================================
+    if (url.pathname === '/create-dodo-checkout' && request.method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}))
+        const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+        const name = typeof body.name === 'string' ? body.name.trim() : ''
+        const userId = typeof body.userId === 'string' ? body.userId.trim() : ''
+        const returnUrl = typeof body.returnUrl === 'string' && body.returnUrl.trim() 
+          ? body.returnUrl.trim() 
+          : 'https://helvia.in/dashboard?payment=success'
+
+        if (!email) {
+          return json({ ok: false, message: 'Missing customer email' }, 400, origin)
+        }
+
+        const apiKey = env.DODO_PAYMENTS_API_KEY || 'fUkRC9TuMSF47Ov2.zKFg-nE3Xk32dthnOueK6T514FtuoIlgNZBT7x7SF3ytn0En'
+        const productId = env.DODO_PRODUCT_ID || 'pdt_0Nmfh6M8mQGJT0VvCHDzO'
+        const isTest = env.DODO_PAYMENTS_MODE === 'test'
+        const dodoBase = isTest ? 'https://test.dodopayments.com' : 'https://live.dodopayments.com'
+
+        // 1. Try Dodo Checkout Sessions endpoint (client.checkoutSessions.create)
+        let dodoRes = await fetch(`${dodoBase}/checkouts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            billing: {
+              country: 'US',
+            },
+            customer: {
+              email,
+              name: name || email.split('@')[0] || 'Customer',
+            },
+            product_cart: [
+              {
+                product_id: productId,
+                quantity: 1,
+              },
+            ],
+            feature_flags: {
+              allow_discount_code: true,
+            },
+            metadata: {
+              userId,
+              email,
+              plan: 'pro',
+            },
+            return_url: returnUrl,
+          }),
+        })
+
+        // 2. Fallback to /subscriptions if needed
+        if (!dodoRes.ok) {
+          dodoRes = await fetch(`${dodoBase}/subscriptions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              billing: {
+                country: 'US',
+              },
+              customer: {
+                email,
+                name: name || email.split('@')[0] || 'Customer',
+              },
+              product_id: productId,
+              quantity: 1,
+              payment_link: true,
+              feature_flags: {
+                allow_discount_code: true,
+              },
+              metadata: {
+                userId,
+                email,
+                plan: 'pro',
+              },
+              return_url: returnUrl,
+            }),
+          })
+        }
+
+        // 3. Fallback to /payments if needed
+        if (!dodoRes.ok) {
+          dodoRes = await fetch(`${dodoBase}/payments`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              billing: {
+                country: 'US',
+              },
+              customer: {
+                email,
+                name: name || email.split('@')[0] || 'Customer',
+              },
+              product_cart: [
+                {
+                  product_id: productId,
+                  quantity: 1,
+                },
+              ],
+              payment_link: true,
+              feature_flags: {
+                allow_discount_code: true,
+              },
+              metadata: {
+                userId,
+                email,
+                plan: 'pro',
+              },
+              return_url: returnUrl,
+            }),
+          })
+        }
+
+        if (!dodoRes.ok) {
+          const errText = await dodoRes.text()
+          console.error('Dodo checkout creation error:', dodoRes.status, errText)
+          return json({ ok: false, message: 'Failed to create Dodo Payments checkout', detail: errText }, 500, origin)
+        }
+
+        const data = await dodoRes.json().catch(() => ({}))
+        const checkoutHost = isTest ? 'https://test.checkout.dodopayments.com' : 'https://checkout.dodopayments.com'
+
+        let checkoutUrl = 
+          data.payment_link || 
+          data.checkout_url || 
+          data.url || 
+          data.link || 
+          data.hosted_url ||
+          data.data?.payment_link ||
+          data.data?.checkout_url ||
+          data.data?.url ||
+          data.subscription?.payment_link ||
+          data.subscription?.checkout_url ||
+          data.payment?.payment_link ||
+          data.payment?.checkout_url ||
+          ''
+
+        // If Dodo returned a subscription_id / payment_id or object, build hosted checkout URL
+        if (!checkoutUrl) {
+          const directParams = new URLSearchParams()
+          if (email) directParams.set('email', email)
+          if (name) directParams.set('name', name)
+          if (returnUrl) directParams.set('return_url', returnUrl)
+          if (userId) directParams.set('userId', userId)
+          if (data.subscription_id) directParams.set('subscription_id', data.subscription_id)
+          if (data.payment_id) directParams.set('payment_id', data.payment_id)
+
+          const qs = directParams.toString()
+          checkoutUrl = `${checkoutHost}/buy/${productId}${qs ? `?${qs}` : ''}`
+        }
+
+        return json({ 
+          ok: true, 
+          checkoutUrl, 
+          paymentId: data.payment_id || data.subscription_id || '',
+          data 
+        }, 200, origin)
+      } catch (err) {
+        console.error('Dodo checkout exception:', err)
+        return json({ ok: false, message: err?.message || 'Error processing Dodo checkout' }, 500, origin)
+      }
+    }
+
+    // =========================================================
+    // DODO PAYMENTS: WEBHOOK LISTENER & SUPABASE AUTO-UPGRADE
+    // =========================================================
+    if (url.pathname === '/dodo-webhook' && request.method === 'POST') {
+      try {
+        const payloadText = await request.text()
+        let event = null
+        try {
+          event = JSON.parse(payloadText)
+        } catch {
+          event = null
+        }
+
+        if (!event) {
+          return new Response('Invalid JSON', { status: 400 })
+        }
+
+        const eventType = event.type || event.event || ''
+        const dataObj = event.data || {}
+        const metadata = dataObj.metadata || {}
+        const userId = metadata.userId || metadata.user_id || ''
+        const customerEmail = dataObj.customer?.email || metadata.email || ''
+
+        // Check if event indicates successful payment or active subscription
+        const isSuccessEvent = 
+          eventType === 'subscription.active' ||
+          eventType === 'subscription.renewed' ||
+          eventType === 'payment.succeeded' ||
+          eventType === 'checkout.session.completed'
+
+        if (isSuccessEvent && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+          const supabaseUrl = env.SUPABASE_URL.replace(/\/+$/, '')
+          const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
+
+          // 30 days from now
+          const expiresDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          const expiresIso = expiresDate.toISOString()
+
+          const updateBody = {
+            plan: 'pro',
+            plan_expires_at: expiresIso,
+            updated_at: new Date().toISOString(),
+          }
+
+          // Target by userId if available, else by email
+          let targetUrl = ''
+          if (userId) {
+            targetUrl = `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`
+          } else if (customerEmail) {
+            targetUrl = `${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(customerEmail.toLowerCase())}`
+          }
+
+          if (targetUrl) {
+            const updateRes = await fetch(targetUrl, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: serviceKey,
+                Authorization: `Bearer ${serviceKey}`,
+                Prefer: 'return=minimal',
+              },
+              body: JSON.stringify(updateBody),
+            })
+
+            if (!updateRes.ok) {
+              console.error('Supabase profile upgrade failed via Dodo webhook:', await updateRes.text())
+            }
+          }
+        }
+
+        return json({ ok: true, received: true, event: eventType }, 200, origin)
+      } catch (err) {
+        console.error('Dodo webhook processing error:', err)
+        return json({ ok: false, error: err?.message }, 500, origin)
       }
     }
 

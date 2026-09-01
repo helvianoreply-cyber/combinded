@@ -233,23 +233,52 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             Helvia Remote: Stealth zero-install remote desktop platform and AI co-pilot. Direct encrypted P2P connections, hardware-level input control, and context-aware AI screen answers ("Ans 💡").
           </p>
 
-          {/* Quick Access Code Input Bar */}
-          <form className="hero-quick-connect-bar" onSubmit={handleQuickConnect}>
-            <input 
-              type="text" 
-              placeholder="Enter your 6-digit access code (e.g. 942-817)..." 
-              value={quickConnectCode}
-              onChange={(e) => setQuickConnectCode(e.target.value)}
-              className="quick-connect-input"
-            />
-            <button type="submit" className="quick-connect-btn">
-              <span>Connect Instantly</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-                <polyline points="12 5 19 12 12 19"></polyline>
-              </svg>
-            </button>
-          </form>
+          {/* Hero Actions Area: Primary Download Host Button + Quick Connect Bar */}
+          <div className="hero-cta-action-wrap">
+            <a 
+              href="https://pub-4ec430c8cdbd49ffb57191dca016c43b.r2.dev/Helvia%20Remote%20Setup%200.1.0.exe"
+              className="hero-download-btn-primary"
+              title="Download Windows Host Application"
+            >
+              <div className="hero-btn-icon-wrap">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+                </svg>
+              </div>
+              <div className="hero-btn-text-content">
+                <span className="hero-btn-main-title">Download Windows Host (.exe)</span>
+                <span className="hero-btn-sub-label">v0.1.0 • Instant 60 FPS Setup • Zero-Install</span>
+              </div>
+              <div className="hero-btn-arrow-wrap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+              </div>
+            </a>
+
+            <div className="hero-connect-or-divider">
+              <span>OR ENTER CONNECTION CODE</span>
+            </div>
+
+            <form className="hero-quick-connect-bar" onSubmit={handleQuickConnect}>
+              <input 
+                type="text" 
+                placeholder="Enter 6-digit access code (e.g. 942-817)..." 
+                value={quickConnectCode}
+                onChange={(e) => setQuickConnectCode(e.target.value)}
+                className="quick-connect-input"
+              />
+              <button type="submit" className="quick-connect-btn">
+                <span>Connect</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              </button>
+            </form>
+          </div>
         </div>
 
         {/* Interactive 3D Live Simulation - Full Width White Container */}

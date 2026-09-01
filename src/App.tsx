@@ -179,11 +179,40 @@ function App() {
           setSessionEmail(email)
           setDisplayName(name)
 
+          // Load profile by email, id, or worker fallback
           try {
-            const { data: profile } = await sb.from('profiles').select('*').eq('id', id).maybeSingle()
-            if (profile) {
-              setPlan((profile as { plan?: string | null }).plan || 'basic')
-              setPlanExpiresAt((profile as { plan_expires_at?: string | null }).plan_expires_at || null)
+            let profileData: { plan?: string | null; plan_expires_at?: string | null } | null = null
+
+            if (email) {
+              const { data } = await sb.from('profiles').select('*').eq('email', email.toLowerCase()).maybeSingle()
+              if (data) profileData = data
+            }
+
+            if (!profileData && id) {
+              const { data } = await sb.from('profiles').select('*').eq('id', id).maybeSingle()
+              if (data) profileData = data
+            }
+
+            if (!profileData && (email || id)) {
+              const apiBase =
+                import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+              const res = await fetch(
+                `${apiBase}/get-profile?email=${encodeURIComponent(email || '')}&userId=${encodeURIComponent(id || '')}`
+              )
+              if (res.ok) {
+                const json = (await res.json()) as { ok?: boolean; profile?: { plan?: string | null; plan_expires_at?: string | null } }
+                if (json?.profile) {
+                  profileData = json.profile
+                }
+              }
+            }
+
+            if (profileData) {
+              const rawPlan = (profileData.plan || 'basic').toLowerCase()
+              const expiresAt = profileData.plan_expires_at || null
+              const isProActive = rawPlan === 'pro' && (!expiresAt || new Date(expiresAt).getTime() > Date.now())
+              setPlan(isProActive ? 'pro' : rawPlan)
+              setPlanExpiresAt(expiresAt)
             }
           } catch (err) {
             console.error('Profile fetch failed', err)
@@ -214,7 +243,7 @@ function App() {
       setDisplayName(name)
 
       if (session) {
-        // Upsert profile
+        // Upsert profile safely
         const fullName =
           (session.user.user_metadata?.full_name as string | undefined) ??
           (session.user.user_metadata?.name as string | undefined) ??
@@ -224,23 +253,59 @@ function App() {
           (session.user.user_metadata?.picture as string | undefined) ??
           null
 
-        await sb
-          .from('profiles')
-          .upsert(
-            {
-              id: session.user.id,
-              email,
-              full_name: fullName,
-              avatar_url: avatar,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'id' }
-          )
+        try {
+          await sb
+            .from('profiles')
+            .upsert(
+              {
+                id: session.user.id,
+                email,
+                full_name: fullName,
+                avatar_url: avatar,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'id' }
+            )
+        } catch {
+          // Ignore unique constraint error if email already registered with different id
+        }
 
-        const { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
-        if (profile) {
-          setPlan(profile.plan || 'basic')
-          setPlanExpiresAt(profile.plan_expires_at || null)
+        try {
+          let profileData: { plan?: string | null; plan_expires_at?: string | null } | null = null
+
+          if (email) {
+            const { data } = await sb.from('profiles').select('*').eq('email', email.toLowerCase()).maybeSingle()
+            if (data) profileData = data
+          }
+
+          if (!profileData && session.user.id) {
+            const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
+            if (data) profileData = data
+          }
+
+          if (!profileData && (email || session.user.id)) {
+            const apiBase =
+              import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+            const res = await fetch(
+              `${apiBase}/get-profile?email=${encodeURIComponent(email || '')}&userId=${encodeURIComponent(session.user.id || '')}`
+            )
+            if (res.ok) {
+              const json = (await res.json()) as { ok?: boolean; profile?: { plan?: string | null; plan_expires_at?: string | null } }
+              if (json?.profile) {
+                profileData = json.profile
+              }
+            }
+          }
+
+          if (profileData) {
+            const rawPlan = (profileData.plan || 'basic').toLowerCase()
+            const expiresAt = profileData.plan_expires_at || null
+            const isProActive = rawPlan === 'pro' && (!expiresAt || new Date(expiresAt).getTime() > Date.now())
+            setPlan(isProActive ? 'pro' : rawPlan)
+            setPlanExpiresAt(expiresAt)
+          }
+        } catch (err) {
+          console.error('Profile fetch failed in auth change', err)
         }
         
         if (event === 'SIGNED_IN') {
@@ -487,6 +552,59 @@ function App() {
     }
   }, [displayName, loadRazorpay, sessionEmail, userId])
 
+  const startDodoUpgrade = useCallback(async () => {
+    setUpgradeError(null)
+    if (!userId || !sessionEmail) {
+      setUpgradeError('You must be signed in to upgrade')
+      return
+    }
+
+    setIsUpgrading(true)
+    try {
+      const apiBase =
+        import.meta.env.VITE_API_BASE_URL || 'https://dawn-cloud-c3c5.helvia-noreply.workers.dev'
+      const response = await fetch(`${apiBase}/create-dodo-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          email: sessionEmail,
+          name: displayName || sessionEmail.split('@')[0],
+          returnUrl: `${window.location.origin}/dashboard?payment=success`,
+        }),
+      })
+
+      if (!response.ok) {
+        let details: { message?: string } | null = null
+        try {
+          details = (await response.json()) as { message?: string }
+        } catch {
+          details = null
+        }
+        console.error('Create Dodo checkout failed', response.status, details)
+        setIsUpgrading(false)
+        setUpgradeError(details?.message ?? 'Unable to initialize Dodo Payments checkout')
+        return
+      }
+
+      const data = (await response.json()) as { checkoutUrl?: string; payment_link?: string }
+      const redirectUrl = data.checkoutUrl || data.payment_link || ''
+
+      if (redirectUrl) {
+        window.location.href = redirectUrl
+      } else {
+        setIsUpgrading(false)
+        setUpgradeError('No checkout URL returned from payment gateway')
+      }
+    } catch (err) {
+      console.error('Dodo checkout exception', err)
+      setIsUpgrading(false)
+      setUpgradeError('Something went wrong while connecting to Dodo Payments')
+    }
+  }, [displayName, sessionEmail, userId])
+
   return (
     <div className="app">
       <header className="topbar">
@@ -518,6 +636,17 @@ function App() {
         ) : null}
 
         <div className="account">
+          <a 
+            className="download-host-nav-btn" 
+            href="https://pub-4ec430c8cdbd49ffb57191dca016c43b.r2.dev/Helvia%20Remote%20Setup%200.1.0.exe"
+            title="Download Windows Host (.exe)"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+            </svg>
+            <span>Host .exe</span>
+          </a>
+
           {isSignedIn ? (
             <div className="user-nav-group">
               <span className="user-status-pill">
@@ -536,16 +665,6 @@ function App() {
           ) : (
             location.pathname !== '/connect' && (
               <div className="guest-nav-group">
-                <a 
-                  className="download-host-nav-btn" 
-                  href="https://pub-4ec430c8cdbd49ffb57191dca016c43b.r2.dev/Helvia%20Remote%20Setup%200.1.0.exe"
-                  title="Download Windows Host (.exe)"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
-                  </svg>
-                  <span>Host .exe</span>
-                </a>
                 <button className="primary nav-cta-btn" onClick={signInWithGoogle} disabled={!isSupabaseConfigured}>
                   Sign in
                 </button>
@@ -622,6 +741,7 @@ function App() {
                 plan={plan}
                 planExpiresAt={planExpiresAt}
                 startUpgrade={startUpgrade}
+                startDodoUpgrade={startDodoUpgrade}
                 isUpgrading={isUpgrading}
                 upgradeError={upgradeError}
               />
