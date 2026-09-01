@@ -391,31 +391,45 @@ function App() {
     setAuthError(null)
     setUpgradeError(null)
 
+    // 1. Force clear all Supabase auth tokens from localStorage and sessionStorage
+    try {
+      if (typeof window !== 'undefined') {
+        const keysToRemove: string[] = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i)
+          if (k && (k.startsWith('sb-') || k.includes('supabase') || k.includes('auth'))) {
+            keysToRemove.push(k)
+          }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k))
+        sessionStorage.clear()
+      }
+    } catch {
+      // Ignore storage errors
+    }
+
+    // 2. Call Supabase signOut
     const sb = supabase
     if (sb) {
       try {
-        const { error } = await sb.auth.signOut()
-        if (error) {
-          console.error('Supabase sign-out failed', error)
-        }
+        await sb.auth.signOut({ scope: 'local' })
       } catch (err) {
         console.error('Supabase sign-out threw', err)
       }
     }
 
+    // 3. Clear local state
     setUserId(null)
     setSessionEmail(null)
     setDisplayName(null)
     setPlan('basic')
     setPlanExpiresAt(null)
 
+    // 4. Force clean reload to home page
     if (typeof window !== 'undefined') {
-      const host = window.location.hostname
-      const target =
-        host === 'localhost' || host === '127.0.0.1' ? '/' : 'https://helvia.in/'
-      window.location.href = target
+      window.location.replace('/')
     } else {
-      navigate('/')
+      navigate('/', { replace: true })
     }
   }, [navigate])
 
@@ -695,14 +709,16 @@ function App() {
         </div>
       </header>
 
-      {mobileNavOpen && location.pathname === '/' ? (
+      {mobileNavOpen ? (
         <div className="mobile-nav-drawer">
-          <nav className="mobile-nav-links">
-            <a href="#features" onClick={() => setMobileNavOpen(false)}>Features</a>
-            <a href="#how-it-works" onClick={() => setMobileNavOpen(false)}>How It Works</a>
-            <a href="#comparison" onClick={() => setMobileNavOpen(false)}>Comparison</a>
-            <a href="#pricing" onClick={() => setMobileNavOpen(false)}>Pricing</a>
-          </nav>
+          {location.pathname === '/' && (
+            <nav className="mobile-nav-links">
+              <a href="#features" onClick={() => setMobileNavOpen(false)}>Features</a>
+              <a href="#how-it-works" onClick={() => setMobileNavOpen(false)}>How It Works</a>
+              <a href="#comparison" onClick={() => setMobileNavOpen(false)}>Comparison</a>
+              <a href="#pricing" onClick={() => setMobileNavOpen(false)}>Pricing</a>
+            </nav>
+          )}
           <div className="mobile-nav-actions">
             <a 
               className="secondary mobile-download-link"
@@ -711,6 +727,35 @@ function App() {
             >
               Download Windows Host (.exe)
             </a>
+            {isSignedIn ? (
+              <>
+                {location.pathname === '/' && (
+                  <button 
+                    className="primary nav-cta-btn" 
+                    style={{ width: '100%', marginTop: '0.5rem' }} 
+                    onClick={() => { setMobileNavOpen(false); navigate('/dashboard'); }}
+                  >
+                    Dashboard
+                  </button>
+                )}
+                <button 
+                  className="ghost-btn nav-cta-btn" 
+                  style={{ width: '100%', marginTop: '0.5rem' }} 
+                  onClick={() => { setMobileNavOpen(false); signOut(); }}
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <button 
+                className="primary nav-cta-btn" 
+                style={{ width: '100%', marginTop: '0.5rem' }} 
+                onClick={() => { setMobileNavOpen(false); signInWithGoogle(); }}
+                disabled={!isSupabaseConfigured}
+              >
+                Sign in
+              </button>
+            )}
           </div>
         </div>
       ) : null}
