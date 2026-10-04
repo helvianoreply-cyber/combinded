@@ -36,7 +36,7 @@ export const ConnectPage: React.FC<ConnectPageProps> = ({
       }
     }
 
-    return 'https://dawn-cloud-c3c5.helvia-noreply.workers.dev'
+    return 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
   })()
 
   const [searchParams] = useSearchParams()
@@ -68,7 +68,7 @@ export const ConnectPage: React.FC<ConnectPageProps> = ({
 
     const checkConnection = async () => {
       try {
-        const { data, error } = await sb.from('profiles').select('verifier').eq('id', userId).maybeSingle()
+        const { data, error } = await sb.from('users').select('verifier').eq('id', userId).maybeSingle()
         if (!error && data && typeof data.verifier === 'boolean') {
           setHasActiveConnection(data.verifier)
         }
@@ -95,7 +95,7 @@ export const ConnectPage: React.FC<ConnectPageProps> = ({
     try {
       const sb = supabase
       if (sb && userId) {
-        const { data } = await sb.from('profiles').select('email, plan').eq('id', userId).maybeSingle()
+        const { data } = await sb.from('users').select('email, plan').eq('id', userId).maybeSingle()
 
         if (data) {
           const profileEmail = (data.email as string | null | undefined) ?? null

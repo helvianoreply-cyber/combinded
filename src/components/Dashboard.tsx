@@ -1,27 +1,24 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { SkyCanvas3D } from './SkyCanvas3D'
+import { type DbUser, type DbPlan, SEED_PLANS, getPlanInrPrice } from '../lib/database.types'
+import { PaymentModal } from './PaymentModal'
 
 interface DashboardProps {
   displayName: string | null
   sessionEmail: string | null
+  userProfile?: DbUser | null
+  plans?: DbPlan[]
   plan: string
   planExpiresAt: string | null
-  startUpgrade: (duration: '24h' | 'month') => void
-  startDodoUpgrade?: () => void
+  startUpgrade: (plan: DbPlan | '24h' | 'month', couponCode?: string, customAmountInr?: number) => void
+  startDodoUpgrade?: (productId?: string, couponCode?: string) => void
   isUpgrading: boolean
   upgradeError: string | null
 }
 
 // Icon Components
-const LinkIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-  </svg>
-)
-
 const CrownIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"></path>
   </svg>
 )
@@ -40,24 +37,31 @@ const ClockIcon = () => (
   </svg>
 )
 
-const DownloadIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-    <polyline points="7 10 12 15 17 10"></polyline>
-    <line x1="12" y1="15" x2="12" y2="3"></line>
+const ShieldCheckIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+    <polyline points="9 12 12 15 16 10"></polyline>
   </svg>
 )
 
-const ShieldCheckIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-    <polyline points="9 12 12 15 16 10"></polyline>
+const SparklesIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+  </svg>
+)
+
+const BriefcaseIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
   </svg>
 )
 
 export const Dashboard: React.FC<DashboardProps> = ({
   displayName,
   sessionEmail,
+  userProfile,
+  plans,
   plan,
   planExpiresAt,
   startUpgrade,
@@ -65,26 +69,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
   isUpgrading,
   upgradeError,
 }) => {
-  const [linkCode, setLinkCode] = useState('')
-  const [isLinking, setIsLinking] = useState(false)
-  const [linkError, setLinkError] = useState<string | null>(null)
-  const [linkSuccess, setLinkSuccess] = useState<string | null>(null)
-  const [animated, setAnimated] = useState(false)
-  const [currentPlan, setCurrentPlan] = useState(plan)
-  const [currentExpiresAt, setCurrentExpiresAt] = useState(planExpiresAt)
+  const [currentPlan, setCurrentPlan] = useState(userProfile?.plan || plan || 'basic')
+  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null)
 
   useEffect(() => {
-    setCurrentPlan(plan)
-    setCurrentExpiresAt(planExpiresAt)
-  }, [plan, planExpiresAt])
+    setCurrentPlan(userProfile?.plan || plan || 'basic')
+  }, [userProfile, plan])
 
   useEffect(() => {
-    setAnimated(true)
     document.documentElement.setAttribute('data-sky-theme', 'morning')
 
     const params = new URLSearchParams(window.location.search)
     if (params.get('payment') === 'success') {
-      setLinkSuccess('🎉 Payment Successful! Your 1 Month Pro Plan is activated.')
+      setPaymentSuccess('🎉 Payment Successful! Your upgraded plan and quotas are now active.')
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [])
@@ -94,11 +91,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
     if (configured && typeof configured === 'string' && configured.trim()) {
       return configured.replace(/\/+$/, '')
     }
-
     return 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
   }, [])
 
-  // Auto-fetch profile on dashboard mount to ensure latest plan status
+  // Auto-sync latest profile
   useEffect(() => {
     const fetchLatestProfile = async () => {
       const email = (sessionEmail || '').trim().toLowerCase()
@@ -106,13 +102,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
       try {
         const res = await fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}`)
         if (res.ok) {
-          const json = (await res.json()) as { ok?: boolean; profile?: { plan?: string | null; plan_expires_at?: string | null } }
-          if (json?.profile) {
-            const rawPlan = (json.profile.plan || 'basic').toLowerCase()
-            const exp = json.profile.plan_expires_at || null
-            const isProActive = rawPlan === 'pro' && (!exp || new Date(exp).getTime() > Date.now())
-            setCurrentPlan(isProActive ? 'pro' : rawPlan)
-            setCurrentExpiresAt(exp)
+          const json = (await res.json()) as { ok?: boolean; profile?: DbUser }
+          if (json?.profile?.plan) {
+            setCurrentPlan(json.profile.plan.toLowerCase())
           }
         }
       } catch (err) {
@@ -122,368 +114,354 @@ export const Dashboard: React.FC<DashboardProps> = ({
     fetchLatestProfile()
   }, [apiBase, sessionEmail])
 
-  const submitLinkCode = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
-    setLinkError(null)
-    setLinkSuccess(null)
+  // Sort available plans in ascending price order: $0 -> $8 -> $15 -> $25 -> $35 -> $49
+  const availablePlans = useMemo(() => {
+    const list = plans && plans.length > 0 ? plans : SEED_PLANS
+    return [...list].sort((a, b) => Number(a.price) - Number(b.price))
+  }, [plans])
 
-    const email = (sessionEmail || '').trim().toLowerCase()
-    const code = linkCode.trim()
-    if (!email) {
-      setLinkError('Missing account email')
-      return
-    }
-    if (!code) {
-      setLinkError('Enter the code shown in your desktop app')
-      return
-    }
+  const activePlanObj = availablePlans.find(
+    (p) =>
+      p.tier.toLowerCase() === currentPlan.toLowerCase() ||
+      p.name.toLowerCase().includes(currentPlan.toLowerCase())
+  )
+  const planDisplayName = activePlanObj ? activePlanObj.name : currentPlan === 'basic' ? 'Basic Free Tier' : currentPlan
+  const isPaid = currentPlan !== 'basic'
 
-    setIsLinking(true)
-    try {
-      const res = await fetch(`${apiBase}/link/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: code,
-          email,
-        }),
-      })
-
-      let data: { ok?: boolean; message?: string } | null = null
-      try {
-        data = (await res.json()) as { ok?: boolean; message?: string } | null
-      } catch {
-        data = null
-      }
-
-      if (!res.ok || !data?.ok) {
-        const message =
-          (data && typeof data.message === 'string' && data.message) ||
-          `Failed to link code (status ${res.status})`
-        setLinkError(message)
-        setIsLinking(false)
-        return
-      }
-
-      setLinkSuccess('Device connected successfully! You can now control it seamlessly.')
-      setLinkCode('')
-      setIsLinking(false)
-    } catch (e) {
-      const msg =
-        e && typeof e === 'object' && 'message' in e && typeof e.message === 'string'
-          ? e.message
-          : 'Failed to link code'
-      setLinkError(msg)
-      setIsLinking(false)
-    }
-  }
-
-  const isPro = currentPlan === 'pro'
   const firstName = displayName?.split(' ')[0] || displayName || sessionEmail?.split('@')[0] || 'User'
 
-  const formatExpiry = (dateStr: string | null) => {
-    const target = dateStr || currentExpiresAt
-    if (!target) return null
-    const date = new Date(target)
-    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<DbPlan | null>(null)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+
+  const openPaymentModal = (p: DbPlan) => {
+    setSelectedPlanForPayment(p)
+    setIsPaymentModalOpen(true)
+  }
+
+  const handleRazorpayUpgrade = (p: DbPlan, couponCode?: string, customAmountInr?: number) => {
+    setIsPaymentModalOpen(false)
+    startUpgrade(p, couponCode, customAmountInr)
+  }
+
+  const handleDodoUpgrade = (p: DbPlan, couponCode?: string) => {
+    setIsPaymentModalOpen(false)
+    if (startDodoUpgrade) {
+      startDodoUpgrade(p.dodo_product_id || undefined, couponCode)
+    }
   }
 
   return (
     <>
       <SkyCanvas3D scrollProgress={0} manualTimeOverride={0} />
-      <div className="dashboard-page-container">
-        {/* Welcome Hero Section */}
-        <section className={`dashboard-hero ${animated ? 'animate-in' : ''}`}>
-          <div className="dashboard-hero-content">
-            <div className="dashboard-hero-badge">
-              <span className={`plan-indicator ${isPro ? 'pro' : 'free'}`}>
-                {isPro ? <CrownIcon /> : <ShieldCheckIcon />}
-                {isPro ? 'Pro Plan Active' : 'Free Trial Mode'}
+
+      <div className="plans-dashboard-container">
+        {/* Header Section */}
+        <section className="plans-page-header">
+          <div className="plans-user-badge">
+            <span className={`plan-indicator ${isPaid ? 'pro' : 'free'}`}>
+              {isPaid ? <CrownIcon /> : <ShieldCheckIcon />}
+              <span>Current Plan: <strong>{planDisplayName}</strong></span>
+            </span>
+            {sessionEmail && (
+              <span className="user-email-pill">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.85, flexShrink: 0 }}>
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <span>{sessionEmail}</span>
               </span>
-              {sessionEmail && (
-                <span className="user-email-pill" style={{ marginLeft: '0.5rem', fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
-                  ({sessionEmail})
-                </span>
-              )}
-            </div>
-            <h1>Welcome back, {firstName}</h1>
-            <p className="dashboard-hero-subtitle">
-              {isPro 
-                ? 'Your workstation is powered with full Pro capabilities. Enjoy unlimited ultra-low-latency remote sessions!' 
-                : 'Connect your host PC below or unlock full Pro access with unmetered sessions and AI Copilot.'}
-            </p>
+            )}
             {planExpiresAt && (
-              <div className="expiry-badge">
+              <span className="user-email-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                 <ClockIcon />
-                <span>Pro expires on {formatExpiry(planExpiresAt)}</span>
-              </div>
+                <span>Expires {new Date(planExpiresAt).toLocaleDateString()}</span>
+              </span>
             )}
           </div>
-          
-          <div className="dashboard-stats">
-            <div className="dashboard-stat-card">
-              <div className="stat-icon-wrapper blue">
-                <LinkIcon />
-              </div>
-              <div className="stat-info">
-                <p className="stat-value">Ready</p>
-                <p className="stat-label">Connection Status</p>
+          <h1>Welcome, <span className="plans-name-highlight">{firstName}</span></h1>
+          <p className="plans-page-subtitle">
+            Select the plan that fits your remote desktop control and AI screen analysis workload.
+          </p>
+        </section>
+
+        {/* Live Quotas & Balances Bar */}
+        {userProfile && (
+          <div className="plans-live-stats-bar">
+            <div className="live-stat-pill">
+              <ClockIcon />
+              <div>
+                <span className="live-stat-val">
+                  {userProfile.seconds_remaining != null && userProfile.seconds_remaining > 0
+                    ? `${Math.floor(userProfile.seconds_remaining / 60)} min`
+                    : currentPlan === 'pro plus+'
+                      ? 'Unlimited'
+                      : `${Math.floor((userProfile.seconds_remaining || 0) / 60)} min`}
+                </span>
+                <span className="live-stat-lbl">Time Remaining</span>
               </div>
             </div>
-            <div className="dashboard-stat-card">
-              <div className="stat-icon-wrapper green">
-                <ShieldCheckIcon />
+
+            <div className="live-stat-pill">
+              <SparklesIcon />
+              <div>
+                <span className="live-stat-val">{userProfile.responses_remaining ?? 0}</span>
+                <span className="live-stat-lbl">AI Answers Balance</span>
               </div>
-              <div className="stat-info">
-                <p className="stat-value">Active</p>
-                <p className="stat-label">Account Status</p>
+            </div>
+
+            <div className="live-stat-pill">
+              <BriefcaseIcon />
+              <div>
+                <span className="live-stat-val">{userProfile.applications_remaining ?? 10}</span>
+                <span className="live-stat-lbl">Job Auto-Applies</span>
+              </div>
+            </div>
+
+            <div className={`live-stat-pill ${userProfile.verifier ? 'verified' : ''}`}>
+              <CheckCircleIcon />
+              <div>
+                <span className="live-stat-val">{userProfile.verifier ? 'Host Linked' : 'Standby'}</span>
+                <span className="live-stat-lbl">Windows Host Status</span>
               </div>
             </div>
           </div>
-        </section>
+        )}
 
-        {/* Quick Actions Grid */}
-        <section className="dashboard-grid">
-          {/* Link Device Card */}
-          <div className={`dashboard-card link-card ${animated ? 'animate-in stagger-1' : ''}`}>
-            <div className="dashboard-card-header">
-              <div className="dashboard-card-icon blue">
-                <LinkIcon />
-              </div>
-              <div>
-                <h2>Connect Desktop</h2>
-                <p className="dashboard-card-subtitle">Link your Windows PC to start remote control</p>
-              </div>
-            </div>
-            
-            <form className="link-code-section" onSubmit={submitLinkCode}>
-              <label className="link-code-label">
-                Enter the 6-digit code displayed on your Windows host app:
-              </label>
-              <div className="link-code-input-group">
-                <input
-                  value={linkCode}
-                  onChange={(e) => setLinkCode(e.target.value.toUpperCase())}
-                  placeholder="ABC123"
-                  className="link-code-input"
-                  maxLength={6}
-                  disabled={isLinking}
-                  autoComplete="off"
-                  spellCheck="false"
-                />
-                <button 
-                  className="link-button primary" 
-                  type="submit"
-                  disabled={isLinking || linkCode.length < 6}
-                >
-                  {isLinking ? (
-                    <span className="button-spinner"></span>
-                  ) : (
-                    <>
-                      <LinkIcon />
-                      <span>Connect</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              {linkError && (
-                <div className="dashboard-alert error">
-                  <span>⚠️</span>
-                  <span>{linkError}</span>
-                </div>
-              )}
-              {linkSuccess && (
-                <div className="dashboard-alert success">
-                  <CheckCircleIcon />
-                  <span>{linkSuccess}</span>
-                </div>
-              )}
-            </form>
+        {/* Success / Error Alerts */}
+        {paymentSuccess && (
+          <div className="dashboard-alert success" style={{ maxWidth: 840, margin: '0 auto 2rem auto' }}>
+            <CheckCircleIcon />
+            <span>{paymentSuccess}</span>
+          </div>
+        )}
 
-            <div className="download-app-banner">
-              <div className="download-app-content">
-                <div className="download-app-icon-wrap">
-                  <DownloadIcon />
-                </div>
-                <div>
-                  <p className="download-app-title">Need the Windows Host Agent?</p>
-                  <p className="download-app-desc">Download and launch Helvia Remote on your PC</p>
-                </div>
-              </div>
-              <a 
-                href="https://pub-4ec430c8cdbd49ffb57191dca016c43b.r2.dev/Helvia%20Remote%20Setup%200.1.0.exe"
-                className="download-host-btn"
-                title="Download Windows Host"
+        {upgradeError && (
+          <div className="dashboard-alert error" style={{ maxWidth: 840, margin: '0 auto 2rem auto' }}>
+            <span>⚠️</span>
+            <span>{upgradeError}</span>
+          </div>
+        )}
+
+        {/* ALL PLANS GRID */}
+        <section className="all-plans-grid">
+          {availablePlans.map((p) => {
+            const priceNum = Number(p.price)
+            const isFree = priceNum === 0
+            const isCurrent =
+              p.tier.toLowerCase() === currentPlan.toLowerCase() ||
+              (p.tier === 'usage' && activePlanObj?.id === p.id)
+            const isPopular =
+              p.dodo_product_id === 'pdt_0NnIQ5VyQfhSXYsFLcojZ' ||
+              p.name.includes('Popular')
+            const isLifetime = p.tier === 'pro plus+' || p.name.includes('Lifetime')
+            const isMaxPlus = priceNum === 25
+            const isUltraPlus = priceNum === 35
+
+            return (
+              <div
+                key={p.id}
+                className={`all-plans-card ${isPopular ? 'featured popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''} ${isCurrent ? 'active-plan' : ''}`}
               >
-                <span>Download .exe</span>
-              </a>
-            </div>
-          </div>
+                {/* Top Badge & Tier Category Row */}
+                <div className="plan-card-badge-row">
+                  {isCurrent ? (
+                    <span className="plan-badge-pill active">
+                      <CheckCircleIcon /> Current Active Plan
+                    </span>
+                  ) : isPopular ? (
+                    <span className="plan-badge-pill popular">
+                      <SparklesIcon /> Most Popular
+                    </span>
+                  ) : isLifetime ? (
+                    <span className="plan-badge-pill lifetime">
+                      💎 Lifetime BYOK
+                    </span>
+                  ) : isUltraPlus ? (
+                    <span className="plan-badge-pill power">
+                      ⚡ Ultra Power
+                    </span>
+                  ) : isMaxPlus ? (
+                    <span className="plan-badge-pill capacity">
+                      🔥 High Usage
+                    </span>
+                  ) : isFree ? (
+                    <span className="plan-badge-pill free">
+                      ⚡ Free Tier
+                    </span>
+                  ) : (
+                    <span className="plan-badge-pill standard">
+                      🚀 3-in-1 Suite
+                    </span>
+                  )}
+                  {isPopular && <span className="plan-highlight-tag">Best Value</span>}
+                  {isLifetime && <span className="plan-highlight-tag vip">VIP License</span>}
+                </div>
 
-          {/* Upgrade Card */}
-          <div className={`dashboard-card upgrade-card ${animated ? 'animate-in stagger-2' : ''}`}>
-            <div className="dashboard-card-header">
-              <div className={`dashboard-card-icon ${isPro ? 'gold' : 'blue'}`}>
-                <CrownIcon />
-              </div>
-              <div>
-                <h2>{isPro ? 'Pro Subscription' : 'Upgrade to Pro'}</h2>
-                <p className="dashboard-card-subtitle">
-                  {isPro ? 'Full access to unmetered sessions & AI Screen Copilot' : 'Unlock unlimited 60 FPS remote sessions & instant AI intelligence'}
-                </p>
-              </div>
-            </div>
-
-            {isPro ? (
-              <div className="pro-active-dashboard-card">
-                <div className="pro-status-hero">
-                  <div className="pro-status-badge">
-                    <CrownIcon />
-                    <span>Pro Membership Active</span>
+                {/* Plan Header */}
+                <div className="plan-card-header">
+                  <h3 className="plan-card-name">{p.name}</h3>
+                  <div className="plan-card-price-row">
+                    <div className="plan-price-main">
+                      <span className="plan-price-currency">{isFree ? '' : '$'}</span>
+                      <span className={`plan-card-price ${isFree ? 'free' : isPopular ? 'popular' : ''}`}>
+                        {isFree ? 'Free' : p.price}
+                      </span>
+                    </div>
+                    {!isFree && (
+                      <div className="plan-price-sub-wrap">
+                        <span className="plan-inr-chip">≈ ₹{getPlanInrPrice(p.price)}</span>
+                        <span className="plan-card-period">
+                          {isLifetime ? '/ one-time' : '/ pack'}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  {planExpiresAt && (
-                    <p className="pro-expiry-text">
-                      <ClockIcon />
-                      <span>Valid until <strong>{formatExpiry(planExpiresAt)}</strong></span>
-                    </p>
+                </div>
+
+                {/* Plan Description */}
+                <p className="plan-card-desc">
+                  {isFree
+                    ? 'Basic account with zero usage quota. Upgrade to unlock remote streaming, AI Copilot, and job auto-applies.'
+                    : isLifetime
+                      ? 'Unlimited lifetime remote desktop access with Bring Your Own Keys (BYOK) AI Copilot.'
+                      : `Includes ${p.included_minutes} remote minutes, ${p.included_responses} Ans 💡 AI answers, and ${p.included_applications} LinkedIn & ATS job auto-applies.`}
+                </p>
+
+                {/* Quick Quota Highlights */}
+                <div className="plan-quota-pills">
+                  <div className="plan-quota-pill">
+                    <span className="quota-val">{isLifetime ? 'BYOK' : isFree ? '0' : p.included_applications}</span>
+                    <span className="quota-lbl">Auto-Applies</span>
+                  </div>
+                  <div className="plan-quota-pill">
+                    <span className="quota-val">{isLifetime ? '∞' : isFree ? '0m' : `${p.included_minutes}m`}</span>
+                    <span className="quota-lbl">Remote Time</span>
+                  </div>
+                  <div className="plan-quota-pill">
+                    <span className="quota-val">{isFree ? '0' : isLifetime ? 'BYOK' : p.included_responses}</span>
+                    <span className="quota-lbl">AI Answers</span>
+                  </div>
+                </div>
+
+                {/* Feature Bullet Points */}
+                <ul className="plan-card-features">
+                  <li>
+                    <CheckCircleIcon />
+                    <span>
+                      <strong>
+                        {isLifetime
+                          ? 'BYOK Job Auto-Apply'
+                          : isFree
+                            ? '0 Job Auto-Applies'
+                            : `${p.included_applications} Job Auto-Applies`}
+                      </strong>
+                      <span className="plan-feat-subtext">
+                        {isFree ? ' (Upgrade required)' : ' (LinkedIn, Indeed & ATS)'}
+                      </span>
+                    </span>
+                  </li>
+                  <li>
+                    <CheckCircleIcon />
+                    <span>
+                      <strong>
+                        {isLifetime
+                          ? 'Unlimited Remote Duration'
+                          : isFree
+                            ? '0 Remote Minutes'
+                            : `${p.included_minutes} Remote Minutes`}
+                      </strong>
+                      <span className="plan-feat-subtext">
+                        {isFree ? ' (Upgrade required)' : ' (Sub-15ms 60 FPS stream)'}
+                      </span>
+                    </span>
+                  </li>
+                  <li>
+                    <CheckCircleIcon />
+                    <span>
+                      <strong>
+                        {isFree
+                          ? '0 Ans 💡 AI Answers'
+                          : isLifetime
+                            ? 'BYOK Ans 💡 AI Screen Copilot'
+                            : `${p.included_responses} Ans 💡 AI Screen Answers`}
+                      </strong>
+                      {isFree && <span className="plan-feat-subtext"> (Upgrade required)</span>}
+                    </span>
+                  </li>
+                  <li>
+                    <CheckCircleIcon />
+                    <span>60 FPS P2P WebRTC Direct Stream</span>
+                  </li>
+                  {isFree ? (
+                    <li className="disabled-feat">
+                      <span style={{ marginRight: '0.4rem' }}>✕</span>
+                      <span>AI Meeting & Screen Copilot (Upgrade required)</span>
+                    </li>
+                  ) : (
+                    <li>
+                      <CheckCircleIcon />
+                      <span>Stealth Host Input & Audio Loopback</span>
+                    </li>
+                  )}
+                </ul>
+
+                {/* CTA Action Button */}
+                <div className="plan-card-cta-wrap">
+                  {isCurrent ? (
+                    <button className="plan-card-btn active" type="button" disabled>
+                      <CheckCircleIcon /> Current Active Plan
+                    </button>
+                  ) : isFree ? (
+                    <button className="plan-card-btn secondary" type="button" disabled>
+                      Included by Default
+                    </button>
+                  ) : (
+                    <button
+                      className={`plan-card-btn primary ${isPopular ? 'popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''}`}
+                      type="button"
+                      onClick={() => openPaymentModal(p)}
+                      disabled={isUpgrading}
+                    >
+                      {isUpgrading ? (
+                        <span>Processing…</span>
+                      ) : (
+                        <>
+                          <span>
+                            {isLifetime
+                              ? `Get Lifetime ($49 / ₹${getPlanInrPrice(49)})`
+                              : `Select Plan ($${p.price} / ₹${getPlanInrPrice(p.price)})`}
+                          </span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="btn-arrow">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                          </svg>
+                        </>
+                      )}
+                    </button>
                   )}
                 </div>
-
-                <div className="pro-unlocked-features-grid">
-                  <div className="unlocked-feature-item">
-                    <CheckCircleIcon />
-                    <span>Unlimited 60 FPS remote sessions</span>
-                  </div>
-                  <div className="unlocked-feature-item">
-                    <CheckCircleIcon />
-                    <span>Ans 💡 AI Screen Copilot Analysis</span>
-                  </div>
-                  <div className="unlocked-feature-item">
-                    <CheckCircleIcon />
-                    <span>Stealth host capture protection</span>
-                  </div>
-                  <div className="unlocked-feature-item">
-                    <CheckCircleIcon />
-                    <span>Dedicated high-speed global bandwidth</span>
-                  </div>
-                </div>
-
-                <div className="pro-active-cta-bar">
-                  <button className="pro-active-btn" type="button" disabled>
-                    <CheckCircleIcon />
-                    <span>Current Active Plan (No action needed)</span>
-                  </button>
-                </div>
               </div>
-            ) : (
-              <>
-                <div className="upgrade-benefits">
-                  <div className="benefit-item">
-                    <CheckCircleIcon />
-                    <span>Unlimited session duration</span>
-                  </div>
-                  <div className="benefit-item">
-                    <CheckCircleIcon />
-                    <span>Priority connection servers</span>
-                  </div>
-                  <div className="benefit-item">
-                    <CheckCircleIcon />
-                    <span>Ans 💡 AI Screen Copilot</span>
-                  </div>
-                  <div className="benefit-item">
-                    <CheckCircleIcon />
-                    <span>Multi-device connection pairing</span>
-                  </div>
-                </div>
-
-                <div className="dash-pricing-grid">
-                  {/* 10 Min Trial */}
-                  <div className="dash-plan-tile">
-                    <div className="dash-plan-header">
-                      <span className="dash-plan-name">10 Min Trial</span>
-                      <div className="dash-plan-price-wrap">
-                        <span className="dash-plan-price free">Free</span>
-                      </div>
-                    </div>
-                    <p className="dash-plan-info">Basic remote desktop for quick verification.</p>
-                    <button
-                      className="dash-plan-btn secondary"
-                      type="button"
-                      disabled
-                    >
-                      Active by default
-                    </button>
-                  </div>
-
-                  {/* 1 Month Pro */}
-                  <div className="dash-plan-tile featured">
-                    <div className="dash-plan-badge-pill">Best Value</div>
-                    <div className="dash-plan-header">
-                      <span className="dash-plan-name">1 Month Pro</span>
-                      <div className="dash-plan-price-wrap">
-                        <span className="dash-plan-price highlight">₹999</span>
-                        <span className="dash-plan-period">/ month</span>
-                      </div>
-                    </div>
-                    <p className="dash-plan-info">Full unmetered access for 30 days &amp; AI Copilot.</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.75rem' }}>
-                      <button
-                        className="dash-plan-btn primary featured"
-                        type="button"
-                        onClick={() => (startDodoUpgrade ? startDodoUpgrade() : startUpgrade('month'))}
-                        disabled={isUpgrading}
-                      >
-                        Upgrade with Card / Global (Dodo)
-                      </button>
-                      <button
-                        className="dash-plan-btn secondary"
-                        type="button"
-                        onClick={() => startUpgrade('month')}
-                        disabled={isUpgrading}
-                        style={{ fontSize: '0.74rem', padding: '0.4rem 0.6rem' }}
-                      >
-                        Pay via UPI / Netbanking
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {upgradeError && (
-              <div className="dashboard-alert error" style={{ marginTop: '1rem' }}>
-                <span>⚠️</span>
-                <span>{upgradeError}</span>
-              </div>
-            )}
-          </div>
+            )
+          })}
         </section>
 
-        {/* Tips Section */}
-        <section className={`dashboard-tips ${animated ? 'animate-in stagger-3' : ''}`}>
-          <h3>Quick Setup &amp; Operation Tips</h3>
-          <div className="tips-grid">
-            <div className="tip-card">
-              <div className="tip-number">1</div>
-              <p className="tip-text">Download and run the Helvia Host agent on your Windows PC.</p>
-            </div>
-            <div className="tip-card">
-              <div className="tip-number">2</div>
-              <p className="tip-text">Copy the 6-character connection code generated by the host.</p>
-            </div>
-            <div className="tip-card">
-              <div className="tip-number">3</div>
-              <p className="tip-text">Paste the code into the connect box above to establish a direct WebRTC stream.</p>
-            </div>
-            <div className="tip-card">
-              <div className="tip-number">4</div>
-              <p className="tip-text">Enjoy zero-install remote desktop with 60 FPS hardware precision.</p>
-            </div>
-          </div>
-        </section>
+        {/* Global checkout note */}
+        <div style={{ textAlign: 'center', marginTop: '3.5rem', color: '#64748b', fontSize: '0.86rem' }}>
+          <p>
+            🔒 All transactions are securely processed via <strong>Razorpay</strong> (India: UPI, Netbanking, Cards) or <strong>Dodo Payments</strong> (Global: Cards, Apple Pay). Instant quota activation.
+          </p>
+        </div>
       </div>
+
+      {/* Reusable Payment Method Selector Modal */}
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        plan={selectedPlanForPayment}
+        onSelectRazorpay={handleRazorpayUpgrade}
+        onSelectDodo={handleDodoUpgrade}
+        isProcessing={isUpgrading}
+      />
     </>
   )
 }

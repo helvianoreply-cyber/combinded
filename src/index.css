@@ -64,20 +64,45 @@
   box-sizing: border-box;
 }
 
-html, body {
+html {
+  scroll-behavior: smooth;
+  font-size: 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
   margin: 0;
   padding: 0;
   width: 100%;
-  max-width: 100vw;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 85, 247, 0.45) rgba(15, 7, 30, 0.95);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow: visible !important;
+  overflow-x: clip !important;
   background-color: transparent;
   color: #fdf2f8;
 }
 
-html {
-  scroll-behavior: smooth;
-  font-size: 12px;
+/* Ensure only one sleek, unified scrollbar on the entire page */
+html::-webkit-scrollbar {
+  width: 8px;
+}
+
+html::-webkit-scrollbar-track {
+  background: rgba(15, 7, 30, 0.95);
+}
+
+html::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.45);
+  border-radius: 4px;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.75);
 }
 
 @media (min-width: 1024px) {

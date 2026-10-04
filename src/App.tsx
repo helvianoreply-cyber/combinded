@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
-import { isSupabaseConfigured, supabase } from './lib/supabaseClient'
+import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supabaseClient'
+import { type DbUser, type DbPlan, SEED_PLANS } from './lib/database.types'
 import { LandingPage } from './components/LandingPage'
 import { Dashboard } from './components/Dashboard'
 import './App.css'
@@ -107,12 +108,14 @@ function App() {
   const [userId, setUserId] = useState<string | null>(null)
   const [sessionEmail, setSessionEmail] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState<string | null>(null)
+  const [userProfile, setUserProfile] = useState<DbUser | null>(null)
+  const [plans, setPlans] = useState<DbPlan[]>(SEED_PLANS)
   const [plan, setPlan] = useState<string>('basic')
   const [planExpiresAt, setPlanExpiresAt] = useState<string | null>(null)
   const [isUpgrading, setIsUpgrading] = useState(false)
   const [upgradeError, setUpgradeError] = useState<string | null>(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
-  const [authError, setAuthError] = useState<string | null>(null)
+  const [authError, setAuthError] = useState<string | null>(supabaseConfigError)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const navigate = useNavigate()
@@ -120,8 +123,184 @@ function App() {
 
   const isSignedIn = Boolean(userId)
 
+  // Fetch plans from Supabase public.plans (with fallback to SEED_PLANS)
+  useEffect(() => {
+    const sb = supabase
+    if (!isSupabaseConfigured || !sb) return
+
+    const loadPlans = async () => {
+      try {
+        const { data, error } = await sb.from('plans').select('*').order('price', { ascending: true })
+        if (!error && Array.isArray(data) && data.length > 0) {
+          const normalized = data.map((plan: any) => {
+            if (Number(plan.price) === 0 || plan.tier === 'basic') {
+              return { ...plan, included_minutes: 0, included_responses: 0, included_applications: 0 }
+            }
+            return plan
+          })
+          setPlans(normalized as DbPlan[])
+        }
+      } catch (err) {
+        console.warn('Could not fetch plans from Supabase:', err)
+      }
+    }
+    loadPlans()
+  }, [])
+
+  // Sync / upsert user record with public.users
+  const syncUserWithDatabase = useCallback(async (id: string, email: string | null) => {
+    const sb = supabase
+    if (!sb || !isSupabaseConfigured || !email) return null
+
+    const normalizedEmail = email.toLowerCase().trim()
+    let userRow: DbUser | null = null
+
+    try {
+      // 1. Try finding by ID
+      const { data: byId } = await sb.from('users').select('*').eq('id', id).maybeSingle()
+      if (byId) {
+        userRow = byId as DbUser
+      }
+
+      // 2. Try finding by Email if not found by ID
+      if (!userRow) {
+        const { data: byEmail } = await sb.from('users').select('*').eq('email', normalizedEmail).maybeSingle()
+        if (byEmail) {
+          userRow = byEmail as DbUser
+        }
+      }
+
+      // 3. If found by either ID or Email, safely update login_verifier without failing login
+      if (userRow) {
+        try {
+          await sb
+            .from('users')
+            .update({
+              login_verifier: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('email', normalizedEmail)
+        } catch (e) {
+          console.warn('Non-fatal update login_verifier error:', e)
+        }
+        return userRow
+      }
+
+      // 4. Only if user does NOT exist: insert new record
+      const newRecord: Partial<DbUser> = {
+        id,
+        email: normalizedEmail,
+        plan: 'basic',
+        verifier: false,
+        login_verifier: true,
+        session_verifier: false,
+        responses_remaining: 0,
+        responses_used: 0,
+        seconds_remaining: 0,
+        seconds_used: 0,
+        applications_remaining: 0,
+        applications_applied: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
+      try {
+        const { data: created, error: insertErr } = await sb
+          .from('users')
+          .upsert(newRecord, { onConflict: 'email' })
+          .select('*')
+          .maybeSingle()
+
+        if (created) {
+          userRow = created as DbUser
+        } else if (insertErr) {
+          // If conflict occurred, fetch existing user row
+          const { data: existing } = await sb.from('users').select('*').eq('email', normalizedEmail).maybeSingle()
+          if (existing) {
+            userRow = existing as DbUser
+          }
+        }
+      } catch (e) {
+        const { data: existing } = await sb.from('users').select('*').eq('email', normalizedEmail).maybeSingle()
+        if (existing) {
+          userRow = existing as DbUser
+        }
+      }
+
+      // 5. Worker fallback if direct query didn't return
+      if (!userRow) {
+        const apiBase =
+          import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+        const res = await fetch(
+          `${apiBase}/get-profile?email=${encodeURIComponent(normalizedEmail)}&userId=${encodeURIComponent(id)}`
+        )
+        if (res.ok) {
+          const json = (await res.json()) as { ok?: boolean; profile?: DbUser }
+          if (json?.profile) {
+            userRow = json.profile
+          }
+        }
+      }
+
+      // 6. Guarantee a non-null userRow so login NEVER hangs
+      if (!userRow) {
+        userRow = {
+          id,
+          email: normalizedEmail,
+          plan: 'basic',
+          verifier: false,
+          login_verifier: true,
+          session_verifier: false,
+          responses_remaining: 0,
+          responses_used: 0,
+          seconds_remaining: 0,
+          seconds_used: 0,
+          applications_remaining: 0,
+          applications_applied: 0,
+        }
+      }
+
+      return userRow
+    } catch (err) {
+      console.error('Error syncing user record:', err)
+      return {
+        id,
+        email: normalizedEmail,
+        plan: 'basic',
+        verifier: false,
+        login_verifier: true,
+        session_verifier: false,
+        responses_remaining: 0,
+        responses_used: 0,
+        seconds_remaining: 0,
+        seconds_used: 0,
+        applications_remaining: 0,
+        applications_applied: 0,
+      } as DbUser
+    }
+  }, [])
+
   // Initialize session
   useEffect(() => {
+    // 0. Check for OAuth error in URL query or hash
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search)
+      const hashClean = window.location.hash.replace(/^#/, '')
+      const hashParams = new URLSearchParams(hashClean)
+      const err =
+        searchParams.get('error_description') ||
+        hashParams.get('error_description') ||
+        searchParams.get('error') ||
+        hashParams.get('error')
+
+      if (err) {
+        const decoded = decodeURIComponent(err).replace(/\+/g, ' ')
+        console.error('Supabase OAuth error:', decoded)
+        setAuthError(decoded)
+        window.history.replaceState({}, document.title, window.location.pathname)
+      }
+    }
+
     const sb = supabase
     if (!isSupabaseConfigured || !sb) {
       setIsAuthLoading(false)
@@ -153,6 +332,7 @@ function App() {
           setUserId(null)
           setSessionEmail(null)
           setDisplayName(null)
+          setUserProfile(null)
           setIsAuthLoading(false)
           return
         }
@@ -179,43 +359,16 @@ function App() {
           setSessionEmail(email)
           setDisplayName(name)
 
-          // Load profile by email, id, or worker fallback
-          try {
-            let profileData: { plan?: string | null; plan_expires_at?: string | null } | null = null
+          const userRow = await syncUserWithDatabase(id, email)
+          if (userRow) {
+            setUserProfile(userRow)
+            setPlan(userRow.plan || 'basic')
+          }
 
-            if (email) {
-              const { data } = await sb.from('profiles').select('*').eq('email', email.toLowerCase()).maybeSingle()
-              if (data) profileData = data
-            }
-
-            if (!profileData && id) {
-              const { data } = await sb.from('profiles').select('*').eq('id', id).maybeSingle()
-              if (data) profileData = data
-            }
-
-            if (!profileData && (email || id)) {
-              const apiBase =
-                import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
-              const res = await fetch(
-                `${apiBase}/get-profile?email=${encodeURIComponent(email || '')}&userId=${encodeURIComponent(id || '')}`
-              )
-              if (res.ok) {
-                const json = (await res.json()) as { ok?: boolean; profile?: { plan?: string | null; plan_expires_at?: string | null } }
-                if (json?.profile) {
-                  profileData = json.profile
-                }
-              }
-            }
-
-            if (profileData) {
-              const rawPlan = (profileData.plan || 'basic').toLowerCase()
-              const expiresAt = profileData.plan_expires_at || null
-              const isProActive = rawPlan === 'pro' && (!expiresAt || new Date(expiresAt).getTime() > Date.now())
-              setPlan(isProActive ? 'pro' : rawPlan)
-              setPlanExpiresAt(expiresAt)
-            }
-          } catch (err) {
-            console.error('Profile fetch failed', err)
+          // Move existing or newly signed-in user to dashboard if on root
+          const currentPath = window.location.pathname || location.pathname
+          if (currentPath === '/' || currentPath === '') {
+            navigate('/dashboard', { replace: true })
           }
         }
 
@@ -242,73 +395,15 @@ function App() {
       setSessionEmail(email)
       setDisplayName(name)
 
-      if (session) {
-        // Upsert profile safely
-        const fullName =
-          (session.user.user_metadata?.full_name as string | undefined) ??
-          (session.user.user_metadata?.name as string | undefined) ??
-          null
-        const avatar =
-          (session.user.user_metadata?.avatar_url as string | undefined) ??
-          (session.user.user_metadata?.picture as string | undefined) ??
-          null
-
-        try {
-          await sb
-            .from('profiles')
-            .upsert(
-              {
-                id: session.user.id,
-                email,
-                full_name: fullName,
-                avatar_url: avatar,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'id' }
-            )
-        } catch {
-          // Ignore unique constraint error if email already registered with different id
-        }
-
-        try {
-          let profileData: { plan?: string | null; plan_expires_at?: string | null } | null = null
-
-          if (email) {
-            const { data } = await sb.from('profiles').select('*').eq('email', email.toLowerCase()).maybeSingle()
-            if (data) profileData = data
-          }
-
-          if (!profileData && session.user.id) {
-            const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
-            if (data) profileData = data
-          }
-
-          if (!profileData && (email || session.user.id)) {
-            const apiBase =
-              import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
-            const res = await fetch(
-              `${apiBase}/get-profile?email=${encodeURIComponent(email || '')}&userId=${encodeURIComponent(session.user.id || '')}`
-            )
-            if (res.ok) {
-              const json = (await res.json()) as { ok?: boolean; profile?: { plan?: string | null; plan_expires_at?: string | null } }
-              if (json?.profile) {
-                profileData = json.profile
-              }
-            }
-          }
-
-          if (profileData) {
-            const rawPlan = (profileData.plan || 'basic').toLowerCase()
-            const expiresAt = profileData.plan_expires_at || null
-            const isProActive = rawPlan === 'pro' && (!expiresAt || new Date(expiresAt).getTime() > Date.now())
-            setPlan(isProActive ? 'pro' : rawPlan)
-            setPlanExpiresAt(expiresAt)
-          }
-        } catch (err) {
-          console.error('Profile fetch failed in auth change', err)
+      if (session && id) {
+        const userRow = await syncUserWithDatabase(id, email)
+        if (userRow) {
+          setUserProfile(userRow)
+          setPlan(userRow.plan || 'basic')
         }
         
-        if (event === 'SIGNED_IN') {
+        // Auto-navigate to dashboard on any authentication event
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
           let postAuthRedirect = ''
           try {
             postAuthRedirect = window.sessionStorage.getItem('postAuthRedirect') || ''
@@ -322,14 +417,18 @@ function App() {
             } catch {
               void 0
             }
-            navigate(postAuthRedirect)
-          } else if (location.pathname === '/') {
-            navigate('/dashboard')
+            navigate(postAuthRedirect, { replace: true })
+          } else {
+            const currentPath = window.location.pathname || location.pathname
+            if (currentPath === '/' || currentPath === '') {
+              navigate('/dashboard', { replace: true })
+            }
           }
         }
       } else {
         setPlan('basic')
         setPlanExpiresAt(null)
+        setUserProfile(null)
         if (event === 'SIGNED_OUT') {
            navigate('/')
         }
@@ -339,7 +438,7 @@ function App() {
     return () => {
       subscription.unsubscribe()
     }
-  }, []) // Empty dependency array intentionally
+  }, [navigate, location.pathname, syncUserWithDatabase])
 
   const signInWithGoogle = useCallback(async () => {
     setAuthError(null)
@@ -347,6 +446,19 @@ function App() {
     if (!isSupabaseConfigured || !sb) {
       setAuthError('Supabase is not configured yet')
       return
+    }
+
+    // If session already exists, navigate to dashboard immediately
+    try {
+      const {
+        data: { session },
+      } = await sb.auth.getSession()
+      if (session) {
+        navigate('/dashboard', { replace: true })
+        return
+      }
+    } catch {
+      // Continue to OAuth
     }
 
     const { origin, pathname, search } = window.location
@@ -358,18 +470,7 @@ function App() {
         void 0
       }
     }
-    const redirectTo = `${origin}/`
-
-    try {
-      const {
-        data: { session },
-      } = await sb.auth.getSession()
-      if (session) {
-        await sb.auth.signOut()
-      }
-    } catch {
-      void 0
-    }
+    const redirectTo = `${origin}/dashboard`
 
     const { error } = await sb.auth.signInWithOAuth({
       provider: 'google',
@@ -385,7 +486,7 @@ function App() {
       console.error('Supabase OAuth sign-in failed', error)
       setAuthError(error.message)
     }
-  }, [])
+  }, [navigate])
 
   const signOut = useCallback(async () => {
     setAuthError(null)
@@ -412,6 +513,12 @@ function App() {
     const sb = supabase
     if (sb) {
       try {
+        if (userId) {
+          await sb.from('users').update({
+            login_verifier: false,
+            updated_at: new Date().toISOString()
+          }).eq('id', userId)
+        }
         await sb.auth.signOut({ scope: 'local' })
       } catch (err) {
         console.error('Supabase sign-out threw', err)
@@ -422,6 +529,7 @@ function App() {
     setUserId(null)
     setSessionEmail(null)
     setDisplayName(null)
+    setUserProfile(null)
     setPlan('basic')
     setPlanExpiresAt(null)
 
@@ -431,7 +539,7 @@ function App() {
     } else {
       navigate('/', { replace: true })
     }
-  }, [navigate])
+  }, [navigate, userId])
 
   const loadRazorpay = useCallback(() => {
     if ((window as unknown as { Razorpay?: unknown }).Razorpay) {
@@ -448,7 +556,11 @@ function App() {
     })
   }, [])
 
-  const startUpgrade = useCallback(async (duration: '24h' | 'month') => {
+  const startUpgrade = useCallback(async (
+    planInput: DbPlan | '24h' | 'month',
+    couponCode?: string,
+    _customAmountInr?: number
+  ) => {
     setUpgradeError(null)
     if (!userId || !sessionEmail) {
       setUpgradeError('You must be signed in to upgrade')
@@ -465,16 +577,32 @@ function App() {
     }
 
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
+      const apiBase =
+        import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+      
+      const isPlanObj = typeof planInput === 'object' && planInput !== null
+      const planId = isPlanObj ? planInput.id : undefined
+      const tier = isPlanObj ? planInput.tier : (planInput === '24h' ? 'standard' : 'pro_plus')
+      const priceUsd = isPlanObj ? Number(planInput.price) : (planInput === '24h' ? 2 : 15)
+      const duration = typeof planInput === 'string' ? planInput : undefined
+
+      const orderPayload: Record<string, unknown> = {
+        receipt: `helvia_${Date.now()}`,
+        planId,
+        tier,
+        priceUsd,
+        duration,
+        userId,
+        email: sessionEmail,
+        couponCode: couponCode || undefined,
+      }
+
       const response = await fetch(`${apiBase}/create-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          receipt: `helvia_${Date.now()}`,
-          duration,
-        }),
+        body: JSON.stringify(orderPayload),
       })
 
       if (!response.ok) {
@@ -497,23 +625,17 @@ function App() {
         keyId: string
       }
 
-      const now = Date.now()
-      const expires =
-        duration === '24h'
-          ? new Date(now + 24 * 60 * 60 * 1000)
-          : new Date(now + 30 * 24 * 60 * 60 * 1000)
-      const expiresIso = expires.toISOString()
+      const planTitle = isPlanObj ? planInput.name : 'Helvia Remote Pro'
 
       const options = {
         key: data.keyId,
         amount: data.amount,
         currency: data.currency,
         name: 'Helvia Remote Control',
-        description: 'Upgrade plan',
+        description: `Upgrade to ${planTitle}${couponCode ? ` (Coupon: ${couponCode})` : ''}`,
         order_id: data.orderId,
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           try {
-            const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
             const verifyRes = await fetch(`${apiBase}/verify-payment`, {
               method: 'POST',
               headers: {
@@ -524,8 +646,10 @@ function App() {
                 paymentId: response.razorpay_payment_id,
                 signature: response.razorpay_signature,
                 userId,
-                plan: 'pro',
-                expiresAt: expiresIso,
+                planId,
+                plan: tier,
+                email: sessionEmail,
+                couponCode: couponCode || undefined,
               }),
             })
 
@@ -534,9 +658,15 @@ function App() {
               throw new Error(err.message || 'Verification failed')
             }
 
-            setPlan('pro')
-            setPlanExpiresAt(expiresIso)
+            setPlan(tier)
             setIsUpgrading(false)
+            if (userId && sessionEmail) {
+              const updated = await syncUserWithDatabase(userId, sessionEmail)
+              if (updated) {
+                setUserProfile(updated)
+              }
+            }
+            navigate('/dashboard?payment=success', { replace: true })
           } catch (err) {
             console.error('Payment verification failed', err)
             setIsUpgrading(false)
@@ -556,7 +686,7 @@ function App() {
       const razorpay = new RazorpayCtor(options)
       razorpay.on('payment.failed', () => {
         setIsUpgrading(false)
-        setUpgradeError('Payment failed, please try again')
+        setUpgradeError('Payment was not completed. Please try again.')
       })
       razorpay.open()
     } catch (err) {
@@ -564,9 +694,9 @@ function App() {
       setIsUpgrading(false)
       setUpgradeError('Something went wrong while creating payment')
     }
-  }, [displayName, loadRazorpay, sessionEmail, userId])
+  }, [displayName, loadRazorpay, navigate, sessionEmail, syncUserWithDatabase, userId])
 
-  const startDodoUpgrade = useCallback(async () => {
+  const startDodoUpgrade = useCallback(async (productId?: string, couponCode?: string) => {
     setUpgradeError(null)
     if (!userId || !sessionEmail) {
       setUpgradeError('You must be signed in to upgrade')
@@ -576,7 +706,8 @@ function App() {
     setIsUpgrading(true)
     try {
       const apiBase =
-        import.meta.env.VITE_API_BASE_URL || 'https://dawn-cloud-c3c5.helvia-noreply.workers.dev'
+        import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+      const targetProductId = productId || 'pdt_0NnIQ5VyQfhSXYsFLcojZ'
       const response = await fetch(`${apiBase}/create-dodo-checkout`, {
         method: 'POST',
         headers: {
@@ -586,6 +717,10 @@ function App() {
           userId,
           email: sessionEmail,
           name: displayName || sessionEmail.split('@')[0],
+          productId: targetProductId,
+          dodo_product_id: targetProductId,
+          couponCode: couponCode || undefined,
+          discount_code: couponCode || undefined,
           returnUrl: `${window.location.origin}/dashboard?payment=success`,
         }),
       })
@@ -636,15 +771,18 @@ function App() {
             </svg>
           </div>
           <div className="brand-text-wrap">
-            <span className="brand-title">Helvia <span className="brand-highlight">Remote</span></span>
+            <span className="brand-title">Helvia <span className="brand-highlight">Enterprise</span></span>
+            <span className="brand-badge-3in1">PRO</span>
           </div>
         </div>
 
         {location.pathname === '/' ? (
           <nav className="desktop-nav">
-            <a href="#features" className="nav-item-link">Features</a>
-            <a href="#how-it-works" className="nav-item-link">How It Works</a>
-            <a href="#comparison" className="nav-item-link">Compare</a>
+            <a href="#apps" className="nav-item-link highlight-apps-nav">Platforms</a>
+            <a href="#practical-remote" className="nav-item-link">Remote Desktop</a>
+            <a href="#meeting-copilot" className="nav-item-link">Executive Copilot</a>
+            <a href="#auto-apply" className="nav-item-link">Talent Mobility</a>
+            <a href="#features" className="nav-item-link">Architecture & Security</a>
             <a href="#pricing" className="nav-item-link">Pricing</a>
           </nav>
         ) : null}
@@ -713,10 +851,12 @@ function App() {
         <div className="mobile-nav-drawer">
           {location.pathname === '/' && (
             <nav className="mobile-nav-links">
-              <a href="#features" onClick={() => setMobileNavOpen(false)}>Features</a>
-              <a href="#how-it-works" onClick={() => setMobileNavOpen(false)}>How It Works</a>
-              <a href="#comparison" onClick={() => setMobileNavOpen(false)}>Comparison</a>
-              <a href="#pricing" onClick={() => setMobileNavOpen(false)}>Pricing</a>
+              <a href="#apps" onClick={() => setMobileNavOpen(false)}>Enterprise Platforms</a>
+              <a href="#practical-remote" onClick={() => setMobileNavOpen(false)}>Zero-Trust Remote Desktop</a>
+              <a href="#meeting-copilot" onClick={() => setMobileNavOpen(false)}>Executive Meeting Copilot</a>
+              <a href="#auto-apply" onClick={() => setMobileNavOpen(false)}>Talent Mobility &amp; ATS</a>
+              <a href="#features" onClick={() => setMobileNavOpen(false)}>Security &amp; Architecture</a>
+              <a href="#pricing" onClick={() => setMobileNavOpen(false)}>Enterprise Pricing</a>
             </nav>
           )}
           <div className="mobile-nav-actions">
@@ -771,11 +911,20 @@ function App() {
           <Route
             path="/"
             element={
-              <LandingPage
-                signInWithGoogle={signInWithGoogle}
-                isSupabaseConfigured={isSupabaseConfigured}
-                isAuthLoading={isAuthLoading}
-              />
+              isSignedIn ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <LandingPage
+                  signInWithGoogle={signInWithGoogle}
+                  isSupabaseConfigured={isSupabaseConfigured}
+                  isAuthLoading={isAuthLoading}
+                  plans={plans}
+                  startUpgrade={startUpgrade}
+                  startDodoUpgrade={startDodoUpgrade}
+                  isSignedIn={isSignedIn}
+                  userPlan={plan}
+                />
+              )
             }
           />
           <Route path="/dashboard" element={
@@ -783,6 +932,8 @@ function App() {
               <Dashboard 
                 displayName={displayName}
                 sessionEmail={sessionEmail}
+                userProfile={userProfile}
+                plans={plans}
                 plan={plan}
                 planExpiresAt={planExpiresAt}
                 startUpgrade={startUpgrade}
@@ -795,7 +946,33 @@ function App() {
                 <p className="muted">Opening Dashboard…</p>
               </div>
             ) : (
-              <Navigate to="/" replace />
+              <Dashboard 
+                displayName={displayName || 'Pro User'}
+                sessionEmail={sessionEmail || 'guest@helvia.ai'}
+                userProfile={userProfile || {
+                  id: 'guest',
+                  email: 'guest@helvia.ai',
+                  plan: 'basic',
+                  verifier: false,
+                  login_verifier: true,
+                  session_verifier: false,
+                  seconds_remaining: 0,
+                  seconds_used: 0,
+                  responses_remaining: 0,
+                  responses_used: 0,
+                  applications_remaining: 0,
+                  applications_applied: 0,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                }}
+                plans={plans}
+                plan={plan}
+                planExpiresAt={planExpiresAt}
+                startUpgrade={startUpgrade}
+                startDodoUpgrade={startDodoUpgrade}
+                isUpgrading={isUpgrading}
+                upgradeError={upgradeError}
+              />
             )
           } />
           <Route path="/privacypolicy" element={<PrivacyPolicyPage />} />

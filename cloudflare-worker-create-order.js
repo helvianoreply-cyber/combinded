@@ -22,20 +22,79 @@ export default {
       try {
         const body = await request.json().catch(() => ({}))
 
-        const durationRaw =
-          typeof body.duration === 'string'
-            ? body.duration
-            : ''
+        const durationRaw = typeof body.duration === 'string' ? body.duration : ''
         const duration = durationRaw === '24h' || durationRaw === 'month' ? durationRaw : ''
 
-        if (!duration) {
-          return json({ message: 'Invalid duration' }, 400, origin)
+        let baseInr = 0
+        let targetPlanId = String(body.planId || '').trim()
+        let targetTier = String(body.planTier || body.tier || 'usage')
+
+        if (!targetPlanId && duration !== '24h') {
+          return json({ message: 'Missing required planId' }, 400, origin)
         }
 
-        const amount = duration === '24h' ? 169 * 100 : 999 * 100
+        // Hardcoded official catalog for resilient fallback and strict validation
+        const OFFICIAL_PLANS_BY_ID = {
+          '4d569314-3b27-45c8-93ad-3d5c2eebffc0': { name: 'Standard Plan', priceUsd: 8, tier: 'usage' },
+          'fdbc4259-cdb8-42b8-a0d5-02b8a7392812': { name: 'Pro+ Pro (Most Popular)', priceUsd: 15, tier: 'usage' },
+          '867a98bf-9dd0-4b22-bbf5-86d19193632e': { name: 'Max+ Pro', priceUsd: 25, tier: 'usage' },
+          '08545cec-6a37-4922-8456-54481379e290': { name: 'Ultra+ Pro', priceUsd: 35, tier: 'usage' },
+          '13969aad-7309-40ec-9b54-70b39d5b13f6': { name: 'Pro Plus+ Lifetime (BYOK)', priceUsd: 49, tier: 'pro plus+' },
+        }
+
+        // 1. If planId provided, fetch official price from Supabase
+        if (targetPlanId && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+          try {
+            const planRes = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/plans?id=eq.${encodeURIComponent(targetPlanId)}&select=*`, {
+              headers: {
+                apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+                Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+              }
+            })
+            if (planRes.ok) {
+              const pRows = await planRes.json()
+              if (Array.isArray(pRows) && pRows.length > 0) {
+                const p = pRows[0]
+                const priceUsd = Number(p.price)
+                if (priceUsd === 0) {
+                  return json({ message: 'Free tier cannot be purchased' }, 400, origin)
+                }
+                baseInr = getOfficialPlanInrPrice(priceUsd)
+                targetTier = p.tier || targetTier
+              }
+            }
+          } catch (e) {
+            console.warn('Supabase plan lookup failed in create-order:', e)
+          }
+        }
+
+        // 2. Resilient fallback to official catalog if DB call failed
+        if (!baseInr && targetPlanId && OFFICIAL_PLANS_BY_ID[targetPlanId]) {
+          const off = OFFICIAL_PLANS_BY_ID[targetPlanId]
+          baseInr = getOfficialPlanInrPrice(off.priceUsd)
+          targetTier = off.tier || targetTier
+        } else if (!baseInr && duration === '24h') {
+          baseInr = 169
+          targetTier = 'standard'
+        }
+
+        if (!baseInr || baseInr <= 0) {
+          return json({ message: 'Invalid or unknown plan' }, 400, origin)
+        }
+
+        const basePlanAmount = baseInr * 100 // convert to paise
+
+        // 3. SERVER-SIDE ONLY Coupon Validation (NEVER TRUST CLIENT-PROVIDED AMOUNTS OR CUSTOM DISCOUNTS!)
+        const rawCoupon = String(body.couponCode || body.coupon || '').trim()
+        const hasValidCoupon = isValidDiscountCoupon(rawCoupon)
+        const discountFraction = hasValidCoupon ? 0.5 : 0
+
+        // Strict calculation: base price minus verified discount
+        // We completely ignore body.amount or customAmountInr!
+        const amount = Math.round(basePlanAmount * (1 - discountFraction))
+
         const currency = 'INR'
         let receipt = String(body.receipt || `rcpt_${Date.now()}`)
-
         if (receipt.length > 40) {
           receipt = receipt.slice(0, 40)
         }
@@ -49,20 +108,30 @@ export default {
 
         const authToken = btoa(`${keyId}:${keySecret}`)
 
+        const orderPayload = {
+          amount,
+          currency,
+          receipt,
+          notes: {
+            project: 'helvia-remote',
+            planId: targetPlanId,
+            planTier: targetTier,
+            expectedAmount: String(amount),
+            baseAmount: String(basePlanAmount),
+            userId: String(body.userId || '').trim(),
+            email: String(body.email || '').toLowerCase().trim(),
+            coupon: hasValidCoupon ? rawCoupon : '',
+            processed: 'false',
+          },
+        }
+
         const razorRes = await fetch('https://api.razorpay.com/v1/orders', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Basic ${authToken}`,
           },
-          body: JSON.stringify({
-            amount,
-            currency,
-            receipt,
-            notes: {
-              project: 'helvia-remote',
-            },
-          }),
+          body: JSON.stringify(orderPayload),
         })
 
         if (!razorRes.ok) {
@@ -133,7 +202,7 @@ export default {
           query = `id=eq.${encodeURIComponent(userId)}`
         }
 
-        const profileRes = await fetch(`${supabaseBase}/rest/v1/profiles?${query}&select=*`, {
+        const profileRes = await fetch(`${supabaseBase}/rest/v1/users?${query}&select=*`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -181,7 +250,7 @@ export default {
         const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
 
         try {
-          const profileUrl = `${supabaseBase}/rest/v1/profiles?select=verifier&email=eq.${encodeURIComponent(
+          const profileUrl = `${supabaseBase}/rest/v1/users?select=verifier&email=eq.${encodeURIComponent(
             normalizedEmail
           )}`
 
@@ -315,7 +384,7 @@ export default {
 
         let plan = 'basic'
         try {
-          const profileUrl = `${supabaseBase}/rest/v1/profiles?select=plan&email=eq.${encodeURIComponent(email)}`
+          const profileUrl = `${supabaseBase}/rest/v1/users?select=plan,responses_remaining,seconds_remaining,applications_remaining&email=eq.${encodeURIComponent(email)}`
           const profileRes = await fetch(profileUrl, {
             method: 'GET',
             headers: {
@@ -376,7 +445,7 @@ export default {
         const profilesUrl = `${supabaseUrl.replace(
           /\/+$/,
           ''
-        )}/rest/v1/profiles?email=eq.${encodeURIComponent(email)}`
+        )}/rest/v1/users?email=eq.${encodeURIComponent(email)}`
 
         const res = await fetch(profilesUrl, {
           method: 'PATCH',
@@ -388,6 +457,7 @@ export default {
           },
           body: JSON.stringify({
             verifier: false,
+            login_verifier: false,
             updated_at: new Date().toISOString(),
           }),
         })
@@ -423,54 +493,244 @@ export default {
     if (url.pathname === '/verify-payment' && request.method === 'POST') {
       try {
         const body = await request.json().catch(() => ({}))
-        const { orderId, paymentId, signature, userId, plan, expiresAt } = body
+        const { orderId, paymentId, signature, userId } = body
 
-        if (!orderId || !paymentId || !signature || !userId || !plan) {
-          return json({ message: 'Missing required fields' }, 400, origin)
+        if (!orderId || !paymentId || !signature) {
+          return json({ message: 'Missing required orderId, paymentId, or signature' }, 400, origin)
         }
 
+        const keyId = env.RAZORPAY_KEY_ID
         const keySecret = env.RAZORPAY_KEY_SECRET
-        if (!keySecret) {
-          return json({ message: 'Razorpay secret not configured' }, 500, origin)
+        if (!keySecret || !keyId) {
+          return json({ message: 'Razorpay credentials not configured' }, 500, origin)
         }
 
+        // 1. Verify Razorpay Signature (HMAC-SHA256)
         const generatedSignature = await generateSignature(keySecret, orderId, paymentId)
         if (generatedSignature !== signature) {
-          return json({ message: 'Invalid signature' }, 400, origin)
+          return json({ message: 'Invalid payment signature' }, 400, origin)
         }
+
+        const authToken = btoa(`${keyId}:${keySecret}`)
+
+        // 2. Fetch Payment directly from Razorpay API
+        const paymentRes = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}`, {
+          headers: { Authorization: `Basic ${authToken}` },
+        })
+        if (!paymentRes.ok) {
+          return json({ message: 'Payment verification with gateway failed' }, 400, origin)
+        }
+        const paymentData = await paymentRes.json()
+
+        // 3. Fetch Order directly from Razorpay API
+        const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(orderId)}`, {
+          headers: { Authorization: `Basic ${authToken}` },
+        })
+        if (!orderRes.ok) {
+          return json({ message: 'Order verification with gateway failed' }, 400, origin)
+        }
+        const orderData = await orderRes.json()
+
+        // 4. Verify payment integrity
+        if (paymentData.status !== 'captured' && paymentData.status !== 'authorized') {
+          return json({ message: `Payment is not captured (current: ${paymentData.status})` }, 400, origin)
+        }
+        if (paymentData.order_id !== orderId) {
+          return json({ message: 'Payment order ID mismatch' }, 400, origin)
+        }
+        if (paymentData.amount !== orderData.amount) {
+          return json({ message: 'Payment amount does not match order amount' }, 400, origin)
+        }
+        if (paymentData.currency !== 'INR') {
+          return json({ message: 'Invalid payment currency' }, 400, origin)
+        }
+
+        // 5. Replay Attack Prevention (check if already processed)
+        if (orderData.notes && orderData.notes.processed === 'true') {
+          return json({ ok: true, message: 'Payment already processed and credited' }, 200, origin)
+        }
+
+        // 6. Trusted Plan ID & Quota Lookup
+        // Read strictly from immutable orderData.notes! (Never trust client body.planId or body.plan!)
+        const trustedPlanId = orderData.notes?.planId
+        if (!trustedPlanId) {
+          return json({ message: 'Order verification failed: planId is missing from order notes' }, 400, origin)
+        }
+        const trustedUserId = orderData.notes?.userId || userId || ''
+        const trustedEmail = (orderData.notes?.email || body.email || '').toLowerCase().trim()
+        let planTier = orderData.notes?.planTier || 'usage'
 
         if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
           try {
-            const supabaseUrl = env.SUPABASE_URL
+            const supabaseUrl = env.SUPABASE_URL.replace(/\/+$/, '')
             const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
-            const profilesUrl = `${supabaseUrl.replace(/\/+$/, '')}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`
+
+            // Idempotent duplicate check via database (if processed_payments table exists)
+            try {
+              const dedupRes = await fetch(`${supabaseUrl}/rest/v1/processed_payments`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  apikey: serviceKey,
+                  Authorization: `Bearer ${serviceKey}`,
+                  Prefer: 'return=minimal',
+                },
+                body: JSON.stringify({
+                  payment_id: paymentId,
+                  gateway: 'razorpay',
+                  user_id: trustedUserId || null,
+                  amount: paymentData.amount,
+                  created_at: new Date().toISOString(),
+                }),
+              })
+              if (dedupRes.status === 409) {
+                return json({ ok: true, message: 'Payment already processed and credited' }, 200, origin)
+              }
+            } catch (dErr) {
+              console.warn('processed_payments check skipped:', dErr)
+            }
+
+            let incMinutes = 0
+            let incResponses = 0
+            let incApplications = 0
+
+            // If trustedPlanId provided, fetch quotas from public.plans
+            if (trustedPlanId) {
+              try {
+                const planRes = await fetch(`${supabaseUrl}/rest/v1/plans?id=eq.${encodeURIComponent(trustedPlanId)}&select=*`, {
+                  headers: {
+                    'Content-Type': 'application/json',
+                    apikey: serviceKey,
+                    Authorization: `Bearer ${serviceKey}`,
+                  },
+                })
+                if (planRes.ok) {
+                  const pRows = await planRes.json()
+                  if (Array.isArray(pRows) && pRows.length > 0) {
+                    const p = pRows[0]
+                    planTier = p.tier || planTier
+                    incMinutes = Number(p.included_minutes) || 0
+                    incResponses = Number(p.included_responses) || 0
+                    incApplications = Number(p.included_applications) || 0
+
+                    // Double-check: Make sure the amount paid meets minimum price for this plan!
+                    const officialPrice = getOfficialPlanInrPrice(Number(p.price))
+                    const minimumAllowedPaise = Math.round(officialPrice * 0.45 * 100) // allowing for up to 50% discount plus rounding
+                    if (officialPrice > 0 && orderData.amount < minimumAllowedPaise) {
+                      return json({ message: 'Amount paid does not meet minimum plan price requirement' }, 400, origin)
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error('Failed to fetch plan in verify-payment:', e)
+              }
+            }
+
+            const validTiers = ['basic', 'pro plus+', 'usage', 'standard', 'pro_plus', 'max_plus', 'ultra_plus']
+            if (!validTiers.includes(planTier)) {
+              planTier = 'usage'
+            }
+
+            let targetUrl = ''
+            if (trustedUserId) {
+              targetUrl = `${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(trustedUserId)}`
+            } else if (trustedEmail) {
+              targetUrl = `${supabaseUrl}/rest/v1/users?email=eq.${encodeURIComponent(trustedEmail)}`
+            }
+
+            // Fetch existing user quota balances to accumulate tokens instead of overwriting
+            let existingSeconds = 0
+            let existingResponses = 0
+            let existingApplications = 0
+
+            if (targetUrl) {
+              try {
+                const userGetRes = await fetch(`${targetUrl}&select=seconds_remaining,responses_remaining,applications_remaining,plan`, {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    apikey: serviceKey,
+                    Authorization: `Bearer ${serviceKey}`,
+                  },
+                })
+                if (userGetRes.ok) {
+                  const uRows = await userGetRes.json()
+                  if (Array.isArray(uRows) && uRows.length > 0) {
+                    existingSeconds = Math.max(0, Number(uRows[0].seconds_remaining) || 0)
+                    existingResponses = Math.max(0, Number(uRows[0].responses_remaining) || 0)
+                    existingApplications = Math.max(0, Number(uRows[0].applications_remaining) || 0)
+                  }
+                }
+              } catch (uErr) {
+                console.warn('Could not read existing user quotas in verify-payment:', uErr)
+              }
+            }
 
             const updateBody = {
-              plan,
+              plan: planTier,
+              login_verifier: true,
               updated_at: new Date().toISOString(),
             }
 
-            if (expiresAt) {
-              updateBody.plan_expires_at = expiresAt
+            // ADD tokens to existing balance instead of replacing
+            if (incMinutes > 0) {
+              updateBody.seconds_remaining = existingSeconds + (incMinutes * 60)
+            } else if (existingSeconds > 0) {
+              updateBody.seconds_remaining = existingSeconds
             }
 
-            const res = await fetch(profilesUrl, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-                apikey: serviceKey,
-                Authorization: `Bearer ${serviceKey}`,
-                Prefer: 'return=minimal',
-              },
-              body: JSON.stringify(updateBody),
-            })
-
-            if (!res.ok) {
-              console.error('Failed to update profile', await res.text())
-              return json({ message: 'Failed to update profile' }, 500, origin)
+            if (incResponses > 0) {
+              updateBody.responses_remaining = existingResponses + incResponses
+            } else if (existingResponses > 0) {
+              updateBody.responses_remaining = existingResponses
             }
+
+            if (incApplications > 0) {
+              updateBody.applications_remaining = existingApplications + incApplications
+            } else if (existingApplications > 0) {
+              updateBody.applications_remaining = existingApplications
+            }
+
+            if (targetUrl) {
+              const res = await fetch(targetUrl, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  apikey: serviceKey,
+                  Authorization: `Bearer ${serviceKey}`,
+                  Prefer: 'return=minimal',
+                },
+                body: JSON.stringify(updateBody),
+              })
+
+              if (!res.ok) {
+                console.error('Failed to update user in verify-payment:', await res.text())
+              }
+            }
+
+            // 7. Mark Order as Processed in Razorpay to prevent replay attacks
+            try {
+              await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(orderId)}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Basic ${authToken}`,
+                },
+                body: JSON.stringify({
+                  notes: {
+                    ...orderData.notes,
+                    processed: 'true',
+                    processed_at: new Date().toISOString(),
+                    verified_payment_id: paymentId,
+                  },
+                }),
+              })
+            } catch (patchErr) {
+              console.warn('Non-fatal: could not patch order notes in Razorpay:', patchErr)
+            }
+
           } catch (err) {
-            console.error('Supabase update error', err)
+            console.error('Supabase update error in verify-payment:', err)
             return json({ message: 'Database error' }, 500, origin)
           }
         }
@@ -502,8 +762,17 @@ export default {
           return json({ ok: false, message: 'Missing customer email' }, 400, origin)
         }
 
-        const apiKey = env.DODO_PAYMENTS_API_KEY || 'fUkRC9TuMSF47Ov2.zKFg-nE3Xk32dthnOueK6T514FtuoIlgNZBT7x7SF3ytn0En'
-        const productId = env.DODO_PRODUCT_ID || 'pdt_0Nmfh6M8mQGJT0VvCHDzO'
+        const apiKey = env.DODO_PAYMENTS_API_KEY || ''
+        if (!apiKey) {
+          return json({ ok: false, message: 'Dodo Payments is not configured' }, 500, origin)
+        }
+        const productId = 
+          body.productId || 
+          body.dodo_product_id || 
+          body.product_id || 
+          env.DODO_PRODUCT_ID || 
+          'pdt_0NnIQ5VyQfhSXYsFLcojZ'
+        const planTier = typeof body.plan === 'string' ? body.plan : 'usage'
         const isTest = env.DODO_PAYMENTS_MODE === 'test'
         const dodoBase = isTest ? 'https://test.dodopayments.com' : 'https://live.dodopayments.com'
 
@@ -529,12 +798,13 @@ export default {
               },
             ],
             feature_flags: {
-              allow_discount_code: true,
+              allow_discount_code: false,
             },
             metadata: {
               userId,
               email,
-              plan: 'pro',
+              productId,
+              plan: planTier,
             },
             return_url: returnUrl,
           }),
@@ -677,9 +947,8 @@ export default {
 
         const eventType = event.type || event.event || ''
         const dataObj = event.data || {}
-        const metadata = dataObj.metadata || {}
-        const userId = metadata.userId || metadata.user_id || ''
-        const customerEmail = dataObj.customer?.email || metadata.email || ''
+        const paymentId = dataObj.payment_id || dataObj.paymentId || ''
+        const subscriptionId = dataObj.subscription_id || dataObj.subscriptionId || ''
 
         // Check if event indicates successful payment or active subscription
         const isSuccessEvent = 
@@ -688,26 +957,199 @@ export default {
           eventType === 'payment.succeeded' ||
           eventType === 'checkout.session.completed'
 
-        if (isSuccessEvent && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+        if (!isSuccessEvent) {
+          return new Response('Ignored non-success event', { status: 200 })
+        }
+
+        // SECURITY CHECK: Verify with Dodo Payments API using server's secret API key
+        const apiKey = env.DODO_PAYMENTS_API_KEY || ''
+        if (!apiKey) {
+          return new Response('Dodo Payments is not configured', { status: 500 })
+        }
+        const isTest = env.DODO_PAYMENTS_MODE === 'test'
+        const dodoBase = isTest ? 'https://test.dodopayments.com' : 'https://live.dodopayments.com'
+
+        let verifiedProductId = ''
+        let verifiedCustomerEmail = ''
+        let verifiedUserId = dataObj.metadata?.userId || dataObj.metadata?.user_id || ''
+
+        if (paymentId) {
+          try {
+            const dodoRes = await fetch(`${dodoBase}/payments/${encodeURIComponent(paymentId)}`, {
+              headers: { Authorization: `Bearer ${apiKey}` },
+            })
+            if (!dodoRes.ok) {
+              console.error('Failed to verify payment with Dodo API:', paymentId)
+              return new Response('Unauthorized payment verification failed', { status: 401 })
+            }
+            const dodoData = await dodoRes.json()
+            if (dodoData.status !== 'succeeded') {
+              return new Response('Payment is not in succeeded status', { status: 400 })
+            }
+            verifiedProductId = dodoData.product_cart?.[0]?.product_id || dodoData.product_id || ''
+            verifiedCustomerEmail = dodoData.customer?.email || ''
+            verifiedUserId = dodoData.metadata?.userId || verifiedUserId
+          } catch (dErr) {
+            console.error('Dodo API fetch error:', dErr)
+            return new Response('Dodo verification error', { status: 500 })
+          }
+        } else if (subscriptionId) {
+          try {
+            const dodoRes = await fetch(`${dodoBase}/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+              headers: { Authorization: `Bearer ${apiKey}` },
+            })
+            if (!dodoRes.ok) {
+              console.error('Failed to verify subscription with Dodo API:', subscriptionId)
+              return new Response('Unauthorized subscription verification failed', { status: 401 })
+            }
+            const dodoData = await dodoRes.json()
+            if (dodoData.status !== 'active' && dodoData.status !== 'renewed') {
+              return new Response('Subscription is not active', { status: 400 })
+            }
+            verifiedProductId = dodoData.product_id || ''
+            verifiedCustomerEmail = dodoData.customer?.email || ''
+            verifiedUserId = dodoData.metadata?.userId || verifiedUserId
+          } catch (dErr) {
+            console.error('Dodo API fetch error:', dErr)
+            return new Response('Dodo verification error', { status: 500 })
+          }
+        } else {
+          return new Response('Missing payment ID for Dodo verification', { status: 400 })
+        }
+
+        const metadata = dataObj.metadata || {}
+        const userId = verifiedUserId || metadata.userId || metadata.user_id || ''
+        const customerEmail = verifiedCustomerEmail || dataObj.customer?.email || metadata.email || ''
+        // Strictly from verified Dodo API response! Never trust client-supplied event metadata!
+        const planProductId = verifiedProductId
+        if (!planProductId) {
+          return new Response('Unable to identify product ID from verified Dodo transaction', { status: 400 })
+        }
+
+        if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
           const supabaseUrl = env.SUPABASE_URL.replace(/\/+$/, '')
           const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
 
-          // 30 days from now
-          const expiresDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          const expiresIso = expiresDate.toISOString()
+          // Replay attack prevention: Deduplicate using processed_payments table
+          const transId = paymentId || subscriptionId
+          if (transId) {
+            try {
+              const dedupRes = await fetch(`${supabaseUrl}/rest/v1/processed_payments`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  apikey: serviceKey,
+                  Authorization: `Bearer ${serviceKey}`,
+                  Prefer: 'return=minimal',
+                },
+                body: JSON.stringify({
+                  payment_id: transId,
+                  gateway: 'dodo',
+                  user_id: userId || null,
+                  amount: null,
+                  created_at: new Date().toISOString(),
+                }),
+              })
+              if (dedupRes.status === 409) {
+                return json({ ok: true, received: true, message: 'Dodo transaction already processed' }, 200, origin)
+              }
+            } catch (dErr) {
+              console.warn('Dodo dedup check skipped:', dErr)
+            }
+          }
 
-          const updateBody = {
-            plan: 'pro',
-            plan_expires_at: expiresIso,
-            updated_at: new Date().toISOString(),
+          let planTier = metadata.plan || 'usage'
+          let incMinutes = 0
+          let incResponses = 0
+          let incApplications = 0
+
+          if (planProductId) {
+            try {
+              const planFetch = await fetch(`${supabaseUrl}/rest/v1/plans?dodo_product_id=eq.${encodeURIComponent(planProductId)}&select=*`, {
+                headers: {
+                  apikey: serviceKey,
+                  Authorization: `Bearer ${serviceKey}`,
+                },
+              })
+              if (planFetch.ok) {
+                const planRows = await planFetch.json()
+                if (Array.isArray(planRows) && planRows.length > 0) {
+                  const p = planRows[0]
+                  planTier = p.tier || 'usage'
+                  incMinutes = Number(p.included_minutes) || 0
+                  incResponses = Number(p.included_responses) || 0
+                  incApplications = Number(p.included_applications) || 0
+                }
+              }
+            } catch (planErr) {
+              console.error('Plan lookup in webhook failed:', planErr)
+            }
+          }
+
+          // Ensure planTier satisfies CHECK constraint:
+          // ['basic', 'pro plus+', 'usage', 'standard', 'pro_plus', 'max_plus', 'ultra_plus']
+          const validTiers = ['basic', 'pro plus+', 'usage', 'standard', 'pro_plus', 'max_plus', 'ultra_plus']
+          if (!validTiers.includes(planTier)) {
+            planTier = 'usage'
           }
 
           // Target by userId if available, else by email
           let targetUrl = ''
           if (userId) {
-            targetUrl = `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`
+            targetUrl = `${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(userId)}`
           } else if (customerEmail) {
-            targetUrl = `${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(customerEmail.toLowerCase())}`
+            targetUrl = `${supabaseUrl}/rest/v1/users?email=eq.${encodeURIComponent(customerEmail.toLowerCase())}`
+          }
+
+          let existingSeconds = 0
+          let existingResponses = 0
+          let existingApplications = 0
+
+          if (targetUrl) {
+            try {
+              const userRes = await fetch(`${targetUrl}&select=seconds_remaining,responses_remaining,applications_remaining,plan`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  apikey: serviceKey,
+                  Authorization: `Bearer ${serviceKey}`,
+                },
+              })
+              if (userRes.ok) {
+                const uRows = await userRes.json()
+                if (Array.isArray(uRows) && uRows.length > 0) {
+                  existingSeconds = Math.max(0, Number(uRows[0].seconds_remaining) || 0)
+                  existingResponses = Math.max(0, Number(uRows[0].responses_remaining) || 0)
+                  existingApplications = Math.max(0, Number(uRows[0].applications_remaining) || 0)
+                }
+              }
+            } catch (uErr) {
+              console.warn('Could not read existing user quotas in dodo-webhook:', uErr)
+            }
+          }
+
+          const updateBody = {
+            plan: planTier,
+            updated_at: new Date().toISOString(),
+          }
+
+          // ADD tokens to existing balance instead of replacing
+          if (incMinutes > 0) {
+            updateBody.seconds_remaining = existingSeconds + (incMinutes * 60)
+          } else if (existingSeconds > 0) {
+            updateBody.seconds_remaining = existingSeconds
+          }
+
+          if (incResponses > 0) {
+            updateBody.responses_remaining = existingResponses + incResponses
+          } else if (existingResponses > 0) {
+            updateBody.responses_remaining = existingResponses
+          }
+
+          if (incApplications > 0) {
+            updateBody.applications_remaining = existingApplications + incApplications
+          } else if (existingApplications > 0) {
+            updateBody.applications_remaining = existingApplications
           }
 
           if (targetUrl) {
@@ -723,7 +1165,7 @@ export default {
             })
 
             if (!updateRes.ok) {
-              console.error('Supabase profile upgrade failed via Dodo webhook:', await updateRes.text())
+              console.error('Supabase user upgrade failed via Dodo webhook:', await updateRes.text())
             }
           }
         }
@@ -735,11 +1177,68 @@ export default {
       }
     }
 
+    // =========================================================
+    // GET PLANS LIST (PUBLIC)
+    // =========================================================
+    if (url.pathname === '/plans' && (request.method === 'GET' || request.method === 'OPTIONS')) {
+      if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+        try {
+          const plansRes = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/plans?select=*&order=price.asc`, {
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            },
+          })
+          if (plansRes.ok) {
+            const rows = await plansRes.json()
+            return json({ ok: true, plans: rows }, 200, origin)
+          }
+        } catch {}
+      }
+
+      return json({ 
+        ok: true, 
+        plans: [
+          { id: 'ee803f63-7ffc-4c93-bd79-2cb349c318b1', tier: 'basic', name: 'Basic Free Tier', price: 0, included_minutes: 0, included_responses: 0, dodo_product_id: null, included_applications: 0 },
+          { id: '4d569314-3b27-45c8-93ad-3d5c2eebffc0', tier: 'usage', name: 'Standard Plan', price: 8, included_minutes: 300, included_responses: 500, dodo_product_id: 'pdt_0NnIPft32K3WxEEJbH04J', included_applications: 200 },
+          { id: 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812', tier: 'usage', name: 'Pro+ Pro (Most Popular)', price: 15, included_minutes: 1000, included_responses: 1500, dodo_product_id: 'pdt_0NnIQ5VyQfhSXYsFLcojZ', included_applications: 600 },
+          { id: '867a98bf-9dd0-4b22-bbf5-86d19193632e', tier: 'usage', name: 'Max+ Pro', price: 25, included_minutes: 2500, included_responses: 3500, dodo_product_id: 'pdt_0NnIQFN75jtyT7fIvHQd1', included_applications: 1500 },
+          { id: '08545cec-6a37-4922-8456-54481379e290', tier: 'usage', name: 'Ultra+ Pro', price: 35, included_minutes: 5000, included_responses: 7500, dodo_product_id: 'pdt_0NnIQOPYDlQBXyoHj0Mxv', included_applications: 3500 },
+          { id: '13969aad-7309-40ec-9b54-70b39d5b13f6', tier: 'pro plus+', name: 'Pro Plus+ Lifetime (BYOK)', price: 49, included_minutes: 0, included_responses: 0, dodo_product_id: 'pdt_0NnIQqc0EzhEoVKHtBWTx', included_applications: 0 }
+        ] 
+      }, 200, origin)
+    }
+
     return new Response('Not found', {
       status: 404,
       headers: corsHeaders(origin),
     })
   },
+}
+
+function getOfficialPlanInrPrice(priceUsd) {
+  const p = Number(priceUsd)
+  if (p <= 0) return 0
+  if (p <= 8) return 699
+  if (p <= 15) return 1299
+  if (p <= 25) return 2199
+  if (p <= 35) return 2999
+  if (p <= 49) return 4199
+  return Math.round(p * 86)
+}
+
+function isValidDiscountCoupon(couponCode) {
+  if (!couponCode || typeof couponCode !== 'string') return false
+  const norm = couponCode.toUpperCase().replace(/\s+/g, '').replace(/_/g, '')
+  return (
+    norm === 'FIRST50' ||
+    norm === 'APPLY50OFF' ||
+    norm === 'APPLY50' ||
+    norm === '50OFF' ||
+    norm === 'OFFERTHTIX0UT4RHPCT' ||
+    norm === 'OFFERTGYKVWY8HYZTTZ'
+  )
 }
 
 async function generateSignature(secret, orderId, paymentId) {

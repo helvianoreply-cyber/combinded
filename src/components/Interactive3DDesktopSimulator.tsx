@@ -6,7 +6,7 @@ export const Interactive3DDesktopSimulator: React.FC = () => {
   const [desktopScrollTop, setDesktopScrollTop] = useState(0)
 
   const [typedBuffer, setTypedBuffer] = useState<string[]>([
-    '// Helvia Stealth Host Active (Windows)',
+    '// Helvia Enterprise Host Active (Windows)',
     'import { WebRTCStream, HardwareHook } from "@helvia/core";',
     '',
     'export async function startZeroLatencySession() {',
@@ -15,7 +15,7 @@ export const Interactive3DDesktopSimulator: React.FC = () => {
     '  console.log("Hardware precision input active (0.4ms)");',
     '  return peer.streamDesktop();',
     '}',
-    '// Ready for high-precision stealth remote control'
+    '// Ready for zero-trust remote workstation control'
   ])
 
   const [isAnsActive, setIsAnsActive] = useState(false)

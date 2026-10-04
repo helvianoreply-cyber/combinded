@@ -53,6 +53,29 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
   // Foreground swaying grass blades with natural wind wave physics
   const grassBladesRef = useRef<Array<{ x: number; height: number; width: number; lean: number; bendSpeed: number; phase: number; flowerType: number }>>([])
 
+  // Dawn birds - V-shaped silhouettes that appear as morning fog clears
+  const dawnBirdsRef = useRef<Array<{
+    x: number
+    y: number
+    vx: number
+    vy: number
+    flapPhase: number
+    flapSpeed: number
+    wingSpan: number
+    groupDelay: number // staggered appearance
+  }>>([])
+
+  // Pre-computed volumetric fog puffs (cloud-style puffy fog)
+  const fogPuffsRef = useRef<Array<{
+    x: number
+    y: number
+    radius: number
+    speed: number
+    opacity: number
+    layer: number // 0=ground, 1=mid, 2=high
+    phase: number
+  }>>([])
+
   // Dancing fireflies above grass at night
   const firefliesRef = useRef<Array<{ x: number; y: number; vx: number; vy: number; phase: number; size: number }>>([])
 
@@ -129,13 +152,13 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
 
     // 2. 10 Photorealistic Volumetric Clouds
     const clouds: Array<{ x: number; y: number; scale: number; speed: number; opacity: number; puffs: Array<{ ox: number; oy: number; r: number; alphaMult: number }> }> = []
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 13; i++) {
       const baseScale = Math.random() * 0.6 + 0.75
       const puffCount = Math.floor(Math.random() * 4) + 4
       const puffs: Array<{ ox: number; oy: number; r: number; alphaMult: number }> = []
-      
+
       puffs.push({ ox: 0, oy: 0, r: 48, alphaMult: 1.0 })
-      
+
       for (let j = 0; j < puffCount; j++) {
         puffs.push({
           ox: (Math.random() - 0.5) * 90,
@@ -228,81 +251,76 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
     }
     grassBladesRef.current = grassBlades
 
-    // 6. 65 Interactive Cursor-Reactive Sakura Petals
-    const petals: Array<{
-      x: number
-      y: number
-      z: number
-      vx: number
-      vy: number
-      rotation: number
-      rotSpeed: number
-      flip: number
-      flipSpeed: number
-      size: number
-      opacity: number
-    }> = []
-    for (let i = 0; i < 65; i++) {
-      petals.push({
-        x: Math.random(),
-        y: Math.random(),
-        z: Math.random() * 0.85 + 0.15,
-        vx: Math.random() * 0.0012 + 0.0004,
-        vy: Math.random() * 0.0014 + 0.0006,
-        rotation: Math.random() * Math.PI * 2,
-        rotSpeed: (Math.random() - 0.5) * 0.035,
-        flip: Math.random() * Math.PI * 2,
-        flipSpeed: Math.random() * 0.045 + 0.02,
-        size: Math.random() * 6 + 5,
-        opacity: Math.random() * 0.4 + 0.6,
-      })
-    }
-    sakuraPetalsRef.current = petals
+    // 6. Sakura Petals (Disabled for formal enterprise theme)
+    sakuraPetalsRef.current = []
 
-    // 7. 4 Animated 3D Fluttering Butterflies
-    const butterflies: Array<{
-      x: number
-      y: number
-      z: number
-      targetX: number
-      targetY: number
-      vx: number
-      vy: number
-      flapPhase: number
-      flapSpeed: number
-      scale: number
-      type: number
+    // 7. Fluttering Butterflies (Disabled for formal enterprise theme)
+    butterfliesRef.current = []
+
+    // 8. Fireflies (Disabled for formal enterprise theme)
+    firefliesRef.current = []
+
+    // 9. 12 Dawn Birds (V-formation silhouettes)
+    const dawnBirds: Array<{
+      x: number; y: number; vx: number; vy: number;
+      flapPhase: number; flapSpeed: number; wingSpan: number; groupDelay: number
     }> = []
-    for (let i = 0; i < 4; i++) {
-      butterflies.push({
-        x: Math.random() * 0.8 + 0.1,
-        y: Math.random() * 0.5 + 0.3,
-        z: Math.random() * 0.6 + 0.4,
-        targetX: Math.random() * 0.8 + 0.1,
-        targetY: Math.random() * 0.5 + 0.3,
-        vx: 0,
-        vy: 0,
+    for (let i = 0; i < 12; i++) {
+      dawnBirds.push({
+        x: -0.1 - Math.random() * 0.3,
+        y: 0.12 + Math.random() * 0.28,
+        vx: Math.random() * 0.0008 + 0.0004,
+        vy: (Math.random() - 0.5) * 0.0003,
         flapPhase: Math.random() * Math.PI * 2,
-        flapSpeed: Math.random() * 0.15 + 0.25,
-        scale: Math.random() * 0.35 + 0.75,
-        type: (i % 4) + 1,
+        flapSpeed: Math.random() * 3.5 + 4.0,
+        wingSpan: Math.random() * 6 + 8,
+        groupDelay: i * 0.012, // staggered entrance
       })
     }
-    butterfliesRef.current = butterflies
+    dawnBirdsRef.current = dawnBirds
 
-    // 8. 20 Bioluminescent Fireflies
-    const fireflies: Array<{ x: number; y: number; vx: number; vy: number; phase: number; size: number }> = []
-    for (let i = 0; i < 20; i++) {
-      fireflies.push({
-        x: Math.random(),
-        y: 0.7 + Math.random() * 0.26,
-        vx: (Math.random() - 0.5) * 0.0014,
-        vy: (Math.random() - 0.5) * 0.0014,
+    // 10. Pre-computed Volumetric Fog Puffs (cloud-style)
+    const fogPuffs: Array<{
+      x: number; y: number; radius: number; speed: number;
+      opacity: number; layer: number; phase: number
+    }> = []
+    // Layer 0: Ground-hugging fog (large, dense, low)
+    for (let i = 0; i < 12; i++) {
+      fogPuffs.push({
+        x: Math.random() * 1.4 - 0.2,
+        y: 0.62 + Math.random() * 0.32,
+        radius: Math.random() * 120 + 80,
+        speed: (Math.random() * 0.00012 + 0.00005) * (i % 2 === 0 ? 1 : -1),
+        opacity: Math.random() * 0.3 + 0.55,
+        layer: 0,
         phase: Math.random() * Math.PI * 2,
-        size: Math.random() * 2.0 + 1.2,
       })
     }
-    firefliesRef.current = fireflies
+    // Layer 1: Mid-altitude mist (medium, slightly warm-tinted)
+    for (let i = 0; i < 10; i++) {
+      fogPuffs.push({
+        x: Math.random() * 1.6 - 0.3,
+        y: 0.35 + Math.random() * 0.30,
+        radius: Math.random() * 100 + 60,
+        speed: (Math.random() * 0.00015 + 0.00006) * (i % 2 === 0 ? 1 : -1),
+        opacity: Math.random() * 0.25 + 0.4,
+        layer: 1,
+        phase: Math.random() * Math.PI * 2,
+      })
+    }
+    // Layer 2: High atmospheric haze (thin, large, bluish)
+    for (let i = 0; i < 6; i++) {
+      fogPuffs.push({
+        x: Math.random() * 1.8 - 0.4,
+        y: 0.08 + Math.random() * 0.28,
+        radius: Math.random() * 140 + 90,
+        speed: (Math.random() * 0.0001 + 0.00004) * (i % 2 === 0 ? 1 : -1),
+        opacity: Math.random() * 0.2 + 0.25,
+        layer: 2,
+        phase: Math.random() * Math.PI * 2,
+      })
+    }
+    fogPuffsRef.current = fogPuffs
 
     const handleMouseMove = (e: MouseEvent) => {
       const curX = e.clientX / window.innerWidth
@@ -359,8 +377,9 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
       const mouseVelX = (mouseRef.current.x - mouseRef.current.prevX) * width
       const mouseVelY = (mouseRef.current.y - mouseRef.current.prevY) * height
 
-      // Progress: 0.0 (Morning Sky Blue) to 1.0 (Cosmic Midnight)
-      const p = Math.max(0, Math.min(1, progressRef.current))
+      // Progress: 0.0 → 1.0 remapped to start at ~7:20 AM (skip dark pre-dawn)
+      // Offset 0.14 = dawn sub-phase C (fog clearing, golden light, birds)
+      const p = Math.max(0, Math.min(1, 0.14 + progressRef.current * 0.86))
 
       // =========================================================
       // 1. COLOR PALETTE INTERPOLATION
@@ -379,55 +398,106 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
       let grassBaseCol: [number, number, number]
       let grassTipCol: [number, number, number]
 
-      if (p < 0.33) {
-        // --- MORNING SKY BLUE TO RADIANT DAYLIGHT ---
-        const t = p / 0.33
-        skyZenith = lerpColor([10, 120, 220], [22, 135, 230], t)
-        skyMid = lerpColor([75, 190, 250], [242, 165, 180], t)
-        skyHorizon = lerpColor([255, 244, 210], [255, 215, 170], t)
-        hazeColor = lerpColor([235, 248, 255], [255, 235, 215], t)
+      if (p < 0.20) {
+        // --- 1. CINEMATIC DAWN: PRE-DAWN DARKNESS → FOGGY FIRST LIGHT → GOLDEN SUNRISE ---
+        const t = p / 0.20
+
+        if (t < 0.35) {
+          // SUB-PHASE A: Pre-dawn darkness (deep blue-gray, last stars fading)
+          const st = t / 0.35
+          skyZenith = lerpColor([12, 18, 42], [22, 32, 68], st)
+          skyMid = lerpColor([28, 35, 65], [55, 58, 95], st)
+          skyHorizon = lerpColor([42, 48, 78], [95, 82, 108], st)
+          hazeColor = lerpColor([55, 52, 72], [125, 105, 128], st)
+          sunAlpha = st * 0.25
+          starsAlpha = Math.max(0, (1 - st * 0.6) * 0.35)
+          cloudLitColor = lerpColor([85, 88, 105], [145, 135, 155], st)
+          cloudShadColor = lerpColor([42, 42, 58], [85, 78, 98], st)
+          mountainCol1 = lerpColor([25, 28, 48], [45, 52, 78], st)
+          mountainCol2 = lerpColor([12, 32, 22], [18, 48, 32], st)
+          grassBaseCol = lerpColor([8, 28, 18], [12, 42, 28], st)
+          grassTipCol = lerpColor([18, 58, 35], [25, 82, 48], st)
+        } else if (t < 0.7) {
+          // SUB-PHASE B: Misty first light (fog dominates, warm glow at horizon)
+          const st = (t - 0.35) / 0.35
+          skyZenith = lerpColor([22, 32, 68], [42, 72, 145], st)
+          skyMid = lerpColor([55, 58, 95], [165, 118, 138], st)
+          skyHorizon = lerpColor([95, 82, 108], [235, 175, 142], st)
+          hazeColor = lerpColor([125, 105, 128], [248, 215, 185], st)
+          sunAlpha = 0.25 + st * 0.45
+          starsAlpha = Math.max(0, (1 - (0.6 + st * 0.4)) * 0.35)
+          cloudLitColor = lerpColor([145, 135, 155], [245, 228, 215], st)
+          cloudShadColor = lerpColor([85, 78, 98], [168, 155, 175], st)
+          mountainCol1 = lerpColor([45, 52, 78], [68, 98, 138], st)
+          mountainCol2 = lerpColor([18, 48, 32], [28, 85, 48], st)
+          grassBaseCol = lerpColor([12, 42, 28], [16, 68, 38], st)
+          grassTipCol = lerpColor([25, 82, 48], [42, 155, 78], st)
+        } else {
+          // SUB-PHASE C: Fog clears, golden sunrise, birds appear
+          const st = (t - 0.7) / 0.3
+          skyZenith = lerpColor([42, 72, 145], [18, 105, 205], st)
+          skyMid = lerpColor([165, 118, 138], [235, 160, 145], st)
+          skyHorizon = lerpColor([235, 175, 142], [255, 215, 160], st)
+          hazeColor = lerpColor([248, 215, 185], [255, 240, 220], st)
+          sunAlpha = 0.70 + st * 0.30
+          starsAlpha = 0
+          cloudLitColor = lerpColor([245, 228, 215], [255, 248, 240], st)
+          cloudShadColor = lerpColor([168, 155, 175], [190, 215, 235], st)
+          mountainCol1 = lerpColor([68, 98, 138], [90, 145, 185], st)
+          mountainCol2 = lerpColor([28, 85, 48], [35, 125, 65], st)
+          grassBaseCol = lerpColor([16, 68, 38], [20, 92, 45], st)
+          grassTipCol = lerpColor([42, 155, 78], [55, 210, 110], st)
+        }
+        moonAlpha = 0
+      } else if (p < 0.48) {
+        // --- 2. FRESH MORNING SUNSHINE TO HIGH NOON DAYLIGHT ---
+        const t = (p - 0.20) / 0.28
+        skyZenith = lerpColor([18, 105, 205], [10, 125, 230], t)
+        skyMid = lerpColor([235, 160, 145], [80, 192, 252], t)
+        skyHorizon = lerpColor([255, 215, 160], [245, 248, 255], t)
+        hazeColor = lerpColor([255, 240, 220], [235, 248, 255], t)
 
         sunAlpha = 1
         moonAlpha = 0
-        starsAlpha = Math.max(0, (1 - t * 4) * 0.1)
+        starsAlpha = 0
 
         cloudLitColor = [255, 255, 255]
-        cloudShadColor = lerpColor([190, 215, 235], [215, 190, 200], t)
+        cloudShadColor = lerpColor([190, 215, 235], [205, 220, 238], t)
 
-        mountainCol1 = lerpColor([90, 155, 190], [120, 125, 150], t)
-        mountainCol2 = lerpColor([35, 125, 65], [48, 145, 75], t) // Lush Green Mountain
+        mountainCol1 = lerpColor([90, 145, 185], [115, 135, 160], t)
+        mountainCol2 = lerpColor([35, 125, 65], [48, 148, 76], t)
 
-        grassBaseCol = lerpColor([16, 92, 45], [22, 85, 42], t)
-        grassTipCol = lerpColor([34, 197, 94], [74, 222, 128], t)
-      } else if (p < 0.66) {
-        // --- DAYLIGHT TO EVENING SUNSET PINK & DUSK ---
-        const t = (p - 0.33) / 0.33
-        skyZenith = lerpColor([22, 135, 230], [36, 16, 62], t)
-        skyMid = lerpColor([242, 165, 180], [192, 68, 118], t)
-        skyHorizon = lerpColor([255, 215, 170], [246, 168, 158], t)
-        hazeColor = lerpColor([255, 235, 215], [242, 145, 165], t)
+        grassBaseCol = lerpColor([20, 92, 45], [24, 88, 44], t)
+        grassTipCol = lerpColor([55, 210, 110], [74, 222, 128], t)
+      } else if (p < 0.74) {
+        // --- 3. GOLDEN AFTERNOON TO FIERY SUNSET & CORAL DUSK ---
+        const t = (p - 0.48) / 0.26
+        skyZenith = lerpColor([10, 125, 230], [36, 16, 62], t)
+        skyMid = lerpColor([80, 192, 252], [192, 68, 118], t)
+        skyHorizon = lerpColor([245, 248, 255], [246, 162, 138], t)
+        hazeColor = lerpColor([235, 248, 255], [242, 145, 165], t)
 
-        sunAlpha = 1 - t * 0.75
+        sunAlpha = 1 - t * 0.72
         moonAlpha = t * 0.45
         starsAlpha = t * 0.45
 
-        cloudLitColor = lerpColor([255, 242, 228], [255, 188, 198], t)
-        cloudShadColor = lerpColor([215, 190, 200], [138, 78, 112], t)
+        cloudLitColor = lerpColor([255, 245, 232], [255, 188, 198], t)
+        cloudShadColor = lerpColor([205, 220, 238], [138, 78, 112], t)
 
-        mountainCol1 = lerpColor([120, 125, 150], [68, 32, 68], t)
-        mountainCol2 = lerpColor([48, 145, 75], [58, 62, 38], t)
+        mountainCol1 = lerpColor([115, 135, 160], [68, 32, 68], t)
+        mountainCol2 = lerpColor([48, 148, 76], [58, 62, 38], t)
 
-        grassBaseCol = lerpColor([22, 85, 42], [48, 32, 22], t)
+        grassBaseCol = lerpColor([24, 88, 44], [48, 32, 22], t)
         grassTipCol = lerpColor([74, 222, 128], [145, 98, 48], t)
       } else {
-        // --- SUNSET PINK TO DEEP COSMIC MIDNIGHT ---
-        const t = (p - 0.66) / 0.34
+        // --- 4. TWILIGHT DUSK TO DEEP COSMIC MIDNIGHT ---
+        const t = (p - 0.74) / 0.26
         skyZenith = lerpColor([36, 16, 62], [8, 4, 18], t)
-        skyMid = lerpColor([192, 68, 118], [25, 10, 44], t)
-        skyHorizon = lerpColor([246, 168, 158], [15, 6, 30], t)
-        hazeColor = lerpColor([242, 145, 165], [32, 16, 48], t)
+        skyMid = lerpColor([192, 68, 118], [22, 10, 42], t)
+        skyHorizon = lerpColor([246, 162, 138], [14, 6, 28], t)
+        hazeColor = lerpColor([242, 145, 165], [28, 14, 45], t)
 
-        sunAlpha = Math.max(0, 0.25 * (1 - t * 3))
+        sunAlpha = Math.max(0, 0.28 * (1 - t * 3.5))
         moonAlpha = 0.45 + t * 0.55
         starsAlpha = 0.45 + t * 0.55
 
@@ -453,49 +523,173 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
       ctx.fillRect(0, 0, width, height)
 
       // =========================================================
+      // DAWN VOLUMETRIC FOG (cloud-style puffy radial gradient circles)
+      // =========================================================
+      if (p < 0.22) {
+        const dawnT = p / 0.20
+        ctx.save()
+
+        // Fog color palettes per layer (matches cloud rendering technique)
+        const fogColors: Array<{ lit: [number, number, number]; shad: [number, number, number]; clearRate: number }> = [
+          // Layer 0: Ground fog — cool gray-white, clears slowest
+          { lit: [218, 222, 232], shad: [185, 192, 208], clearRate: 1.0 },
+          // Layer 1: Mid mist — warm-tinted from sunrise scatter
+          { lit: [235, 225, 215], shad: [198, 188, 178], clearRate: 1.35 },
+          // Layer 2: High haze — bluish, clears fastest
+          { lit: [195, 205, 225], shad: [165, 175, 198], clearRate: 1.7 },
+        ]
+
+        for (let i = 0; i < fogPuffsRef.current.length; i++) {
+          const fog = fogPuffsRef.current[i]
+          const colors = fogColors[fog.layer]
+
+          // Each layer clears at its own rate
+          const layerAlpha = Math.max(0, (1 - dawnT * colors.clearRate)) * fog.opacity
+          if (layerAlpha < 0.01) continue
+
+          // Drift fog puffs slowly (like clouds)
+          fog.x += fog.speed
+          if (fog.x > 1.5) fog.x = -0.5
+          if (fog.x < -0.5) fog.x = 1.5
+
+          // Gentle vertical bob
+          const bobY = Math.sin(time * 0.3 + fog.phase) * 0.008
+
+          const fx = fog.x * width + mouseParallaxX * 0.12
+          const fy = (fog.y + bobY) * height
+          const fr = fog.radius
+
+          // Shadow layer (underneath, offset down — same as cloud technique)
+          const shadGrad = ctx.createRadialGradient(fx, fy + fr * 0.15, 0, fx, fy + fr * 0.15, fr)
+          shadGrad.addColorStop(0, `rgba(${colors.shad[0]}, ${colors.shad[1]}, ${colors.shad[2]}, ${layerAlpha * 0.55})`)
+          shadGrad.addColorStop(0.55, `rgba(${colors.shad[0]}, ${colors.shad[1]}, ${colors.shad[2]}, ${layerAlpha * 0.2})`)
+          shadGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+          ctx.fillStyle = shadGrad
+          ctx.beginPath()
+          ctx.arc(fx, fy + fr * 0.15, fr, 0, Math.PI * 2)
+          ctx.fill()
+
+          // Lit layer (on top, offset up — same as cloud technique)
+          const litGrad = ctx.createRadialGradient(fx - fr * 0.15, fy - fr * 0.12, 0, fx, fy, fr)
+          litGrad.addColorStop(0, `rgba(${colors.lit[0]}, ${colors.lit[1]}, ${colors.lit[2]}, ${layerAlpha * 0.72})`)
+          litGrad.addColorStop(0.5, `rgba(${colors.lit[0]}, ${colors.lit[1]}, ${colors.lit[2]}, ${layerAlpha * 0.35})`)
+          litGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+          ctx.fillStyle = litGrad
+          ctx.beginPath()
+          ctx.arc(fx, fy, fr, 0, Math.PI * 2)
+          ctx.fill()
+        }
+
+        ctx.restore()
+      }
+
+      // =========================================================
       // 3. CINEMATIC SUN (With Real-Life Flare & God Rays)
       // =========================================================
       if (sunAlpha > 0.01) {
-        const sunX = width * (0.76 - p * 0.48) + mouseParallaxX * 0.35
-        const sunY = height * (0.18 + p * 0.65) + mouseParallaxY * 0.35
-        const sunRadius = Math.max(26, 44 - p * 12)
+        // Natural parabolic celestial arc: rises at dawn in east, hits apex at noon, sets in west
+        let sunX = width * 0.75 + mouseParallaxX * 0.35
+        let sunY = height * 0.25 + mouseParallaxY * 0.35
+        let sunRadius = 36
 
-        // God Rays
-        if (p < 0.6) {
+        if (p < 0.20) {
+          const t = p / 0.20
+          sunX = width * (0.84 - t * 0.12) + mouseParallaxX * 0.35
+          sunY = height * (0.48 - t * 0.30) + mouseParallaxY * 0.35
+          sunRadius = 32 + t * 6
+        } else if (p < 0.48) {
+          const t = (p - 0.20) / 0.28
+          sunX = width * (0.72 - t * 0.16) + mouseParallaxX * 0.35
+          sunY = height * (0.18 - t * 0.04) + mouseParallaxY * 0.35
+          sunRadius = 38
+        } else {
+          const t = Math.min(1, (p - 0.48) / 0.26)
+          sunX = width * (0.56 - t * 0.28) + mouseParallaxX * 0.35
+          sunY = height * (0.14 + t * 0.42) + mouseParallaxY * 0.35
+          sunRadius = Math.max(26, 38 - t * 10)
+        }
+
+        // God Rays (enhanced dawn rays that pierce through fog)
+        if (p < 0.65) {
           ctx.save()
-          const rayCount = 10
-          for (let i = 0; i < rayCount; i++) {
-            const angle = (i * Math.PI) / (rayCount / 2) + time * 0.015
-            const rayLength = height * 0.65
-            const rayGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, rayLength)
-            rayGrad.addColorStop(0, `rgba(255, 248, 215, ${0.2 * sunAlpha * (1 - p * 0.85)})`)
-            rayGrad.addColorStop(0.5, `rgba(254, 215, 160, ${0.08 * sunAlpha * (1 - p * 0.85)})`)
-            rayGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+          if (p < 0.20) {
+            // DAWN-SPECIFIC RAYS: fan upward from horizon through fog
+            const dawnT = p / 0.20
+            const rayCount = 14
+            // Rays become more visible as fog thins (sub-phase B→C)
+            const fogFade = Math.max(0, dawnT - 0.3) / 0.7
+            const rayVisibility = fogFade * 0.65
 
-            ctx.fillStyle = rayGrad
-            ctx.beginPath()
-            ctx.moveTo(sunX, sunY)
-            ctx.arc(sunX, sunY, rayLength, angle - 0.07, angle + 0.07)
-            ctx.closePath()
-            ctx.fill()
+            for (let i = 0; i < rayCount; i++) {
+              // Fan rays upward from slightly below sun position
+              const baseAngle = -Math.PI * 0.75
+              const spreadAngle = Math.PI * 0.55
+              const angle = baseAngle + (i / (rayCount - 1)) * spreadAngle + Math.sin(time * 0.012 + i * 0.7) * 0.04
+              const rayLength = height * (0.65 + fogFade * 0.25)
+
+              const rayGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, rayLength)
+              // Warm golden rays with fog-scattered light
+              const fogScatter = Math.max(0, 1 - dawnT * 1.5) * 0.15
+              rayGrad.addColorStop(0, `rgba(255, 235, 185, ${(rayVisibility * 0.42 + fogScatter) * sunAlpha})`)
+              rayGrad.addColorStop(0.25, `rgba(255, 218, 155, ${(rayVisibility * 0.25 + fogScatter * 0.5) * sunAlpha})`)
+              rayGrad.addColorStop(0.55, `rgba(255, 198, 135, ${rayVisibility * 0.10 * sunAlpha})`)
+              rayGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+
+              ctx.fillStyle = rayGrad
+              ctx.beginPath()
+              ctx.moveTo(sunX, sunY)
+              ctx.arc(sunX, sunY, rayLength, angle - 0.065, angle + 0.065)
+              ctx.closePath()
+              ctx.fill()
+            }
+
+            // Extra horizon glow band that brightens as fog clears
+            if (dawnT > 0.25) {
+              const glowAlpha = Math.min(1, (dawnT - 0.25) / 0.5) * 0.35 * sunAlpha
+              const horizGlow = ctx.createLinearGradient(0, sunY - height * 0.15, 0, sunY + height * 0.2)
+              horizGlow.addColorStop(0, 'rgba(255, 225, 165, 0)')
+              horizGlow.addColorStop(0.4, `rgba(255, 215, 145, ${glowAlpha})`)
+              horizGlow.addColorStop(0.7, `rgba(255, 195, 125, ${glowAlpha * 0.6})`)
+              horizGlow.addColorStop(1, 'rgba(255, 185, 115, 0)')
+              ctx.fillStyle = horizGlow
+              ctx.fillRect(0, sunY - height * 0.15, width, height * 0.35)
+            }
+          } else {
+            // Regular daytime god rays
+            const rayCount = 12
+            for (let i = 0; i < rayCount; i++) {
+              const angle = (i * Math.PI) / (rayCount / 2) + time * 0.015
+              const rayLength = height * 0.65
+              const rayGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, rayLength)
+              rayGrad.addColorStop(0, `rgba(255, 248, 215, ${0.2 * sunAlpha * (1 - p * 0.7)})`)
+              rayGrad.addColorStop(0.5, `rgba(254, 215, 160, ${0.08 * sunAlpha * (1 - p * 0.7)})`)
+              rayGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+
+              ctx.fillStyle = rayGrad
+              ctx.beginPath()
+              ctx.moveTo(sunX, sunY)
+              ctx.arc(sunX, sunY, rayLength, angle - 0.07, angle + 0.07)
+              ctx.closePath()
+              ctx.fill()
+            }
           }
           ctx.restore()
         }
 
-        // Anamorphic Flare Streak
-        const flareWidth = width * (0.5 - p * 0.15)
+        // Anamorphic Flare Streak (Long horizontal flare at dawn and sunset)
+        const flareWidth = width * (p < 0.20 ? 0.65 : p > 0.55 ? 0.55 : 0.38)
         const flareGrad = ctx.createLinearGradient(sunX - flareWidth, sunY, sunX + flareWidth, sunY)
         flareGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
-        flareGrad.addColorStop(0.5, `rgba(255, 250, 225, ${0.4 * sunAlpha})`)
+        flareGrad.addColorStop(0.5, p < 0.20 ? `rgba(255, 235, 195, ${0.5 * sunAlpha})` : `rgba(255, 250, 225, ${0.4 * sunAlpha})`)
         flareGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
         ctx.fillStyle = flareGrad
         ctx.fillRect(sunX - flareWidth, sunY - 2.5, flareWidth * 2, 5)
 
         // Corona Glow
         const outerGlow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunRadius * 6)
-        outerGlow.addColorStop(0, `rgba(255, 250, 230, ${0.92 * sunAlpha})`)
-        outerGlow.addColorStop(0.25, `rgba(254, 220, 150, ${0.55 * sunAlpha})`)
-        outerGlow.addColorStop(0.65, `rgba(246, 168, 158, ${0.22 * sunAlpha})`)
+        outerGlow.addColorStop(0, p < 0.20 ? `rgba(255, 235, 190, ${0.95 * sunAlpha})` : `rgba(255, 250, 230, ${0.92 * sunAlpha})`)
+        outerGlow.addColorStop(0.25, p < 0.20 ? `rgba(255, 195, 130, ${0.65 * sunAlpha})` : `rgba(254, 220, 150, ${0.55 * sunAlpha})`)
+        outerGlow.addColorStop(0.65, p < 0.20 ? `rgba(255, 160, 120, ${0.3 * sunAlpha})` : `rgba(246, 168, 158, ${0.22 * sunAlpha})`)
         outerGlow.addColorStop(1, 'rgba(255, 255, 255, 0)')
         ctx.fillStyle = outerGlow
         ctx.beginPath()
@@ -503,7 +697,7 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
         ctx.fill()
 
         // Pure Sun Disk
-        ctx.fillStyle = `rgba(255, 255, 252, ${sunAlpha})`
+        ctx.fillStyle = p < 0.20 ? `rgba(255, 248, 230, ${sunAlpha})` : `rgba(255, 255, 252, ${sunAlpha})`
         ctx.beginPath()
         ctx.arc(sunX, sunY, sunRadius, 0, Math.PI * 2)
         ctx.fill()
@@ -513,9 +707,9 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
       // 4. PHOTOREALISTIC MOON (Craters, Halo, Crescent)
       // =========================================================
       if (moonAlpha > 0.05) {
-        const moonProgress = Math.max(0, (p - 0.4) / 0.6)
-        const moonX = width * (0.84 - moonProgress * 0.16) + mouseParallaxX * 0.25
-        const moonY = height * (0.82 - moonProgress * 0.64) + mouseParallaxY * 0.25
+        const moonProgress = Math.max(0, (p - 0.52) / 0.48)
+        const moonX = width * (0.82 - moonProgress * 0.12) + mouseParallaxX * 0.25
+        const moonY = height * (0.70 - moonProgress * 0.48) + mouseParallaxY * 0.25
         const moonRadius = 28
 
         const moonHalo = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, moonRadius * 4.2)
@@ -686,7 +880,53 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
       )
 
       // =========================================================
-      // 11. ANIMATED 3D FLUTTERING BUTTERFLIES
+      // 11. DAWN BIRDS (V-shaped silhouettes emerging from fog)
+      // =========================================================
+      if (p < 0.28) {
+        const dawnT = p / 0.20
+        // Birds only visible once fog starts clearing (sub-phase C onward)
+        const birdAppear = Math.max(0, Math.min(1, (dawnT - 0.55) / 0.45))
+        if (birdAppear > 0.01) {
+          ctx.save()
+          const birdAlpha = birdAppear * (p < 0.20 ? 0.75 : Math.max(0, 1 - (p - 0.20) / 0.08))
+          for (let i = 0; i < dawnBirdsRef.current.length; i++) {
+            const bird = dawnBirdsRef.current[i]
+            // Skip birds that haven't "appeared" yet based on groupDelay
+            const delayedAppear = Math.max(0, birdAppear - bird.groupDelay * 5)
+            if (delayedAppear < 0.01) continue
+
+            // Move birds across the sky
+            bird.x += bird.vx
+            bird.y += bird.vy + Math.sin(time * 1.8 + bird.flapPhase) * 0.0002
+            // Wrap around
+            if (bird.x > 1.15) {
+              bird.x = -0.1
+              bird.y = 0.12 + Math.random() * 0.28
+            }
+
+            const bx = bird.x * width + mouseParallaxX * 0.15
+            const by = bird.y * height + mouseParallaxY * 0.1
+            const ws = bird.wingSpan
+            const flapAngle = Math.sin(time * bird.flapSpeed + bird.flapPhase) * 0.45
+
+            // Draw V-shaped bird silhouette
+            ctx.strokeStyle = `rgba(28, 22, 18, ${birdAlpha * delayedAppear * 0.85})`
+            ctx.lineWidth = 1.5
+            ctx.lineCap = 'round'
+            ctx.beginPath()
+            // Left wing
+            ctx.moveTo(bx - ws, by - ws * flapAngle * 0.6)
+            ctx.quadraticCurveTo(bx - ws * 0.4, by - ws * flapAngle * 0.3, bx, by)
+            // Right wing
+            ctx.quadraticCurveTo(bx + ws * 0.4, by - ws * flapAngle * 0.3, bx + ws, by - ws * flapAngle * 0.6)
+            ctx.stroke()
+          }
+          ctx.restore()
+        }
+      }
+
+      // =========================================================
+      // 12. ANIMATED 3D FLUTTERING BUTTERFLIES
       // =========================================================
       renderAnimatedButterflies(ctx, width, height, time, p, mouseParallaxX, mouseParallaxY, butterfliesRef.current)
 
@@ -856,14 +1096,14 @@ function renderPhotorealisticMountains(
   // ── Layer 1: Distant Alpine Mountain Peaks with rock texturing ──
   ctx.save()
   const baseH1 = height * 0.78
-  
+
   // Main mountain fill with vertical gradient for depth
   const mtnGrad1 = ctx.createLinearGradient(0, baseH1 - 45, 0, baseH1 + 55)
   mtnGrad1.addColorStop(0, `rgb(${mCol1[0]}, ${mCol1[1]}, ${mCol1[2]})`)
   mtnGrad1.addColorStop(0.6, `rgb(${Math.max(0, mCol1[0] - 15)}, ${Math.max(0, mCol1[1] - 10)}, ${Math.max(0, mCol1[2] - 8)})`)
   mtnGrad1.addColorStop(1, `rgb(${Math.max(0, mCol1[0] - 25)}, ${Math.max(0, mCol1[1] - 18)}, ${Math.max(0, mCol1[2] - 12)})`)
   ctx.fillStyle = mtnGrad1
-  
+
   ctx.beginPath()
   ctx.moveTo(0, height)
   for (let i = 0; i < terrain.peaks.length; i++) {
@@ -907,14 +1147,14 @@ function renderPhotorealisticMountains(
       if (pk.snow) {
         const x = pk.x * width
         const y = baseH1 + pk.y + parallaxX * 0.008
-        
+
         // Soft snow gradient instead of flat triangle
         const snowGrad = ctx.createLinearGradient(x, y - 4, x, y + 20)
         snowGrad.addColorStop(0, `rgba(255, 255, 255, ${snowAlpha})`)
         snowGrad.addColorStop(0.5, `rgba(240, 248, 255, ${snowAlpha * 0.7})`)
         snowGrad.addColorStop(1, `rgba(220, 235, 250, 0)`)
         ctx.fillStyle = snowGrad
-        
+
         // Organic snow shape (wider, softer)
         ctx.beginPath()
         ctx.moveTo(x - 2, y - 2)
@@ -1003,7 +1243,7 @@ function renderPhotorealisticMountains(
   // ── Forest Trees with realistic shapes, trunks, and canopy detail ──
   // Sort trees by x for natural depth layering
   const sortedTrees = [...terrain.trees].sort((a, b) => a.x - b.x)
-  
+
   for (let i = 0; i < sortedTrees.length; i++) {
     const tree = sortedTrees[i]
     const tx = tree.x * width
@@ -1104,7 +1344,7 @@ function renderPhotorealisticMeadow(
   grassBlades: Array<{ x: number; height: number; width: number; lean: number; bendSpeed: number; phase: number; flowerType: number }>
 ) {
   ctx.save()
-  
+
   // Richer multi-stop meadow gradient with depth
   const meadowGrad = ctx.createLinearGradient(0, height * 0.86, 0, height)
   meadowGrad.addColorStop(0, `rgb(${baseCol[0]}, ${baseCol[1]}, ${baseCol[2]})`)
