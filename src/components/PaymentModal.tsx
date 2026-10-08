@@ -358,6 +358,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </svg>
             <span>256-bit SSL Encrypted • Instant Quotas &amp; AI Activation</span>
           </div>
+          <a
+            href="https://wa.me/919032025916?text=Hi%2C%20I%20have%20a%20question%20about%20payment%20for%20Helvia"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="payment-whatsapp-support-link"
+          >
+            <span>💬</span> Need payment help? Chat on WhatsApp: <strong>+91 9032025916</strong>
+          </a>
         </div>
       </div>
     </div>

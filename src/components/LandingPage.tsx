@@ -4258,7 +4258,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <li><Link to="/termsofservice">Enterprise Terms of Service</Link></li>
                 <li><Link to="/refundcancellation">Refund &amp; SLA Guarantee</Link></li>
                 <li><a href="#faq">Frequently Asked Questions</a></li>
-                <li><a href="mailto:support@helvia.online">Executive Support Desk</a></li>
+                <li>
+                  <a 
+                    href="https://wa.me/919032025916?text=Hi%2C%20I%20need%20support%20with%20Helvia%20Remote" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: '#25D366', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    <span>💬</span> WhatsApp Support (+91 9032025916)
+                  </a>
+                </li>
+                <li><a href="mailto:support@helvia.online">Executive Email Support</a></li>
               </ul>
             </div>
           </div>

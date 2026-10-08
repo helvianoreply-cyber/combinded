@@ -180,6 +180,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <span>Expires {new Date(planExpiresAt).toLocaleDateString()}</span>
               </span>
             )}
+            <a
+              href="https://wa.me/919032025916?text=Hi%2C%20I%20need%20support%20with%20my%20Helvia%20account"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="user-email-pill"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', color: '#25D366', fontWeight: 600, border: '1px solid rgba(37, 211, 102, 0.35)' }}
+              title="Chat on WhatsApp (+91 9032025916)"
+            >
+              <span>💬</span>
+              <span>WhatsApp: 9032025916</span>
+            </a>
           </div>
           <h1>Welcome, <span className="plans-name-highlight">{firstName}</span></h1>
           <p className="plans-page-subtitle">

@@ -16335,3 +16335,72 @@ section[id] {
   cursor: not-allowed;
   transform: none;
 }
+
+/* =========================================================
+   FLOATING WHATSAPP SUPPORT BUTTON & PAYMENT SUPPORT LINKS
+   ========================================================= */
+.floating-whatsapp-btn {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1.15rem;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(37, 211, 102, 0.4);
+  border-radius: 999px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 20px rgba(37, 211, 102, 0.2);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-whatsapp-btn:hover {
+  transform: translateY(-3px) scale(1.03);
+  background: rgba(30, 41, 59, 0.95);
+  border-color: #25D366;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(37, 211, 102, 0.35);
+  color: #ffffff;
+}
+
+.floating-whatsapp-btn .wa-icon-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.floating-whatsapp-btn .wa-text-label {
+  color: #f1f5f9;
+}
+
+.payment-whatsapp-support-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+  font-size: 0.85rem;
+  color: #25D366;
+  text-decoration: none;
+  font-weight: 600;
+  transition: opacity 0.2s ease;
+}
+
+.payment-whatsapp-support-link:hover {
+  opacity: 0.85;
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .floating-whatsapp-btn {
+    bottom: 1.25rem;
+    right: 1.25rem;
+    padding: 0.55rem 0.95rem;
+    font-size: 0.82rem;
+  }
+}

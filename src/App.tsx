@@ -99,8 +99,43 @@ function RefundPolicyPage() {
         <li>We may request logs or screenshots to diagnose the problem.</li>
         <li>Approved refunds are processed back to the original payment method.</li>
       </ul>
-      <p>Contact: support@helvia.ai</p>
+      <p>Contact: support@helvia.ai | WhatsApp: <a href="https://wa.me/919032025916" target="_blank" rel="noopener noreferrer" style={{ color: '#25D366' }}>+91 9032025916</a></p>
     </section>
+  )
+}
+
+const WHATSAPP_SUPPORT_URL = 'https://wa.me/919032025916?text=Hi%2C%20I%20need%20support%20with%20Helvia%20Remote'
+
+function WhatsAppRedirectPage() {
+  useEffect(() => {
+    window.location.href = WHATSAPP_SUPPORT_URL
+  }, [])
+
+  return (
+    <div style={{ padding: '6rem 2rem', textAlign: 'center', color: '#fff', minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💬</div>
+      <h2 style={{ fontSize: '1.8rem', fontWeight: 700, margin: '0 0 0.5rem' }}>Redirecting to WhatsApp Support…</h2>
+      <p style={{ color: '#94a3b8', maxWidth: 480, margin: '0 auto 1.5rem' }}>
+        Opening WhatsApp chat with Helvia Executive Support (+91 9032025916).
+      </p>
+      <a 
+        href={WHATSAPP_SUPPORT_URL}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.6rem',
+          padding: '0.75rem 1.75rem',
+          backgroundColor: '#25D366',
+          color: '#ffffff',
+          fontWeight: 700,
+          borderRadius: '999px',
+          textDecoration: 'none',
+          boxShadow: '0 8px 24px rgba(37, 211, 102, 0.35)',
+        }}
+      >
+        <span>Open WhatsApp (+91 9032025916)</span>
+      </a>
+    </div>
   )
 }
 
@@ -1106,10 +1141,30 @@ function App() {
           <Route path="/privacypolicy" element={<PrivacyPolicyPage />} />
           <Route path="/termsofservice" element={<TermsOfServicePage />} />
           <Route path="/refundcancellation" element={<RefundPolicyPage />} />
+          <Route path="/support" element={<WhatsAppRedirectPage />} />
+          <Route path="/whatsapp" element={<WhatsAppRedirectPage />} />
           {/* Catch all redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      {/* Floating 24/7 WhatsApp Support Pill */}
+      <a
+        href={WHATSAPP_SUPPORT_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="floating-whatsapp-btn"
+        aria-label="WhatsApp Support (+91 9032025916)"
+        title="WhatsApp Support: +91 9032025916"
+      >
+        <span className="wa-icon-bubble">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.04 14.69 2 12.04 2Z" fill="#25D366"/>
+            <path d="M17.52 14.33C17.22 14.18 15.75 13.45 15.47 13.35C15.2 13.25 15 13.2 14.81 13.5C14.61 13.8 14.04 14.47 13.86 14.67C13.69 14.87 13.51 14.9 13.21 14.75C12.91 14.6 11.96 14.29 10.83 13.28C9.95 12.49 9.35 11.52 9.18 11.22C9.01 10.92 9.16 10.76 9.31 10.61C9.45 10.48 9.61 10.26 9.76 10.09C9.91 9.92 9.96 9.79 10.06 9.59C10.16 9.39 10.11 9.22 10.04 9.07C9.96 8.92 9.39 7.52 9.15 6.94C8.92 6.38 8.68 6.45 8.5 6.44C8.33 6.43 8.13 6.43 7.94 6.43C7.74 6.43 7.42 6.5 7.15 6.8C6.88 7.1 6.12 7.81 6.12 9.26C6.12 10.71 7.18 12.11 7.32 12.31C7.47 12.51 9.4 15.48 12.35 16.76C13.06 17.06 13.61 17.25 14.04 17.38C14.74 17.61 15.38 17.57 15.89 17.5C16.45 17.41 17.62 16.79 17.86 16.11C18.11 15.43 18.11 14.86 18.03 14.73C17.96 14.61 17.82 14.48 17.52 14.33Z" fill="white"/>
+          </svg>
+        </span>
+        <span className="wa-text-label">Support</span>
+      </a>
     </div>
   )
 }

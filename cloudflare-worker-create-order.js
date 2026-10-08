@@ -18,6 +18,10 @@ export default {
       })
     }
 
+    if (url.pathname === '/support' || url.pathname === '/whatsapp') {
+      return Response.redirect('https://wa.me/919032025916?text=Hi%2C%20I%20need%20support%20with%20Helvia%20Remote', 302)
+    }
+
     if (url.pathname === '/create-order' && request.method === 'POST') {
       try {
         const body = await request.json().catch(() => ({}))
