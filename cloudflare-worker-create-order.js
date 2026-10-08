@@ -47,14 +47,14 @@ export default {
           targetTier = 'usage'
           if (topupType === 'copilot' || body.minutes != null) {
             topupType = 'copilot'
-            const m = Math.max(60, Math.min(5000, Number(body.minutes) || 300))
+            const m = Math.max(120, Math.min(6000, Number(body.minutes) || 600))
             const quote = calculateCopilotTopup(m)
             topupMinutes = quote.minutes
             topupResponses = quote.responses
             baseInr = quote.priceInr
           } else if (topupType === 'autoapply' || body.applications != null) {
             topupType = 'autoapply'
-            const a = Math.max(50, Math.min(5000, Number(body.applications) || 250))
+            const a = Math.max(100, Math.min(6000, Number(body.applications) || 500))
             const quote = calculateAutoApplyTopup(a)
             topupApplications = quote.applications
             baseInr = quote.priceInr
@@ -1294,21 +1294,21 @@ export default {
 }
 
 function calculateCopilotTopup(minutes) {
-  const m = Math.max(60, Math.min(5000, Math.round(Number(minutes) || 300)))
-  const responses = Math.round(m * 1.6)
-  let inr = 99 + Math.round(m * 1.05)
-  if (m >= 1000) inr = Math.round(inr * 0.9)
-  if (m >= 2000) inr = Math.round(inr * 0.85)
+  const m = Math.max(120, Math.min(6000, Math.round(Number(minutes) || 600)))
+  const responses = Math.round(m * 1.8)
+  let inr = 99 + Math.round(m * 0.525)
+  if (m >= 2000) inr = Math.round(inr * 0.9)
+  if (m >= 4000) inr = Math.round(inr * 0.85)
   const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
   return { minutes: m, responses, priceInr: inr, priceUsd: usd }
 }
 
 function calculateAutoApplyTopup(applications) {
-  const a = Math.max(50, Math.min(5000, Math.round(Number(applications) || 250)))
-  let inr = 99 + Math.round(a * 1.4)
-  if (a >= 500) inr = Math.round(inr * 0.9)
-  if (a >= 1000) inr = Math.round(inr * 0.85)
-  if (a >= 2000) inr = Math.round(inr * 0.8)
+  const a = Math.max(100, Math.min(6000, Math.round(Number(applications) || 500)))
+  let inr = 99 + Math.round(a * 0.7)
+  if (a >= 1000) inr = Math.round(inr * 0.9)
+  if (a >= 2000) inr = Math.round(inr * 0.85)
+  if (a >= 4000) inr = Math.round(inr * 0.8)
   const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
   return { applications: a, priceInr: inr, priceUsd: usd }
 }

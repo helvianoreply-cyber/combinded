@@ -107,27 +107,28 @@ export interface TopupAutoApplyQuote {
 }
 
 /**
- * Dynamic Top-up for AI Meeting Copilot Time & Answers
+ * Dynamic Top-up for AI Meeting Copilot Time & Answers (Doubled Quota Value)
  */
 export function calculateCopilotTopup(minutes: number): TopupCopilotQuote {
-  const m = Math.max(60, Math.min(5000, Math.round(minutes)))
-  const responses = Math.round(m * 1.6)
-  let inr = 99 + Math.round(m * 1.05)
-  if (m >= 1000) inr = Math.round(inr * 0.9)
-  if (m >= 2000) inr = Math.round(inr * 0.85)
+  const m = Math.max(120, Math.min(6000, Math.round(minutes)))
+  const responses = Math.round(m * 1.8)
+  let inr = 99 + Math.round(m * 0.525)
+  if (m >= 2000) inr = Math.round(inr * 0.9)
+  if (m >= 4000) inr = Math.round(inr * 0.85)
   const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
   return { minutes: m, responses, priceInr: inr, priceUsd: usd }
 }
 
 /**
- * Dynamic Top-up for AI Jobs Auto Apply (Applications)
+ * Dynamic Top-up for AI Jobs Auto Apply (Applications - Doubled Quota Value)
  */
 export function calculateAutoApplyTopup(applications: number): TopupAutoApplyQuote {
-  const a = Math.max(50, Math.min(5000, Math.round(applications)))
-  let inr = 99 + Math.round(a * 1.4)
-  if (a >= 500) inr = Math.round(inr * 0.9)
-  if (a >= 1000) inr = Math.round(inr * 0.85)
-  if (a >= 2000) inr = Math.round(inr * 0.8)
+  const a = Math.max(100, Math.min(6000, Math.round(applications)))
+  let inr = 99 + Math.round(a * 0.7)
+  if (a >= 1000) inr = Math.round(inr * 0.9)
+  if (a >= 2000) inr = Math.round(inr * 0.85)
+  if (a >= 4000) inr = Math.round(inr * 0.8)
   const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
   return { applications: a, priceInr: inr, priceUsd: usd }
 }
+

@@ -10,14 +10,14 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
   onTopup,
   isProcessing = false,
 }) => {
-  const [copilotMins, setCopilotMins] = useState<number>(300)
-  const [applyCount, setApplyCount] = useState<number>(250)
+  const [copilotMins, setCopilotMins] = useState<number>(600)
+  const [applyCount, setApplyCount] = useState<number>(500)
 
   const copilotQuote = useMemo(() => calculateCopilotTopup(copilotMins), [copilotMins])
   const applyQuote = useMemo(() => calculateAutoApplyTopup(applyCount), [applyCount])
 
-  const copilotPresets = [150, 300, 600, 1200, 2400]
-  const applyPresets = [100, 250, 500, 1000, 2000]
+  const copilotPresets = [300, 600, 1200, 2400, 4800]
+  const applyPresets = [200, 500, 1000, 2000, 4000]
 
   return (
     <section className="topup-station-section">
@@ -34,7 +34,7 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
         </p>
         <div className="topup-offer-notice">
           <span className="notice-icon">🏷️</span>
-          <span><strong>Standard On-Demand Rates:</strong> Promotional coupons and discount offers do not apply to top-ups. Pricing scales dynamically with volume.</span>
+          <span><strong>2X Boosted Quotas:</strong> Meeting minutes, AI vision answers, and job auto-applies are doubled for the same price. Top-ups are billed at standard fixed rates (no coupons).</span>
         </div>
       </div>
 
@@ -79,14 +79,14 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
           {/* Slider Control */}
           <div className="topup-slider-wrap">
             <div className="topup-slider-labels">
-              <span>60 Mins (1 hr)</span>
-              <span>3,000 Mins (50 hrs)</span>
+              <span>120 Mins (2 hrs)</span>
+              <span>6,000 Mins (100 hrs)</span>
             </div>
             <input
               type="range"
-              min={60}
-              max={3000}
-              step={15}
+              min={120}
+              max={6000}
+              step={30}
               value={copilotMins}
               onChange={(e) => setCopilotMins(Number(e.target.value))}
               className="topup-range-slider copilot-slider"
@@ -175,14 +175,14 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
           {/* Slider Control */}
           <div className="topup-slider-wrap">
             <div className="topup-slider-labels">
-              <span>50 Jobs</span>
-              <span>3,000 Jobs</span>
+              <span>100 Jobs</span>
+              <span>6,000 Jobs</span>
             </div>
             <input
               type="range"
-              min={50}
-              max={3000}
-              step={25}
+              min={100}
+              max={6000}
+              step={50}
               value={applyCount}
               onChange={(e) => setApplyCount(Number(e.target.value))}
               className="topup-range-slider autoapply-slider"
