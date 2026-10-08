@@ -61,6 +61,12 @@ export default {
           } else {
             return json({ message: 'Invalid top-up type. Expected copilot or autoapply' }, 400, origin)
           }
+
+          // EXPLICIT CHECK: Promotional coupons and discount offers cannot be used on top-up plans!
+          const rawCoupon = String(body.couponCode || body.coupon || '').trim()
+          if (rawCoupon) {
+            return json({ message: 'Promotional coupons and offers cannot be applied to quota top-up plans. Top-ups are billed at standard on-demand rates.' }, 400, origin)
+          }
         } else {
           if (!targetPlanId && duration !== '24h') {
             return json({ message: 'Missing required planId' }, 400, origin)
@@ -111,10 +117,11 @@ export default {
 
         // 3. SERVER-SIDE ONLY Coupon Validation (NEVER TRUST CLIENT-PROVIDED AMOUNTS OR CUSTOM DISCOUNTS!)
         const rawCoupon = String(body.couponCode || body.coupon || '').trim()
-        const hasValidCoupon = isValidDiscountCoupon(rawCoupon)
+        // Top-ups are strictly excluded from discounts; coupons only apply to core subscription plans
+        const hasValidCoupon = !isTopup && isValidDiscountCoupon(rawCoupon)
         const discountFraction = hasValidCoupon ? 0.5 : 0
 
-        // Strict calculation: base price minus verified discount
+        // Strict calculation: base price minus verified discount (top-ups always 100% full rate)
         // We completely ignore body.amount or customAmountInr!
         const amount = Math.round(basePlanAmount * (1 - discountFraction))
 
@@ -635,16 +642,18 @@ export default {
                 incMinutes = topupMinutes
                 incResponses = topupResponses
                 const quote = calculateCopilotTopup(topupMinutes)
-                const minimumAllowedPaise = Math.round(quote.priceInr * 0.45 * 100)
-                if (orderData.amount < minimumAllowedPaise) {
-                  return json({ message: 'Amount paid does not meet minimum top-up requirement' }, 400, origin)
+                const exactRequiredPaise = quote.priceInr * 100
+                // Top-ups MUST be paid at exact full price. No discounts or coupon offers permitted!
+                if (orderData.amount < exactRequiredPaise - 200) {
+                  return json({ message: 'Amount paid does not match required top-up price. Offers and coupons cannot be applied to top-up plans.' }, 400, origin)
                 }
               } else if (topupType === 'autoapply') {
                 incApplications = topupApplications
                 const quote = calculateAutoApplyTopup(topupApplications)
-                const minimumAllowedPaise = Math.round(quote.priceInr * 0.45 * 100)
-                if (orderData.amount < minimumAllowedPaise) {
-                  return json({ message: 'Amount paid does not meet minimum top-up requirement' }, 400, origin)
+                const exactRequiredPaise = quote.priceInr * 100
+                // Top-ups MUST be paid at exact full price. No discounts or coupon offers permitted!
+                if (orderData.amount < exactRequiredPaise - 200) {
+                  return json({ message: 'Amount paid does not match required top-up price. Offers and coupons cannot be applied to top-up plans.' }, 400, origin)
                 }
               }
               planTier = 'usage'

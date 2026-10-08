@@ -130,3 +130,16 @@ export function calculateDiscount(
     label,
   }
 }
+
+/**
+ * Promotional coupons and discount offers are exclusively valid for core membership plans
+ * (Standard, Pro+ Pro, Lifetime BYOK). They do NOT apply to flexible quota top-ups.
+ */
+export function isCouponAllowedForPlan(planIdOrTier?: string): boolean {
+  if (!planIdOrTier) return false
+  const lower = planIdOrTier.toLowerCase()
+  if (lower === 'topup' || lower.includes('topup') || lower === 'copilot' || lower === 'autoapply') {
+    return false
+  }
+  return true
+}

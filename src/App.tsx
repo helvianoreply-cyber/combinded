@@ -698,8 +698,7 @@ function App() {
 
   const startTopup = useCallback(async (
     topupType: 'copilot' | 'autoapply',
-    units: number,
-    couponCode?: string
+    units: number
   ) => {
     setUpgradeError(null)
     if (!userId || !sessionEmail) {
@@ -728,7 +727,6 @@ function App() {
         applications: topupType === 'autoapply' ? units : undefined,
         userId,
         email: sessionEmail,
-        couponCode: couponCode || undefined,
       }
 
       const response = await fetch(`${apiBase}/create-order`, {

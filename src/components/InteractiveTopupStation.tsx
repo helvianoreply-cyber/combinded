@@ -32,6 +32,10 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
         <p className="topup-station-subtitle">
           Only pay for what you actually use. Choose your exact meeting minutes or job applications—pricing calculates in real-time and stacks onto your existing balance.
         </p>
+        <div className="topup-offer-notice">
+          <span className="notice-icon">🏷️</span>
+          <span><strong>Standard On-Demand Rates:</strong> Promotional coupons and discount offers do not apply to top-ups. Pricing scales dynamically with volume.</span>
+        </div>
       </div>
 
       <div className="topup-cards-grid">
@@ -48,6 +52,7 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
                 <span className="topup-amount">{copilotQuote.priceUsd}</span>
               </div>
               <span className="topup-inr-tag">≈ ₹{copilotQuote.priceInr}</span>
+              <span className="topup-no-discount-tag">Fixed Rate • No Coupons</span>
             </div>
           </div>
 
@@ -149,6 +154,7 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
                 <span className="topup-amount">{applyQuote.priceUsd}</span>
               </div>
               <span className="topup-inr-tag">≈ ₹{applyQuote.priceInr}</span>
+              <span className="topup-no-discount-tag">Fixed Rate • No Coupons</span>
             </div>
           </div>
 
