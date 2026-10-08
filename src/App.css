@@ -15909,5 +15909,397 @@ section[id] {
   border: 1px solid #e2e8f0 !important;
 }
 
+/* =========================================================
+   INTERACTIVE ON-DEMAND TOP-UP STATION
+   ========================================================= */
+.topup-station-section {
+  margin-top: 4rem;
+  margin-bottom: 2rem;
+  padding: 2.5rem 1.5rem;
+  background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12) 0%, rgba(15, 23, 42, 0.6) 75%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 28px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
 
+.topup-station-header {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 3rem;
+}
 
+.topup-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1.1rem;
+  background: rgba(99, 102, 241, 0.16);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 999px;
+  color: #a5b4fc;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.topup-station-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 0.8rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.topup-station-subtitle {
+  font-size: 0.98rem;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.topup-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 2rem;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.topup-card {
+  position: relative;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.topup-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
+}
+
+.topup-card.copilot-theme {
+  border-color: rgba(99, 102, 241, 0.25);
+}
+.topup-card.copilot-theme:hover {
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 20px 50px rgba(99, 102, 241, 0.2);
+}
+
+.topup-card.autoapply-theme {
+  border-color: rgba(236, 72, 153, 0.25);
+}
+.topup-card.autoapply-theme:hover {
+  border-color: rgba(236, 72, 153, 0.6);
+  box-shadow: 0 20px 50px rgba(236, 72, 153, 0.2);
+}
+
+.topup-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.topup-icon-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.topup-icon-pill.copilot {
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.topup-icon-pill.autoapply {
+  background: rgba(236, 72, 153, 0.2);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.topup-price-box {
+  text-align: right;
+}
+
+.topup-price-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.topup-currency {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.topup-amount {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.topup-inr-tag {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  margin-top: 0.2rem;
+}
+
+.topup-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.5rem;
+}
+
+.topup-desc {
+  font-size: 0.88rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0 0 1.5rem;
+  min-height: 2.6rem;
+}
+
+.topup-value-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.topup-val-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.topup-val-metric.full-width {
+  width: 100%;
+}
+
+.topup-val-number {
+  font-size: 1.9rem;
+  font-weight: 900;
+  color: #60a5fa;
+  line-height: 1;
+}
+
+.topup-card.autoapply-theme .topup-val-number {
+  color: #f472b6;
+}
+
+.topup-val-unit {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
+
+.topup-val-sub {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 0.15rem;
+}
+
+.topup-val-divider {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.topup-slider-wrap {
+  margin-bottom: 1.5rem;
+}
+
+.topup-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+}
+
+.topup-range-slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #1e293b;
+  outline: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.topup-range-slider.copilot-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #6366f1;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.75);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.topup-range-slider.autoapply-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ec4899;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.75);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.topup-range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.topup-presets-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.topup-presets-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.topup-preset-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.topup-chip {
+  padding: 0.28rem 0.65rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.topup-chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.topup-chip.selected {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: #818cf8;
+  color: #ffffff;
+}
+
+.topup-card.autoapply-theme .topup-chip.selected {
+  background: rgba(236, 72, 153, 0.25);
+  border-color: #f472b6;
+}
+
+.topup-features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.topup-features-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.topup-features-list .chk {
+  color: #10b981;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.topup-cta-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.95rem 1.25rem;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  margin-top: auto;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.topup-cta-btn.copilot-btn {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  color: #ffffff;
+}
+
+.topup-cta-btn.copilot-btn:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+}
+
+.topup-cta-btn.autoapply-btn {
+  background: linear-gradient(135deg, #db2777 0%, #ec4899 100%);
+  color: #ffffff;
+}
+
+.topup-cta-btn.autoapply-btn:hover {
+  background: linear-gradient(135deg, #be185d 0%, #db2777 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(236, 72, 153, 0.4);
+}
+
+.topup-cta-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}

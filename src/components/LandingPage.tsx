@@ -4,6 +4,7 @@ import { SkyCanvas3D } from './SkyCanvas3D'
 import { UnifiedSimultaneousPracticalsArena } from './UnifiedSimultaneousPracticalsArena'
 import { type DbPlan, SEED_PLANS, getPlanInrPrice } from '../lib/database.types'
 import { PaymentModal } from './PaymentModal'
+import { InteractiveTopupStation } from './InteractiveTopupStation'
 
 interface LandingPageProps {
   signInWithGoogle: () => Promise<void>
@@ -11,6 +12,7 @@ interface LandingPageProps {
   isAuthLoading: boolean
   plans?: DbPlan[]
   startUpgrade?: (plan: DbPlan | '24h' | 'month', couponCode?: string, customAmountInr?: number) => void
+  startTopup?: (type: 'copilot' | 'autoapply', units: number, couponCode?: string) => void
   startDodoUpgrade?: (productId?: string, couponCode?: string) => void
   isSignedIn?: boolean
   userPlan?: string
@@ -458,6 +460,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   isAuthLoading,
   plans,
   startUpgrade,
+  startTopup,
   startDodoUpgrade,
   isSignedIn,
   userPlan,
@@ -491,6 +494,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
     if (startDodoUpgrade) {
       startDodoUpgrade(p.dodo_product_id || undefined, couponCode)
+    } else {
+      navigate('/dashboard')
+    }
+  }
+
+  const handleTopup = (type: 'copilot' | 'autoapply', units: number) => {
+    if (!isSignedIn) {
+      if (!isSupabaseConfigured || isAuthLoading) return
+      signInWithGoogle()
+      return
+    }
+    if (startTopup) {
+      startTopup(type, units)
     } else {
       navigate('/dashboard')
     }
@@ -3903,6 +3919,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               )
             })}
           </div>
+
+          {/* Dynamic On-Demand Top-Up Station */}
+          <InteractiveTopupStation onTopup={handleTopup} />
 
           <div className="pricing-accepted-footer">
             <p>

@@ -696,6 +696,133 @@ function App() {
     }
   }, [displayName, loadRazorpay, navigate, sessionEmail, syncUserWithDatabase, userId])
 
+  const startTopup = useCallback(async (
+    topupType: 'copilot' | 'autoapply',
+    units: number,
+    couponCode?: string
+  ) => {
+    setUpgradeError(null)
+    if (!userId || !sessionEmail) {
+      setUpgradeError('You must be signed in to purchase a top-up')
+      return
+    }
+
+    setIsUpgrading(true)
+    const scriptLoaded = await loadRazorpay()
+    if (!scriptLoaded || !(window as unknown as { Razorpay?: unknown }).Razorpay) {
+      console.error('Razorpay SDK failed to load')
+      setIsUpgrading(false)
+      setUpgradeError('Unable to load Razorpay checkout')
+      return
+    }
+
+    try {
+      const apiBase =
+        import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+
+      const orderPayload: Record<string, unknown> = {
+        receipt: `topup_${Date.now()}`,
+        isTopup: true,
+        topupType,
+        minutes: topupType === 'copilot' ? units : undefined,
+        applications: topupType === 'autoapply' ? units : undefined,
+        userId,
+        email: sessionEmail,
+        couponCode: couponCode || undefined,
+      }
+
+      const response = await fetch(`${apiBase}/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderPayload),
+      })
+
+      if (!response.ok) {
+        let details: { message?: string } | null = null
+        try {
+          details = (await response.json()) as { message?: string }
+        } catch {
+          details = null
+        }
+        console.error('Create top-up order failed', response.status, details)
+        setIsUpgrading(false)
+        setUpgradeError(details?.message ?? 'Unable to create Razorpay top-up order')
+        return
+      }
+
+      const data = (await response.json()) as {
+        orderId: string
+        amount: number
+        currency: string
+        keyId: string
+      }
+
+      const topupTitle = topupType === 'copilot'
+        ? `${units} Mins AI Meeting Copilot Top-Up`
+        : `${units} Jobs Auto-Apply Top-Up`
+
+      const options = {
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: 'Helvia Quota Top-Up',
+        description: topupTitle,
+        order_id: data.orderId,
+        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+          try {
+            const verifyRes = await fetch(`${apiBase}/verify-payment`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                userId,
+                email: sessionEmail,
+              }),
+            })
+
+            const verifyData = await verifyRes.json()
+            if (verifyRes.ok && verifyData.ok) {
+              await syncUserWithDatabase(userId, sessionEmail)
+              navigate('/dashboard', { replace: true })
+            } else {
+              setUpgradeError(verifyData?.message || 'Payment verification failed')
+            }
+          } catch (err) {
+            console.error('Verify payment failed:', err)
+            setUpgradeError('Payment was completed, but verification failed')
+          } finally {
+            setIsUpgrading(false)
+          }
+        },
+        prefill: {
+          name: displayName ?? undefined,
+          email: sessionEmail ?? undefined,
+        },
+        theme: {
+          color: '#6366f1',
+        },
+      }
+
+      const RazorpayCtor = (window as unknown as { Razorpay: new (options: unknown) => { on: (event: string, cb: () => void) => void; open: () => void } }).Razorpay
+      const razorpay = new RazorpayCtor(options)
+      razorpay.on('payment.failed', () => {
+        setIsUpgrading(false)
+        setUpgradeError('Payment was not completed. Please try again.')
+      })
+      razorpay.open()
+    } catch (err) {
+      console.error('Top-up exception', err)
+      setIsUpgrading(false)
+      setUpgradeError('Something went wrong while initiating top-up payment')
+    }
+  }, [displayName, loadRazorpay, navigate, sessionEmail, syncUserWithDatabase, userId])
+
   const startDodoUpgrade = useCallback(async (productId?: string, couponCode?: string) => {
     setUpgradeError(null)
     if (!userId || !sessionEmail) {
@@ -920,6 +1047,7 @@ function App() {
                   isAuthLoading={isAuthLoading}
                   plans={plans}
                   startUpgrade={startUpgrade}
+                  startTopup={startTopup}
                   startDodoUpgrade={startDodoUpgrade}
                   isSignedIn={isSignedIn}
                   userPlan={plan}
@@ -937,6 +1065,7 @@ function App() {
                 plan={plan}
                 planExpiresAt={planExpiresAt}
                 startUpgrade={startUpgrade}
+                startTopup={startTopup}
                 startDodoUpgrade={startDodoUpgrade}
                 isUpgrading={isUpgrading}
                 upgradeError={upgradeError}
@@ -969,6 +1098,7 @@ function App() {
                 plan={plan}
                 planExpiresAt={planExpiresAt}
                 startUpgrade={startUpgrade}
+                startTopup={startTopup}
                 startDodoUpgrade={startDodoUpgrade}
                 isUpgrading={isUpgrading}
                 upgradeError={upgradeError}

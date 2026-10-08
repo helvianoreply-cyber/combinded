@@ -68,26 +68,6 @@ export const SEED_PLANS: DbPlan[] = [
     included_applications: 600,
   },
   {
-    id: '867a98bf-9dd0-4b22-bbf5-86d19193632e',
-    tier: 'usage',
-    name: 'Max+ Pro',
-    price: 25,
-    included_minutes: 2500,
-    included_responses: 3500,
-    dodo_product_id: 'pdt_0NnIQFN75jtyT7fIvHQd1',
-    included_applications: 1500,
-  },
-  {
-    id: '08545cec-6a37-4922-8456-54481379e290',
-    tier: 'usage',
-    name: 'Ultra+ Pro',
-    price: 35,
-    included_minutes: 5000,
-    included_responses: 7500,
-    dodo_product_id: 'pdt_0NnIQOPYDlQBXyoHj0Mxv',
-    included_applications: 3500,
-  },
-  {
     id: '13969aad-7309-40ec-9b54-70b39d5b13f6',
     tier: 'pro plus+',
     name: 'Pro Plus+ Lifetime (BYOK)',
@@ -111,4 +91,43 @@ export function getPlanInrPrice(priceUsd: number): number {
   if (p <= 35) return 2999
   if (p <= 49) return 4199
   return Math.round(p * 86)
+}
+
+export interface TopupCopilotQuote {
+  minutes: number
+  responses: number
+  priceInr: number
+  priceUsd: number
+}
+
+export interface TopupAutoApplyQuote {
+  applications: number
+  priceInr: number
+  priceUsd: number
+}
+
+/**
+ * Dynamic Top-up for AI Meeting Copilot Time & Answers
+ */
+export function calculateCopilotTopup(minutes: number): TopupCopilotQuote {
+  const m = Math.max(60, Math.min(5000, Math.round(minutes)))
+  const responses = Math.round(m * 1.6)
+  let inr = 99 + Math.round(m * 1.05)
+  if (m >= 1000) inr = Math.round(inr * 0.9)
+  if (m >= 2000) inr = Math.round(inr * 0.85)
+  const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
+  return { minutes: m, responses, priceInr: inr, priceUsd: usd }
+}
+
+/**
+ * Dynamic Top-up for AI Jobs Auto Apply (Applications)
+ */
+export function calculateAutoApplyTopup(applications: number): TopupAutoApplyQuote {
+  const a = Math.max(50, Math.min(5000, Math.round(applications)))
+  let inr = 99 + Math.round(a * 1.4)
+  if (a >= 500) inr = Math.round(inr * 0.9)
+  if (a >= 1000) inr = Math.round(inr * 0.85)
+  if (a >= 2000) inr = Math.round(inr * 0.8)
+  const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
+  return { applications: a, priceInr: inr, priceUsd: usd }
 }

@@ -29,53 +29,78 @@ export default {
         let targetPlanId = String(body.planId || '').trim()
         let targetTier = String(body.planTier || body.tier || 'usage')
 
-        if (!targetPlanId && duration !== '24h') {
-          return json({ message: 'Missing required planId' }, 400, origin)
-        }
+        const isTopup = body.isTopup === true || body.type === 'topup' || body.topupType === 'copilot' || body.topupType === 'autoapply'
+        let topupType = String(body.topupType || '').toLowerCase()
+        let topupMinutes = 0
+        let topupResponses = 0
+        let topupApplications = 0
 
         // Hardcoded official catalog for resilient fallback and strict validation
         const OFFICIAL_PLANS_BY_ID = {
           '4d569314-3b27-45c8-93ad-3d5c2eebffc0': { name: 'Standard Plan', priceUsd: 8, tier: 'usage' },
           'fdbc4259-cdb8-42b8-a0d5-02b8a7392812': { name: 'Pro+ Pro (Most Popular)', priceUsd: 15, tier: 'usage' },
-          '867a98bf-9dd0-4b22-bbf5-86d19193632e': { name: 'Max+ Pro', priceUsd: 25, tier: 'usage' },
-          '08545cec-6a37-4922-8456-54481379e290': { name: 'Ultra+ Pro', priceUsd: 35, tier: 'usage' },
           '13969aad-7309-40ec-9b54-70b39d5b13f6': { name: 'Pro Plus+ Lifetime (BYOK)', priceUsd: 49, tier: 'pro plus+' },
         }
 
-        // 1. If planId provided, fetch official price from Supabase
-        if (targetPlanId && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
-          try {
-            const planRes = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/plans?id=eq.${encodeURIComponent(targetPlanId)}&select=*`, {
-              headers: {
-                apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-                Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-              }
-            })
-            if (planRes.ok) {
-              const pRows = await planRes.json()
-              if (Array.isArray(pRows) && pRows.length > 0) {
-                const p = pRows[0]
-                const priceUsd = Number(p.price)
-                if (priceUsd === 0) {
-                  return json({ message: 'Free tier cannot be purchased' }, 400, origin)
-                }
-                baseInr = getOfficialPlanInrPrice(priceUsd)
-                targetTier = p.tier || targetTier
-              }
-            }
-          } catch (e) {
-            console.warn('Supabase plan lookup failed in create-order:', e)
+        if (isTopup) {
+          targetPlanId = 'topup'
+          targetTier = 'usage'
+          if (topupType === 'copilot' || body.minutes != null) {
+            topupType = 'copilot'
+            const m = Math.max(60, Math.min(5000, Number(body.minutes) || 300))
+            const quote = calculateCopilotTopup(m)
+            topupMinutes = quote.minutes
+            topupResponses = quote.responses
+            baseInr = quote.priceInr
+          } else if (topupType === 'autoapply' || body.applications != null) {
+            topupType = 'autoapply'
+            const a = Math.max(50, Math.min(5000, Number(body.applications) || 250))
+            const quote = calculateAutoApplyTopup(a)
+            topupApplications = quote.applications
+            baseInr = quote.priceInr
+          } else {
+            return json({ message: 'Invalid top-up type. Expected copilot or autoapply' }, 400, origin)
           }
-        }
+        } else {
+          if (!targetPlanId && duration !== '24h') {
+            return json({ message: 'Missing required planId' }, 400, origin)
+          }
 
-        // 2. Resilient fallback to official catalog if DB call failed
-        if (!baseInr && targetPlanId && OFFICIAL_PLANS_BY_ID[targetPlanId]) {
-          const off = OFFICIAL_PLANS_BY_ID[targetPlanId]
-          baseInr = getOfficialPlanInrPrice(off.priceUsd)
-          targetTier = off.tier || targetTier
-        } else if (!baseInr && duration === '24h') {
-          baseInr = 169
-          targetTier = 'standard'
+          // 1. If planId provided, fetch official price from Supabase
+          if (targetPlanId && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+            try {
+              const planRes = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/plans?id=eq.${encodeURIComponent(targetPlanId)}&select=*`, {
+                headers: {
+                  apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+                  Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+                }
+              })
+              if (planRes.ok) {
+                const pRows = await planRes.json()
+                if (Array.isArray(pRows) && pRows.length > 0) {
+                  const p = pRows[0]
+                  const priceUsd = Number(p.price)
+                  if (priceUsd === 0) {
+                    return json({ message: 'Free tier cannot be purchased' }, 400, origin)
+                  }
+                  baseInr = getOfficialPlanInrPrice(priceUsd)
+                  targetTier = p.tier || targetTier
+                }
+              }
+            } catch (e) {
+              console.warn('Supabase plan lookup failed in create-order:', e)
+            }
+          }
+
+          // 2. Resilient fallback to official catalog if DB call failed
+          if (!baseInr && targetPlanId && OFFICIAL_PLANS_BY_ID[targetPlanId]) {
+            const off = OFFICIAL_PLANS_BY_ID[targetPlanId]
+            baseInr = getOfficialPlanInrPrice(off.priceUsd)
+            targetTier = off.tier || targetTier
+          } else if (!baseInr && duration === '24h') {
+            baseInr = 169
+            targetTier = 'standard'
+          }
         }
 
         if (!baseInr || baseInr <= 0) {
@@ -114,6 +139,11 @@ export default {
           receipt,
           notes: {
             project: 'helvia-remote',
+            isTopup: isTopup ? 'true' : 'false',
+            topupType: isTopup ? topupType : '',
+            topupMinutes: isTopup ? String(topupMinutes) : '0',
+            topupResponses: isTopup ? String(topupResponses) : '0',
+            topupApplications: isTopup ? String(topupApplications) : '0',
             planId: targetPlanId,
             planTier: targetTier,
             expectedAmount: String(amount),
@@ -550,10 +580,16 @@ export default {
           return json({ ok: true, message: 'Payment already processed and credited' }, 200, origin)
         }
 
+        const isTopupOrder = orderData.notes?.isTopup === 'true'
+        const topupType = String(orderData.notes?.topupType || '').toLowerCase()
+        const topupMinutes = Number(orderData.notes?.topupMinutes) || 0
+        const topupResponses = Number(orderData.notes?.topupResponses) || 0
+        const topupApplications = Number(orderData.notes?.topupApplications) || 0
+
         // 6. Trusted Plan ID & Quota Lookup
         // Read strictly from immutable orderData.notes! (Never trust client body.planId or body.plan!)
-        const trustedPlanId = orderData.notes?.planId
-        if (!trustedPlanId) {
+        const trustedPlanId = orderData.notes?.planId || ''
+        if (!trustedPlanId && !isTopupOrder) {
           return json({ message: 'Order verification failed: planId is missing from order notes' }, 400, origin)
         }
         const trustedUserId = orderData.notes?.userId || userId || ''
@@ -594,8 +630,25 @@ export default {
             let incResponses = 0
             let incApplications = 0
 
-            // If trustedPlanId provided, fetch quotas from public.plans
-            if (trustedPlanId) {
+            if (isTopupOrder) {
+              if (topupType === 'copilot') {
+                incMinutes = topupMinutes
+                incResponses = topupResponses
+                const quote = calculateCopilotTopup(topupMinutes)
+                const minimumAllowedPaise = Math.round(quote.priceInr * 0.45 * 100)
+                if (orderData.amount < minimumAllowedPaise) {
+                  return json({ message: 'Amount paid does not meet minimum top-up requirement' }, 400, origin)
+                }
+              } else if (topupType === 'autoapply') {
+                incApplications = topupApplications
+                const quote = calculateAutoApplyTopup(topupApplications)
+                const minimumAllowedPaise = Math.round(quote.priceInr * 0.45 * 100)
+                if (orderData.amount < minimumAllowedPaise) {
+                  return json({ message: 'Amount paid does not meet minimum top-up requirement' }, 400, origin)
+                }
+              }
+              planTier = 'usage'
+            } else if (trustedPlanId) {
               try {
                 const planRes = await fetch(`${supabaseUrl}/rest/v1/plans?id=eq.${encodeURIComponent(trustedPlanId)}&select=*`, {
                   headers: {
@@ -1203,8 +1256,6 @@ export default {
           { id: 'ee803f63-7ffc-4c93-bd79-2cb349c318b1', tier: 'basic', name: 'Basic Free Tier', price: 0, included_minutes: 0, included_responses: 0, dodo_product_id: null, included_applications: 0 },
           { id: '4d569314-3b27-45c8-93ad-3d5c2eebffc0', tier: 'usage', name: 'Standard Plan', price: 8, included_minutes: 300, included_responses: 500, dodo_product_id: 'pdt_0NnIPft32K3WxEEJbH04J', included_applications: 200 },
           { id: 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812', tier: 'usage', name: 'Pro+ Pro (Most Popular)', price: 15, included_minutes: 1000, included_responses: 1500, dodo_product_id: 'pdt_0NnIQ5VyQfhSXYsFLcojZ', included_applications: 600 },
-          { id: '867a98bf-9dd0-4b22-bbf5-86d19193632e', tier: 'usage', name: 'Max+ Pro', price: 25, included_minutes: 2500, included_responses: 3500, dodo_product_id: 'pdt_0NnIQFN75jtyT7fIvHQd1', included_applications: 1500 },
-          { id: '08545cec-6a37-4922-8456-54481379e290', tier: 'usage', name: 'Ultra+ Pro', price: 35, included_minutes: 5000, included_responses: 7500, dodo_product_id: 'pdt_0NnIQOPYDlQBXyoHj0Mxv', included_applications: 3500 },
           { id: '13969aad-7309-40ec-9b54-70b39d5b13f6', tier: 'pro plus+', name: 'Pro Plus+ Lifetime (BYOK)', price: 49, included_minutes: 0, included_responses: 0, dodo_product_id: 'pdt_0NnIQqc0EzhEoVKHtBWTx', included_applications: 0 }
         ] 
       }, 200, origin)
@@ -1215,6 +1266,26 @@ export default {
       headers: corsHeaders(origin),
     })
   },
+}
+
+function calculateCopilotTopup(minutes) {
+  const m = Math.max(60, Math.min(5000, Math.round(Number(minutes) || 300)))
+  const responses = Math.round(m * 1.6)
+  let inr = 99 + Math.round(m * 1.05)
+  if (m >= 1000) inr = Math.round(inr * 0.9)
+  if (m >= 2000) inr = Math.round(inr * 0.85)
+  const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
+  return { minutes: m, responses, priceInr: inr, priceUsd: usd }
+}
+
+function calculateAutoApplyTopup(applications) {
+  const a = Math.max(50, Math.min(5000, Math.round(Number(applications) || 250)))
+  let inr = 99 + Math.round(a * 1.4)
+  if (a >= 500) inr = Math.round(inr * 0.9)
+  if (a >= 1000) inr = Math.round(inr * 0.85)
+  if (a >= 2000) inr = Math.round(inr * 0.8)
+  const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
+  return { applications: a, priceInr: inr, priceUsd: usd }
 }
 
 function getOfficialPlanInrPrice(priceUsd) {

@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { SkyCanvas3D } from './SkyCanvas3D'
 import { type DbUser, type DbPlan, SEED_PLANS, getPlanInrPrice } from '../lib/database.types'
 import { PaymentModal } from './PaymentModal'
+import { InteractiveTopupStation } from './InteractiveTopupStation'
 
 interface DashboardProps {
   displayName: string | null
@@ -11,6 +12,7 @@ interface DashboardProps {
   plan: string
   planExpiresAt: string | null
   startUpgrade: (plan: DbPlan | '24h' | 'month', couponCode?: string, customAmountInr?: number) => void
+  startTopup?: (type: 'copilot' | 'autoapply', units: number, couponCode?: string) => void
   startDodoUpgrade?: (productId?: string, couponCode?: string) => void
   isUpgrading: boolean
   upgradeError: string | null
@@ -65,6 +67,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   plan,
   planExpiresAt,
   startUpgrade,
+  startTopup,
   startDodoUpgrade,
   isUpgrading,
   upgradeError,
@@ -444,6 +447,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
             )
           })}
         </section>
+
+        {/* Dynamic On-Demand Top-Up Station */}
+        <InteractiveTopupStation 
+          onTopup={(type, units) => {
+            if (startTopup) startTopup(type, units)
+          }}
+          isProcessing={isUpgrading}
+        />
 
         {/* Global checkout note */}
         <div style={{ textAlign: 'center', marginTop: '3.5rem', color: '#64748b', fontSize: '0.86rem' }}>
