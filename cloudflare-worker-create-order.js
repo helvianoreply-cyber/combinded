@@ -696,6 +696,7 @@ export default {
             let existingResponses = 0
             let existingApplications = 0
 
+            let existingPlan = null
             if (targetUrl) {
               try {
                 const userGetRes = await fetch(`${targetUrl}&select=seconds_remaining,responses_remaining,applications_remaining,plan`, {
@@ -709,6 +710,7 @@ export default {
                 if (userGetRes.ok) {
                   const uRows = await userGetRes.json()
                   if (Array.isArray(uRows) && uRows.length > 0) {
+                    existingPlan = uRows[0].plan
                     existingSeconds = Math.max(0, Number(uRows[0].seconds_remaining) || 0)
                     existingResponses = Math.max(0, Number(uRows[0].responses_remaining) || 0)
                     existingApplications = Math.max(0, Number(uRows[0].applications_remaining) || 0)
@@ -719,8 +721,15 @@ export default {
               }
             }
 
+            // For top-ups: Free/Basic users upgrade to 'usage'.
+            // Lifetime BYOK ('pro plus+') users preserve their lifetime tier while adding credits.
+            let finalPlan = planTier
+            if (isTopupOrder && existingPlan === 'pro plus+') {
+              finalPlan = 'pro plus+'
+            }
+
             const updateBody = {
-              plan: planTier,
+              plan: finalPlan,
               login_verifier: true,
               updated_at: new Date().toISOString(),
             }
@@ -1158,6 +1167,7 @@ export default {
           let existingResponses = 0
           let existingApplications = 0
 
+          let existingPlan = null
           if (targetUrl) {
             try {
               const userRes = await fetch(`${targetUrl}&select=seconds_remaining,responses_remaining,applications_remaining,plan`, {
@@ -1171,6 +1181,7 @@ export default {
               if (userRes.ok) {
                 const uRows = await userRes.json()
                 if (Array.isArray(uRows) && uRows.length > 0) {
+                  existingPlan = uRows[0].plan
                   existingSeconds = Math.max(0, Number(uRows[0].seconds_remaining) || 0)
                   existingResponses = Math.max(0, Number(uRows[0].responses_remaining) || 0)
                   existingApplications = Math.max(0, Number(uRows[0].applications_remaining) || 0)
@@ -1181,8 +1192,13 @@ export default {
             }
           }
 
+          let finalPlan = planTier
+          if (existingPlan === 'pro plus+' && planTier === 'usage') {
+            finalPlan = 'pro plus+'
+          }
+
           const updateBody = {
-            plan: planTier,
+            plan: finalPlan,
             updated_at: new Date().toISOString(),
           }
 
