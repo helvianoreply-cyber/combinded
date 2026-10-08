@@ -42,10 +42,10 @@ export const SEED_PLANS: DbPlan[] = [
     tier: 'basic',
     name: 'Basic Free Tier',
     price: 0,
-    included_minutes: 0,
-    included_responses: 0,
+    included_minutes: 5,
+    included_responses: 5,
     dodo_product_id: null,
-    included_applications: 0,
+    included_applications: 5,
   },
   {
     id: '4d569314-3b27-45c8-93ad-3d5c2eebffc0',
