@@ -25,12 +25,18 @@ export const ReviewSessionCard: React.FC<ReviewSessionCardProps> = ({
   const normalizedEmail = (userEmail || '').trim().toLowerCase()
   const storageKey = `helvia_review_claimed_${normalizedEmail || 'user'}`
 
+  const userPlan = (currentProfile?.plan || '').trim().toLowerCase()
+  const isUsagePlan = userPlan === 'usage'
+  const displayPlanName = currentProfile?.plan ? currentProfile.plan.toUpperCase() : 'FREE / BASIC'
+
   useEffect(() => {
     if (normalizedEmail) {
       const stored = localStorage.getItem(storageKey)
       if (stored) {
         setHasClaimed(true)
-        setClaimedNotice('You have already claimed your 2 Hours (120 mins) & 300 AI Answers review bonus.')
+        setClaimedNotice(
+          `This email (${normalizedEmail}) has already claimed the one-time review bonus (2 Hours & 300 AI Answers). Thank you for your honest feedback!`
+        )
       }
     }
   }, [normalizedEmail, storageKey])
@@ -38,9 +44,25 @@ export const ReviewSessionCard: React.FC<ReviewSessionCardProps> = ({
   const apiBase =
     import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
 
+  const scrollToPlans = () => {
+    const el = document.getElementById('plans-grid')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitError(null)
+
+    // 1. Strict Usage Plan enforcement
+    if (!isUsagePlan) {
+      setSubmitError(
+        `The 2 Hours & 300 AI Answers review bonus is exclusively available for active Usage plan members. Your account is currently on the '${displayPlanName}' plan. Please upgrade to a Usage plan below to claim your reward!`
+      )
+      scrollToPlans()
+      return
+    }
 
     if (!issues.trim() && !suggestions.trim()) {
       setSubmitError('Please share where you faced issues or what features we should develop next.')
@@ -72,6 +94,7 @@ export const ReviewSessionCard: React.FC<ReviewSessionCardProps> = ({
         ok?: boolean
         message?: string
         alreadyClaimed?: boolean
+        planNotEligible?: boolean
         profile?: DbUser
       }
 
@@ -79,10 +102,21 @@ export const ReviewSessionCard: React.FC<ReviewSessionCardProps> = ({
         throw new Error(data.message || 'Failed to submit review')
       }
 
-      // Mark claimed locally
+      if (data.alreadyClaimed) {
+        setHasClaimed(true)
+        localStorage.setItem(storageKey, 'true')
+        setClaimedNotice(
+          data.message || `This email (${normalizedEmail}) has already claimed the one-time review bonus.`
+        )
+        return
+      }
+
+      // Mark claimed locally for this email only once
       setHasClaimed(true)
       localStorage.setItem(storageKey, 'true')
-      setClaimedNotice(data.message || '🎉 2 Hours (120 mins) & 300 AI Answers added to your balance!')
+      setClaimedNotice(
+        data.message || `🎉 2 Hours (120 mins) & 300 AI Answers added to your Usage balance! (Claimed once for ${normalizedEmail})`
+      )
 
       // If server returned updated profile or calculate locally
       if (data.profile) {
@@ -107,22 +141,52 @@ export const ReviewSessionCard: React.FC<ReviewSessionCardProps> = ({
   return (
     <section className="review-session-card">
       <div className="review-card-header">
-        <div className="review-badge">
-          <span>🎁</span>
-          <span>Earn 2 Hours &amp; 300 Answers</span>
+        <div className={`review-badge ${isUsagePlan ? 'usage-active' : 'usage-locked'}`}>
+          <span>{isUsagePlan ? '🎁' : '🔒'}</span>
+          <span>{isUsagePlan ? 'Usage Plan Exclusive Bonus (1 Time Per Email)' : 'Usage Plan Exclusive Reward (1 Time)'}</span>
         </div>
         <h3 className="review-card-title">Help Us Improve Helvia &amp; Claim Instant Bonus</h3>
         <p className="review-card-subtitle">
-          Share your honest review about where you faced issues and what development should be done. Once submitted, <strong>2 Hours (120 mins)</strong> of meeting time and <strong>300 AI Answers</strong> are automatically added to your account!
+          Share your honest review about where you faced issues and what development should be done next.
+          {isUsagePlan ? (
+            <>
+              {' '}As an active <strong>Usage Plan</strong> member, you will receive <strong>2 Hours (120 mins)</strong> of meeting time and <strong>300 AI Answers</strong> added directly to your account balance <em>(strictly once per email)</em>!
+            </>
+          ) : (
+            <>
+              {' '}<strong>Note:</strong> The 2-Hour &amp; 300 AI Answers bonus is reserved exclusively for accounts on a <strong>Usage Plan</strong> (limited to once per email).
+            </>
+          )}
         </p>
       </div>
+
+      {/* Plan qualification banner if user is not on usage plan */}
+      {!isUsagePlan && (
+        <div className="review-plan-notice">
+          <div className="plan-notice-icon">⭐</div>
+          <div className="plan-notice-body">
+            <h4>Usage Plan Required for Reward</h4>
+            <p>
+              Your account is currently on the <strong>{displayPlanName}</strong> plan. The <strong>+2 Hours (7,200s) &amp; +300 AI Answers</strong> bonus is exclusively unlocked for <strong>Usage Plan</strong> members (1 time per email).
+            </p>
+            <button type="button" onClick={scrollToPlans} className="plan-notice-btn">
+              View Usage Plans &amp; Upgrade →
+            </button>
+          </div>
+        </div>
+      )}
 
       {hasClaimed ? (
         <div className="review-claimed-box">
           <div className="claimed-icon">🎉</div>
           <div className="claimed-text">
-            <h4>Thank You For Your Honest Review!</h4>
+            <h4>Reward Already Claimed For This Email</h4>
             <p>{claimedNotice || 'Your reward of 2 Hours & 300 AI Answers has been added to your live balance.'}</p>
+            {normalizedEmail && (
+              <span className="claimed-email-tag">
+                Account: <strong>{normalizedEmail}</strong> • Limit: 1 Claim per Email
+              </span>
+            )}
           </div>
         </div>
       ) : (
@@ -190,24 +254,36 @@ export const ReviewSessionCard: React.FC<ReviewSessionCardProps> = ({
           <div className="review-submit-row">
             <div className="review-reward-pill">
               <span>⚡ Reward:</span>
-              <strong>+2 Hours (7,200s) &amp; +300 AI Answers</strong>
+              <strong>+2 Hours (7,200s) &amp; +300 Answers</strong>
+              <span className="review-once-tag">Usage Only • Once per email</span>
             </div>
-            <button
-              type="submit"
-              className="review-submit-btn"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="review-spinner"></span>
-                  <span>Crediting Tokens…</span>
-                </>
-              ) : (
-                <>
-                  <span>🎁 Submit Review &amp; Claim Reward</span>
-                </>
-              )}
-            </button>
+
+            {isUsagePlan ? (
+              <button
+                type="submit"
+                className="review-submit-btn"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="review-spinner"></span>
+                    <span>Crediting Tokens…</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🎁 Submit Review &amp; Claim Reward</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={scrollToPlans}
+                className="review-submit-btn locked"
+              >
+                <span>🔒 Upgrade to Usage Plan to Claim</span>
+              </button>
+            )}
           </div>
         </form>
       )}

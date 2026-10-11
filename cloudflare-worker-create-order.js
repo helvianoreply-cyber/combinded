@@ -311,11 +311,23 @@ export default {
         }
 
         const userObj = userRows[0]
-        const userEmail = userObj.email || email
+        const userEmail = (userObj.email || email).trim().toLowerCase()
+        const userPlan = String(userObj.plan || '').trim().toLowerCase()
 
-        // Check if user already submitted a review
+        // 1. STRICT PLAN VALIDATION: Bonus is strictly for 'usage' plan only!
+        if (userPlan !== 'usage') {
+          return json({
+            ok: false,
+            planNotEligible: true,
+            currentPlan: userObj.plan || 'basic',
+            message: `The 2 Hours & 300 AI Answers review bonus is exclusively available for active Usage plan members. Your account is currently on the '${userObj.plan || 'basic'}' plan. Please upgrade to a Usage plan to claim this bonus reward.`,
+          }, 400, origin)
+        }
+
+        // 2. STRICT SINGLE-USE PER EMAIL VALIDATION:
+        // Check if this exact email has already submitted and claimed
         try {
-          const checkReview = await fetch(`${supabaseBase}/rest/v1/app_reviews?email=eq.${encodeURIComponent(userEmail)}&select=id`, {
+          const checkReview = await fetch(`${supabaseBase}/rest/v1/app_reviews?email=ilike.${encodeURIComponent(userEmail)}&select=id,created_at`, {
             headers: {
               apikey: serviceKey,
               Authorization: `Bearer ${serviceKey}`,
@@ -327,7 +339,7 @@ export default {
               return json({
                 ok: false,
                 alreadyClaimed: true,
-                message: 'You have already submitted a review and claimed your 2 Hours & 300 AI Answers reward!',
+                message: `This email address (${userEmail}) has already claimed the 2 Hours & 300 AI Answers review bonus. This reward can only be claimed once per email.`,
               }, 400, origin)
             }
           }
@@ -335,7 +347,40 @@ export default {
           console.warn('Review duplicate check warning:', checkErr)
         }
 
-        // Add 2 Hours (7,200 seconds) and 300 AI Answers (responses)
+        // 3. ATTEMPT INSERTING INTO app_reviews FIRST (database UNIQUE constraint on email prevents race conditions)
+        try {
+          const saveRes = await fetch(`${supabaseBase}/rest/v1/app_reviews`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: serviceKey,
+              Authorization: `Bearer ${serviceKey}`,
+              Prefer: 'return=minimal',
+            },
+            body: JSON.stringify({
+              user_id: userObj.id,
+              email: userEmail,
+              rating,
+              issues,
+              suggestions,
+              bonus_seconds: 7200,
+              bonus_responses: 300,
+              created_at: new Date().toISOString(),
+            }),
+          })
+
+          if (saveRes.status === 409) {
+            return json({
+              ok: false,
+              alreadyClaimed: true,
+              message: `This email address (${userEmail}) has already claimed the 2 Hours & 300 AI Answers review bonus. This reward can only be claimed once per email.`,
+            }, 400, origin)
+          }
+        } catch (saveErr) {
+          console.warn('Review save warning:', saveErr)
+        }
+
+        // 4. ADD 2 Hours (7,200 seconds) and 300 AI Answers (responses) ONLY FOR USAGE PLAN ACCOUNT
         const currentSeconds = Math.max(0, Number(userObj.seconds_remaining) || 0)
         const currentResponses = Math.max(0, Number(userObj.responses_remaining) || 0)
 
@@ -366,34 +411,9 @@ export default {
         const updatedRows = await updateRes.json()
         const updatedProfile = Array.isArray(updatedRows) && updatedRows.length > 0 ? updatedRows[0] : null
 
-        // Try storing review in app_reviews table
-        try {
-          await fetch(`${supabaseBase}/rest/v1/app_reviews`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              apikey: serviceKey,
-              Authorization: `Bearer ${serviceKey}`,
-              Prefer: 'return=minimal',
-            },
-            body: JSON.stringify({
-              user_id: userObj.id,
-              email: userEmail,
-              rating,
-              issues,
-              suggestions,
-              bonus_seconds: 7200,
-              bonus_responses: 300,
-              created_at: new Date().toISOString(),
-            }),
-          })
-        } catch (saveErr) {
-          console.warn('Could not save to app_reviews (quota reward still succeeded):', saveErr)
-        }
-
         return json({
           ok: true,
-          message: 'Review submitted! 2 Hours (120 mins) & 300 AI Answers have been added to your account balance.',
+          message: 'Review submitted! 2 Hours (120 mins) & 300 AI Answers have been added to your Usage balance (claimed once for this email).',
           bonusMinutes: 120,
           bonusResponses: 300,
           profile: updatedProfile || {

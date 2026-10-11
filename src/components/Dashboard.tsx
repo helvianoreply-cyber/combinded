@@ -280,7 +280,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         />
 
         {/* ALL PLANS GRID */}
-        <section className="all-plans-grid">
+        <section className="all-plans-grid" id="plans-grid">
           {availablePlans.map((p) => {
             const priceNum = Number(p.price)
             const isFree = priceNum === 0
