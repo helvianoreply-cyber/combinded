@@ -7,7 +7,7 @@ export interface CouponInfo {
 }
 
 /**
- * Registry of active coupon codes exclusively for Razorpay.
+ * Registry of active coupoffn codes exclusively for Razorpay.
  * Linked to Razorpay Offer: offer_TgYKvwy8HyzTTz (Apply_50_off - 50% Instant Discount)
  */
 export const ACTIVE_COUPONS: Record<string, CouponInfo> = {
