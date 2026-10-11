@@ -266,305 +266,203 @@ export default {
     }
 
     // =========================================================
-    // SUBMIT REVIEW & CLAIM REWARD (+2 Hours & +300 AI Answers)
+    // SUBMIT USER HONEST REVIEW (EARN 2 HOURS + 300 ANSWERS + 50 APPS)
     // =========================================================
-    if ((url.pathname === '/submit-review' || url.pathname === '/review') && request.method === 'POST') {
+    if (url.pathname === '/submit-review' && request.method === 'POST') {
       try {
         const body = await request.json().catch(() => ({}))
         const email = String(body.email || '').trim().toLowerCase()
-        const userId = String(body.userId || body.id || '').trim()
-        const rating = Math.max(1, Math.min(5, Number(body.rating) || 5))
-        const issues = String(body.issues || '').trim()
-        const suggestions = String(body.suggestions || '').trim()
-        const reviewText = String(body.review || '').trim()
-
-        if (!email && !userId) {
-          return json({ ok: false, message: 'Missing user email or ID' }, 400, origin)
+        if (!email) {
+          return json({ ok: false, message: 'Missing user email' }, 400, origin)
         }
 
-        if (!issues && !suggestions && !reviewText) {
-          return json({ ok: false, message: 'Please share your honest review or development suggestions before submitting.' }, 400, origin)
-        }
-
-        if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-          return json({ ok: false, message: 'Database not configured' }, 500, origin)
-        }
-
-        const supabaseBase = env.SUPABASE_URL.replace(/\/+$/, '')
+        const supabaseBase = (env.SUPABASE_URL || '').replace(/\/+$/, '')
         const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
-
-        const query = email ? `email=eq.${encodeURIComponent(email)}` : `id=eq.${encodeURIComponent(userId)}`
-        const userRes = await fetch(`${supabaseBase}/rest/v1/users?${query}&select=*`, {
-          headers: {
-            apikey: serviceKey,
-            Authorization: `Bearer ${serviceKey}`,
-          },
-        })
-
-        if (!userRes.ok) {
-          return json({ ok: false, message: 'User account lookup failed' }, 400, origin)
+        if (!supabaseBase || !serviceKey) {
+          return json({ ok: false, message: 'Database configuration missing' }, 500, origin)
         }
 
-        const userRows = await userRes.json()
-        if (!Array.isArray(userRows) || userRows.length === 0) {
-          return json({ ok: false, message: 'User account not found' }, 404, origin)
-        }
-
-        const userObj = userRows[0]
-        const userEmail = (userObj.email || email).trim().toLowerCase()
-        const userPlan = String(userObj.plan || '').trim().toLowerCase()
-
-        // 1. STRICT PLAN VALIDATION: Bonus is strictly for 'usage' plan only!
-        if (userPlan !== 'usage') {
-          return json({
-            ok: false,
-            planNotEligible: true,
-            currentPlan: userObj.plan || 'basic',
-            message: `The 2 Hours & 300 AI Answers review bonus is exclusively available for active Usage plan members. Your account is currently on the '${userObj.plan || 'basic'}' plan. Please upgrade to a Usage plan to claim this bonus reward.`,
-          }, 400, origin)
-        }
-
-        // 2. STRICT SINGLE-USE PER EMAIL VALIDATION:
-        // Check if this exact email has already submitted and claimed
+        // Look up user's active plan if not provided
+        let plan = String(body.plan || 'basic').toLowerCase()
         try {
-          const checkReview = await fetch(`${supabaseBase}/rest/v1/app_reviews?email=ilike.${encodeURIComponent(userEmail)}&select=id,created_at`, {
-            headers: {
-              apikey: serviceKey,
-              Authorization: `Bearer ${serviceKey}`,
-            },
+          const uRes = await fetch(`${supabaseBase}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=plan`, {
+            headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
           })
-          if (checkReview.ok) {
-            const revRows = await checkReview.json()
-            if (Array.isArray(revRows) && revRows.length > 0) {
-              return json({
-                ok: false,
-                alreadyClaimed: true,
-                message: `This email address (${userEmail}) has already claimed the 2 Hours & 300 AI Answers review bonus. This reward can only be claimed once per email.`,
-              }, 400, origin)
+          if (uRes.ok) {
+            const uRows = await uRes.json()
+            if (Array.isArray(uRows) && uRows.length > 0 && uRows[0].plan) {
+              plan = uRows[0].plan
             }
           }
-        } catch (checkErr) {
-          console.warn('Review duplicate check warning:', checkErr)
+        } catch (_) {}
+
+        const reviewRecord = {
+          user_id: body.userId || null,
+          email,
+          plan,
+          rating: Number(body.rating) || 5,
+          issues_faced: String(body.issuesFaced || body.issues || '').trim(),
+          improvements_suggested: String(body.improvementsSuggested || body.improvements || '').trim(),
+          detailed_feedback: String(body.detailedFeedback || body.feedback || '').trim(),
+          tokens_awarded: false,
+          created_at: new Date().toISOString()
         }
 
-        // 3. ATTEMPT INSERTING INTO app_reviews FIRST (database UNIQUE constraint on email prevents race conditions)
-        try {
-          const saveRes = await fetch(`${supabaseBase}/rest/v1/app_reviews`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              apikey: serviceKey,
-              Authorization: `Bearer ${serviceKey}`,
-              Prefer: 'return=minimal',
-            },
-            body: JSON.stringify({
-              user_id: userObj.id,
-              email: userEmail,
-              rating,
-              issues,
-              suggestions,
-              bonus_seconds: 7200,
-              bonus_responses: 300,
-              created_at: new Date().toISOString(),
-            }),
-          })
+        const insertRes = await fetch(`${supabaseBase}/rest/v1/user_reviews`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            Prefer: 'return=representation'
+          },
+          body: JSON.stringify(reviewRecord)
+        })
 
-          if (saveRes.status === 409) {
-            return json({
-              ok: false,
-              alreadyClaimed: true,
-              message: `This email address (${userEmail}) has already claimed the 2 Hours & 300 AI Answers review bonus. This reward can only be claimed once per email.`,
-            }, 400, origin)
+        if (!insertRes.ok) {
+          const errDetail = await insertRes.text()
+          console.warn('Failed to insert user review:', insertRes.status, errDetail)
+          return json({ ok: false, message: 'Failed to record review in database: ' + errDetail }, insertRes.status, origin)
+        }
+
+        const inserted = await insertRes.json()
+        return json({ ok: true, message: 'Review submitted successfully', review: inserted[0] }, 200, origin)
+      } catch (e) {
+        return json({ ok: false, message: e?.message || 'Failed to submit review' }, 500, origin)
+      }
+    }
+
+    // =========================================================
+    // GET ALL USER REVIEWS (FOR ADMIN DASHBOARD / EXPORT)
+    // =========================================================
+    if (url.pathname === '/get-reviews' && (request.method === 'GET' || request.method === 'POST')) {
+      try {
+        const supabaseBase = (env.SUPABASE_URL || '').replace(/\/+$/, '')
+        const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
+        if (!supabaseBase || !serviceKey) {
+          return json({ ok: false, message: 'Database configuration missing' }, 500, origin)
+        }
+
+        const fetchRes = await fetch(`${supabaseBase}/rest/v1/user_reviews?select=*&order=created_at.desc`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`
           }
-        } catch (saveErr) {
-          console.warn('Review save warning:', saveErr)
+        })
+
+        if (!fetchRes.ok) {
+          const errDetail = await fetchRes.text()
+          return json({ ok: false, message: 'Failed to query reviews: ' + errDetail }, fetchRes.status, origin)
         }
 
-        // 4. ADD 2 Hours (7,200 seconds) and 300 AI Answers (responses) ONLY FOR USAGE PLAN ACCOUNT
-        const currentSeconds = Math.max(0, Number(userObj.seconds_remaining) || 0)
-        const currentResponses = Math.max(0, Number(userObj.responses_remaining) || 0)
+        const reviews = await fetchRes.json()
+        return json({ ok: true, reviews: Array.isArray(reviews) ? reviews : [] }, 200, origin)
+      } catch (e) {
+        return json({ ok: false, message: e?.message || 'Failed to retrieve reviews' }, 500, origin)
+      }
+    }
 
-        const newSeconds = currentSeconds + 7200 // +2 hours
-        const newResponses = currentResponses + 300 // +300 answers
+    // =========================================================
+    // AWARD REVIEW TOKENS (ADMIN ACTION: +2H, +300 ANS, +50 APPS)
+    // =========================================================
+    if (url.pathname === '/award-review-tokens' && request.method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}))
+        const email = String(body.email || '').trim().toLowerCase()
+        const reviewId = body.reviewId
 
-        const patchUrl = `${supabaseBase}/rest/v1/users?id=eq.${encodeURIComponent(userObj.id)}`
-        const updateRes = await fetch(patchUrl, {
+        if (!email) {
+          return json({ ok: false, message: 'Missing user email' }, 400, origin)
+        }
+
+        const supabaseBase = (env.SUPABASE_URL || '').replace(/\/+$/, '')
+        const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
+        if (!supabaseBase || !serviceKey) {
+          return json({ ok: false, message: 'Database configuration missing' }, 500, origin)
+        }
+
+        // 1. Get user balance
+        const uRes = await fetch(`${supabaseBase}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=*`, {
+          headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+        })
+        if (!uRes.ok) {
+          return json({ ok: false, message: 'User lookup failed' }, 404, origin)
+        }
+        const uRows = await uRes.json()
+        if (!Array.isArray(uRows) || uRows.length === 0) {
+          return json({ ok: false, message: `User ${email} not found in database` }, 404, origin)
+        }
+
+        const u = uRows[0]
+        const existingSeconds = Math.max(0, Number(u.seconds_remaining) || 0)
+        const existingResponses = Math.max(0, Number(u.responses_remaining) || 0)
+        const existingApplications = Math.max(0, Number(u.applications_remaining) || 0)
+        const currentPlan = u.plan || 'basic'
+
+        // Award +2 Hours (7,200s), +300 AI Answers, +50 Job Applies
+        // Upgrade to 'usage' if on basic
+        const newSeconds = existingSeconds + (2 * 3600)
+        const newResponses = existingResponses + 300
+        const newApplications = existingApplications + 50
+        const newPlan = currentPlan === 'basic' ? 'usage' : currentPlan
+
+        const updateBody = {
+          plan: newPlan,
+          login_verifier: true,
+          verifier: true,
+          seconds_remaining: newSeconds,
+          responses_remaining: newResponses,
+          applications_remaining: newApplications,
+          updated_at: new Date().toISOString(),
+        }
+
+        const updateRes = await fetch(`${supabaseBase}/rest/v1/users?email=eq.${encodeURIComponent(email)}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
             apikey: serviceKey,
             Authorization: `Bearer ${serviceKey}`,
-            Prefer: 'return=representation',
+            Prefer: 'return=representation'
           },
-          body: JSON.stringify({
-            seconds_remaining: newSeconds,
-            responses_remaining: newResponses,
-            login_verifier: true,
-            updated_at: new Date().toISOString(),
-          }),
+          body: JSON.stringify(updateBody)
         })
 
         if (!updateRes.ok) {
-          return json({ ok: false, message: 'Failed to update token quota balance' }, 500, origin)
+          return json({ ok: false, message: 'Failed to update user quotas' }, 500, origin)
         }
 
-        const updatedRows = await updateRes.json()
-        const updatedProfile = Array.isArray(updatedRows) && updatedRows.length > 0 ? updatedRows[0] : null
+        // Mark review as awarded if reviewId provided or by email
+        try {
+          const rQuery = reviewId ? `id=eq.${encodeURIComponent(reviewId)}` : `email=eq.${encodeURIComponent(email)}`
+          await fetch(`${supabaseBase}/rest/v1/user_reviews?${rQuery}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: serviceKey,
+              Authorization: `Bearer ${serviceKey}`
+            },
+            body: JSON.stringify({
+              tokens_awarded: true,
+              awarded_at: new Date().toISOString()
+            })
+          })
+        } catch (_) {}
 
         return json({
           ok: true,
-          message: 'Review submitted! 2 Hours (120 mins) & 300 AI Answers have been added to your Usage balance (claimed once for this email).',
-          bonusMinutes: 120,
-          bonusResponses: 300,
-          profile: updatedProfile || {
-            ...userObj,
+          message: `Successfully awarded +2h, +300 answers, +50 applications to ${email}`,
+          awarded: {
+            email,
+            plan: newPlan,
             seconds_remaining: newSeconds,
             responses_remaining: newResponses,
-          },
-        }, 200, origin)
-      } catch (err) {
-        return json({ ok: false, message: err?.message || 'Failed to submit review' }, 500, origin)
-      }
-    }
-
-    // =========================================================
-    // GET ALL REVIEWS LINKED BY EMAIL WITH USER PROFILES & CSV EXPORT
-    // =========================================================
-    if ((url.pathname === '/admin/reviews' || url.pathname === '/get-reviews' || url.pathname === '/export-reviews') && (request.method === 'GET' || request.method === 'POST')) {
-      try {
-        if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-          return json({ ok: false, message: 'Database not configured' }, 500, origin)
-        }
-
-        const supabaseBase = env.SUPABASE_URL.replace(/\/+$/, '')
-        const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
-
-        // 1. Fetch all reviews
-        const reviewsRes = await fetch(`${supabaseBase}/rest/v1/app_reviews?select=*&order=created_at.desc`, {
-          headers: {
-            apikey: serviceKey,
-            Authorization: `Bearer ${serviceKey}`,
-          },
-        })
-
-        let reviews = []
-        if (reviewsRes.ok) {
-          reviews = await reviewsRes.json()
-        }
-
-        // 2. Fetch all users to link by email
-        const usersRes = await fetch(`${supabaseBase}/rest/v1/users?select=id,email,plan,seconds_remaining,responses_remaining,applications_remaining,verifier,created_at`, {
-          headers: {
-            apikey: serviceKey,
-            Authorization: `Bearer ${serviceKey}`,
-          },
-        })
-
-        let users = []
-        if (usersRes.ok) {
-          users = await usersRes.json()
-        }
-
-        const userMap = new Map()
-        if (Array.isArray(users)) {
-          users.forEach((u) => {
-            if (u && typeof u.email === 'string') {
-              userMap.set(u.email.toLowerCase().trim(), u)
-            }
-          })
-        }
-
-        // 3. Link each review to its user by email
-        const linkedReviews = Array.isArray(reviews) ? reviews.map((r) => {
-          const emailKey = String(r.email || '').toLowerCase().trim()
-          const matchedUser = userMap.get(emailKey) || null
-          return {
-            id: r.id,
-            email: r.email,
-            rating: r.rating,
-            issues: r.issues || '',
-            suggestions: r.suggestions || '',
-            bonus_seconds: r.bonus_seconds || 7200,
-            bonus_responses: r.bonus_responses || 300,
-            created_at: r.created_at,
-            user: matchedUser ? {
-              id: matchedUser.id,
-              email: matchedUser.email,
-              plan: matchedUser.plan || 'basic',
-              seconds_remaining: matchedUser.seconds_remaining ?? 0,
-              minutes_remaining: Math.floor((matchedUser.seconds_remaining || 0) / 60),
-              responses_remaining: matchedUser.responses_remaining ?? 0,
-              applications_remaining: matchedUser.applications_remaining ?? 0,
-              verifier: matchedUser.verifier ?? false,
-              user_created_at: matchedUser.created_at,
-            } : null,
+            applications_remaining: newApplications
           }
-        }) : []
-
-        // If CSV format requested via ?format=csv or /export-reviews
-        const format = (url.searchParams.get('format') || '').toLowerCase().trim()
-        if (format === 'csv' || url.pathname === '/export-reviews') {
-          const escapeCsv = (val) => {
-            if (val == null) return '""'
-            const s = String(val).replace(/"/g, '""')
-            return `"${s}"`
-          }
-
-          const header = [
-            'Review ID',
-            'Review Date',
-            'Email',
-            'Rating',
-            'Issues Faced',
-            'Feature Suggestions',
-            'Bonus Seconds',
-            'Bonus Answers',
-            'User Plan',
-            'Minutes Remaining',
-            'AI Answers Balance',
-            'Auto-Applies Balance',
-            'Host Linked Status',
-            'User ID',
-          ]
-
-          const rows = linkedReviews.map((r) => {
-            const u = r.user || {}
-            return [
-              r.id,
-              r.created_at,
-              r.email,
-              r.rating,
-              r.issues,
-              r.suggestions,
-              r.bonus_seconds,
-              r.bonus_responses,
-              u.plan || 'Unknown',
-              u.minutes_remaining ?? '',
-              u.responses_remaining ?? '',
-              u.applications_remaining ?? '',
-              u.verifier ? 'YES' : 'NO',
-              u.id || '',
-            ].map(escapeCsv).join(',')
-          })
-
-          const csvContent = [header.map(escapeCsv).join(','), ...rows].join('\r\n')
-          return new Response(csvContent, {
-            status: 200,
-            headers: {
-              ...corsHeaders(origin),
-              'Content-Type': 'text/csv; charset=utf-8',
-              'Content-Disposition': 'attachment; filename="helvia_reviews_linked_by_email.csv"',
-            },
-          })
-        }
-
-        return json({
-          ok: true,
-          count: linkedReviews.length,
-          reviews: linkedReviews,
         }, 200, origin)
-      } catch (err) {
-        return json({ ok: false, message: err?.message || 'Failed to retrieve reviews' }, 500, origin)
+      } catch (e) {
+        return json({ ok: false, message: e?.message || 'Failed to award tokens' }, 500, origin)
       }
     }
 
@@ -1591,6 +1489,230 @@ export default {
           { id: '13969aad-7309-40ec-9b54-70b39d5b13f6', tier: 'pro plus+', name: 'Pro Plus+ Lifetime (BYOK)', price: 49, included_minutes: 0, included_responses: 0, dodo_product_id: 'pdt_0NnIQqc0EzhEoVKHtBWTx', included_applications: 0 }
         ] 
       }, 200, origin)
+    }
+
+    // =========================================================
+    // SUBMIT USER REVIEW & FEEDBACK
+    // =========================================================
+    if (url.pathname === '/submit-review' && request.method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}))
+        const email = String(body.email || '').trim().toLowerCase()
+        if (!email) {
+          return json({ ok: false, message: 'Valid email is required to submit a review' }, 400, origin)
+        }
+
+        const supabaseBase = (env.SUPABASE_URL || 'https://effbmnisoxqefwauizib.supabase.co').replace(/\/+$/, '')
+        const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmZmJtbmlzb3hxZWZ3YXVpemliIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzA1NTkzMywiZXhwIjoyMTAyNjMxOTMzfQ.pPkyPmhCvLs0AehDfdIc49Lf8lfPx8SJZoNysrsDkU0'
+
+        // STRICT 1-TIME GIFT PER USER: Check if review was already submitted for this email
+        const checkExisting = await fetch(`${supabaseBase}/rest/v1/user_reviews?email=eq.${encodeURIComponent(email)}&select=id,tokens_awarded`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+        })
+
+        if (checkExisting.ok) {
+          const existingList = await checkExisting.json().catch(() => [])
+          if (Array.isArray(existingList) && existingList.length > 0) {
+            const isAwarded = existingList.some((item) => item.tokens_awarded)
+            return json({
+              ok: false,
+              alreadyClaimed: true,
+              message: isAwarded
+                ? 'Your account has already claimed the one-time bonus gift (+2h, +300 answers, +50 jobs).'
+                : 'A review has already been submitted for this email address. The gift reward is strictly 1-time per user account.'
+            }, 400, origin)
+          }
+        }
+
+        const reviewRecord = {
+          email,
+          plan: String(body.plan || 'basic').toLowerCase(),
+          rating: Number(body.rating) || 5,
+          issues_faced: String(body.issuesFaced || '').trim(),
+          improvements_suggested: String(body.improvementsSuggested || '').trim(),
+          detailed_feedback: String(body.detailedFeedback || '').trim(),
+          tokens_awarded: false,
+          created_at: new Date().toISOString(),
+        }
+        if (body.userId) {
+          reviewRecord.user_id = String(body.userId).trim()
+        }
+
+        const insertRes = await fetch(`${supabaseBase}/rest/v1/user_reviews`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify(reviewRecord),
+        })
+
+        if (!insertRes.ok) {
+          const errText = await insertRes.text()
+          console.error('Failed to insert user review:', errText)
+          return json({ ok: false, message: 'Failed to record review in database: ' + errText }, 500, origin)
+        }
+
+        const inserted = await insertRes.json().catch(() => [reviewRecord])
+        return json({ ok: true, message: 'Review successfully submitted! Our founder will verify and award bonus tokens.', review: inserted[0] }, 200, origin)
+      } catch (err) {
+        return json({ ok: false, message: err?.message || 'Error submitting review' }, 500, origin)
+      }
+    }
+
+    // =========================================================
+    // GET ALL REVIEWS (FOR ADMIN DASHBOARD & EXPORT)
+    // =========================================================
+    if (url.pathname === '/get-reviews' && (request.method === 'GET' || request.method === 'OPTIONS')) {
+      try {
+        const supabaseBase = (env.SUPABASE_URL || 'https://effbmnisoxqefwauizib.supabase.co').replace(/\/+$/, '')
+        const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmZmJtbmlzb3hxZWZ3YXVpemliIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzA1NTkzMywiZXhwIjoyMTAyNjMxOTMzfQ.pPkyPmhCvLs0AehDfdIc49Lf8lfPx8SJZoNysrsDkU0'
+
+        const reviewsRes = await fetch(`${supabaseBase}/rest/v1/user_reviews?select=*&order=created_at.desc`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+        })
+
+        if (!reviewsRes.ok) {
+          const errText = await reviewsRes.text()
+          return json({ ok: false, message: 'Failed to query reviews: ' + errText, reviews: [] }, 500, origin)
+        }
+
+        const rows = await reviewsRes.json()
+        return json({ ok: true, reviews: rows }, 200, origin)
+      } catch (err) {
+        return json({ ok: false, message: err?.message, reviews: [] }, 500, origin)
+      }
+    }
+
+    // =========================================================
+    // AWARD REVIEW TOKENS (+2 Hours, +300 Answers, +50 Jobs)
+    // =========================================================
+    if (url.pathname === '/award-review-tokens' && request.method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}))
+        const email = String(body.email || '').trim().toLowerCase()
+        const reviewId = body.reviewId
+
+        if (!email) {
+          return json({ ok: false, message: 'Email is required to award tokens' }, 400, origin)
+        }
+
+        const supabaseBase = (env.SUPABASE_URL || 'https://effbmnisoxqefwauizib.supabase.co').replace(/\/+$/, '')
+        const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmZmJtbmlzb3hxZWZ3YXVpemliIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzA1NTkzMywiZXhwIjoyMTAyNjMxOTMzfQ.pPkyPmhCvLs0AehDfdIc49Lf8lfPx8SJZoNysrsDkU0'
+
+        // 1. Fetch user by email
+        const userRes = await fetch(`${supabaseBase}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=*`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+        })
+
+        if (!userRes.ok) {
+          return json({ ok: false, message: 'Could not fetch user profile from Supabase' }, 500, origin)
+        }
+
+        const users = await userRes.json()
+        if (!Array.isArray(users) || users.length === 0) {
+          return json({ ok: false, message: `User "${email}" not found in database` }, 404, origin)
+        }
+
+        // STRICT 1-TIME GIFT PER USER: Check if tokens were already awarded to this email
+        const checkAwardedRes = await fetch(`${supabaseBase}/rest/v1/user_reviews?email=eq.${encodeURIComponent(email)}&tokens_awarded=eq.true&select=id,awarded_at`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+        })
+
+        if (checkAwardedRes.ok) {
+          const awardedList = await checkAwardedRes.json().catch(() => [])
+          if (Array.isArray(awardedList) && awardedList.length > 0) {
+            return json({
+              ok: false,
+              message: `User "${email}" has already received their one-time gift reward! Tokens cannot be awarded multiple times.`
+            }, 400, origin)
+          }
+        }
+
+        const u = users[0]
+        const curSeconds = Number(u.seconds_remaining) || 0
+        const curResponses = Number(u.responses_remaining) || 0
+        const curApplications = Number(u.applications_remaining) || 0
+        const curPlan = u.plan || 'basic'
+
+        // Award +2 Hours (7200s), +300 Responses, +50 Applications
+        const newSeconds = curSeconds + (2 * 3600)
+        const newResponses = curResponses + 300
+        const newApplications = curApplications + 50
+        const newPlan = curPlan === 'basic' ? 'usage' : curPlan
+
+        // 2. Update user quotas
+        const updateRes = await fetch(`${supabaseBase}/rest/v1/users?email=eq.${encodeURIComponent(email)}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify({
+            plan: newPlan,
+            login_verifier: true,
+            verifier: true,
+            seconds_remaining: newSeconds,
+            responses_remaining: newResponses,
+            applications_remaining: newApplications,
+            updated_at: new Date().toISOString(),
+          }),
+        })
+
+        if (!updateRes.ok) {
+          return json({ ok: false, message: 'Failed to update user quota in database' }, 500, origin)
+        }
+
+        // 3. Mark review as tokens_awarded in user_reviews
+        const reviewFilter = reviewId ? `id=eq.${encodeURIComponent(reviewId)}` : `email=eq.${encodeURIComponent(email)}`
+        await fetch(`${supabaseBase}/rest/v1/user_reviews?${reviewFilter}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({
+            tokens_awarded: true,
+            awarded_at: new Date().toISOString(),
+          }),
+        }).catch(() => null)
+
+        return json({
+          ok: true,
+          message: `Bonus credited! ${email} received +2 Hours, +300 Answers & +50 Job Applies.`,
+          newPlan,
+          newSeconds,
+          newResponses,
+          newApplications,
+        }, 200, origin)
+      } catch (err) {
+        return json({ ok: false, message: err?.message || 'Error awarding tokens' }, 500, origin)
+      }
     }
 
     return new Response('Not found', {

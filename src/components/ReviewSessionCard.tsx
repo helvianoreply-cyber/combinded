@@ -1,292 +1,288 @@
 import React, { useState, useEffect } from 'react'
-import { type DbUser } from '../lib/database.types'
+import { supabase } from '../lib/supabaseClient'
 
 interface ReviewSessionCardProps {
-  userEmail?: string
-  userId?: string
-  currentProfile?: DbUser | null
-  onBonusClaimed?: (updatedProfile: DbUser) => void
+  sessionEmail?: string | null
+  currentPlan?: string
+  userId?: string | null
+  apiBase?: string
 }
 
 export const ReviewSessionCard: React.FC<ReviewSessionCardProps> = ({
-  userEmail,
+  sessionEmail,
+  currentPlan = 'basic',
   userId,
-  currentProfile,
-  onBonusClaimed,
+  apiBase = 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev',
 }) => {
   const [rating, setRating] = useState<number>(5)
-  const [issues, setIssues] = useState<string>('')
-  const [suggestions, setSuggestions] = useState<string>('')
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [hasClaimed, setHasClaimed] = useState<boolean>(false)
-  const [claimedNotice, setClaimedNotice] = useState<string | null>(null)
+  const [issuesFaced, setIssuesFaced] = useState('')
+  const [improvements, setImprovements] = useState('')
+  const [detailedFeedback, setDetailedFeedback] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [hasExistingReview, setHasExistingReview] = useState(false)
 
-  const normalizedEmail = (userEmail || '').trim().toLowerCase()
-  const storageKey = `helvia_review_claimed_${normalizedEmail || 'user'}`
-
-  const userPlan = (currentProfile?.plan || '').trim().toLowerCase()
-  const isUsagePlan = userPlan === 'usage'
-  const displayPlanName = currentProfile?.plan ? currentProfile.plan.toUpperCase() : 'FREE / BASIC'
-
+  // Check if review was already submitted in this browser
   useEffect(() => {
-    if (normalizedEmail) {
-      const stored = localStorage.getItem(storageKey)
-      if (stored) {
-        setHasClaimed(true)
-        setClaimedNotice(
-          `This email (${normalizedEmail}) has already claimed the one-time review bonus (2 Hours & 300 AI Answers). Thank you for your honest feedback!`
-        )
-      }
+    const emailKey = sessionEmail ? `review_submitted_${sessionEmail.toLowerCase().trim()}` : null
+    if (emailKey && localStorage.getItem(emailKey)) {
+      setHasExistingReview(true)
     }
-  }, [normalizedEmail, storageKey])
-
-  const apiBase =
-    import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
-
-  const scrollToPlans = () => {
-    const el = document.getElementById('plans-grid')
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
+  }, [sessionEmail])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitError(null)
+    setErrorMessage(null)
 
-    // 1. Strict Usage Plan enforcement
-    if (!isUsagePlan) {
-      setSubmitError(
-        `The 2 Hours & 300 AI Answers review bonus is exclusively available for active Usage plan members. Your account is currently on the '${displayPlanName}' plan. Please upgrade to a Usage plan below to claim your reward!`
-      )
-      scrollToPlans()
+    if (!sessionEmail) {
+      setErrorMessage('Please ensure you are logged in to submit your review.')
       return
     }
 
-    if (!issues.trim() && !suggestions.trim()) {
-      setSubmitError('Please share where you faced issues or what features we should develop next.')
-      return
-    }
-
-    if (!normalizedEmail && !userId) {
-      setSubmitError('You must be signed in to submit a review and claim your reward.')
+    if (!issuesFaced.trim() && !improvements.trim() && !detailedFeedback.trim()) {
+      setErrorMessage('Please provide your honest feedback in at least one of the fields below.')
       return
     }
 
     setIsSubmitting(true)
+
     try {
-      const res = await fetch(`${apiBase}/submit-review`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: normalizedEmail,
-          userId,
-          rating,
-          issues: issues.trim(),
-          suggestions: suggestions.trim(),
-        }),
-      })
-
-      const data = (await res.json().catch(() => ({}))) as {
-        ok?: boolean
-        message?: string
-        alreadyClaimed?: boolean
-        planNotEligible?: boolean
-        profile?: DbUser
+      const payload = {
+        userId: userId || undefined,
+        email: sessionEmail.toLowerCase().trim(),
+        plan: currentPlan,
+        rating,
+        issuesFaced: issuesFaced.trim(),
+        improvementsSuggested: improvements.trim(),
+        detailedFeedback: detailedFeedback.trim(),
       }
 
-      if (!res.ok && !data.alreadyClaimed) {
-        throw new Error(data.message || 'Failed to submit review')
-      }
+      let submitted = false
 
-      if (data.alreadyClaimed) {
-        setHasClaimed(true)
-        localStorage.setItem(storageKey, 'true')
-        setClaimedNotice(
-          data.message || `This email (${normalizedEmail}) has already claimed the one-time review bonus.`
-        )
-        return
-      }
+      // Try worker endpoint first
+      try {
+        const res = await fetch(`${apiBase}/submit-review`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        })
 
-      // Mark claimed locally for this email only once
-      setHasClaimed(true)
-      localStorage.setItem(storageKey, 'true')
-      setClaimedNotice(
-        data.message || `🎉 2 Hours (120 mins) & 300 AI Answers added to your Usage balance! (Claimed once for ${normalizedEmail})`
-      )
-
-      // If server returned updated profile or calculate locally
-      if (data.profile) {
-        onBonusClaimed?.(data.profile)
-      } else if (currentProfile) {
-        const updated: DbUser = {
-          ...currentProfile,
-          seconds_remaining: (Number(currentProfile.seconds_remaining) || 0) + 7200,
-          responses_remaining: (Number(currentProfile.responses_remaining) || 0) + 300,
-          login_verifier: true,
+        if (res.ok) {
+          submitted = true
+        } else {
+          let errData: { message?: string; alreadyClaimed?: boolean } | null = null
+          try {
+            errData = await res.json()
+          } catch {
+            errData = null
+          }
+          if (errData?.alreadyClaimed && sessionEmail) {
+            localStorage.setItem(`review_submitted_${sessionEmail.toLowerCase().trim()}`, 'true')
+            setHasExistingReview(true)
+            throw new Error(errData.message || 'You have already claimed this 1-time gift.')
+          }
         }
-        onBonusClaimed?.(updated)
+      } catch (workerErr: unknown) {
+        if (workerErr instanceof Error && workerErr.message.includes('already claimed')) {
+          throw workerErr
+        }
       }
-    } catch (err) {
-      console.error('Submit review error:', err)
-      setSubmitError(err instanceof Error ? err.message : 'Something went wrong while submitting')
+
+      // If worker did not handle it, fallback to direct Supabase
+      if (!submitted && supabase) {
+        // 1. Check existing
+        const { data: existing } = await supabase
+          .from('user_reviews')
+          .select('id, tokens_awarded')
+          .eq('email', payload.email)
+
+        if (existing && existing.length > 0) {
+          localStorage.setItem(`review_submitted_${sessionEmail.toLowerCase().trim()}`, 'true')
+          setHasExistingReview(true)
+          throw new Error('A review has already been submitted for this email. The bonus gift is strictly 1-time per account.')
+        }
+
+        const { error: insertErr } = await supabase.from('user_reviews').insert({
+          email: payload.email,
+          plan: payload.plan,
+          rating: payload.rating,
+          issues_faced: payload.issuesFaced,
+          improvements_suggested: payload.improvementsSuggested,
+          detailed_feedback: payload.detailedFeedback,
+          user_id: payload.userId,
+          tokens_awarded: false,
+        })
+
+        if (insertErr) {
+          throw new Error('Database error: ' + insertErr.message)
+        }
+        submitted = true
+      }
+
+      if (!submitted) {
+        throw new Error('Could not submit review. Please try again later.')
+      }
+
+      setSubmitSuccess(true)
+      if (sessionEmail) {
+        localStorage.setItem(`review_submitted_${sessionEmail.toLowerCase().trim()}`, 'true')
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong while submitting.'
+      setErrorMessage(msg)
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <section className="review-session-card">
-      <div className="review-card-header">
-        <div className={`review-badge ${isUsagePlan ? 'usage-active' : 'usage-locked'}`}>
-          <span>{isUsagePlan ? '🎁' : '🔒'}</span>
-          <span>{isUsagePlan ? 'Usage Plan Exclusive Bonus (1 Time Per Email)' : 'Usage Plan Exclusive Reward (1 Time)'}</span>
+    <section className="review-session-container">
+      <div className="review-session-card">
+        {/* Header & Reward Callout */}
+        <div className="review-card-header">
+          <div className="review-reward-pill">
+            <span className="reward-icon">🎁</span>
+            <span className="reward-text">Claim 2 Hours + 300 AI Answers + 50 Job Applies (One-Time Gift)</span>
+          </div>
+          <h2 className="review-title">Honest App Review &amp; Improvement Session</h2>
+          <p className="review-subtitle">
+            Tell us where you experienced issues or friction and what development we should prioritize next.
+            Every genuine review is personally verified by our founder and rewarded with <strong>+2 Hours (120 mins)</strong> meeting copilot time, <strong>+300 AI vision answers</strong>, and <strong>+50 job applications</strong> added to your account! <em>(Strictly limited to 1 gift per user account).</em>
+          </p>
         </div>
-        <h3 className="review-card-title">Help Us Improve Helvia &amp; Claim Instant Bonus</h3>
-        <p className="review-card-subtitle">
-          Share your honest review about where you faced issues and what development should be done next.
-          {isUsagePlan ? (
-            <>
-              {' '}As an active <strong>Usage Plan</strong> member, you will receive <strong>2 Hours (120 mins)</strong> of meeting time and <strong>300 AI Answers</strong> added directly to your account balance <em>(strictly once per email)</em>!
-            </>
-          ) : (
-            <>
-              {' '}<strong>Note:</strong> The 2-Hour &amp; 300 AI Answers bonus is reserved exclusively for accounts on a <strong>Usage Plan</strong> (limited to once per email).
-            </>
-          )}
-        </p>
-      </div>
 
-      {/* Plan qualification banner if user is not on usage plan */}
-      {!isUsagePlan && (
-        <div className="review-plan-notice">
-          <div className="plan-notice-icon">⭐</div>
-          <div className="plan-notice-body">
-            <h4>Usage Plan Required for Reward</h4>
+        {submitSuccess || hasExistingReview ? (
+          <div className="review-success-state">
+            <div className="review-success-icon">🎉</div>
+            <h3>Thank You for Your Honest Feedback!</h3>
             <p>
-              Your account is currently on the <strong>{displayPlanName}</strong> plan. The <strong>+2 Hours (7,200s) &amp; +300 AI Answers</strong> bonus is exclusively unlocked for <strong>Usage Plan</strong> members (1 time per email).
+              Your review for <strong>{sessionEmail}</strong> ({currentPlan.toUpperCase()} Plan) has been received. Our founder will check your review and manually credit:
             </p>
-            <button type="button" onClick={scrollToPlans} className="plan-notice-btn">
-              View Usage Plans &amp; Upgrade →
-            </button>
+            <div className="review-reward-summary-box">
+              <div className="reward-item">
+                <span className="reward-val">⏱️ +2 Hours</span>
+                <span className="reward-lbl">Remote &amp; Meeting Time</span>
+              </div>
+              <div className="reward-item">
+                <span className="reward-val">💡 +300</span>
+                <span className="reward-lbl">AI Vision Answers</span>
+              </div>
+              <div className="reward-item">
+                <span className="reward-val">💼 +50</span>
+                <span className="reward-lbl">Job Auto-Applications</span>
+              </div>
+            </div>
+            <p className="review-note">
+              Once verified, your plan automatically switches to <strong>Usage</strong> with full access enabled.
+            </p>
           </div>
-        </div>
-      )}
+        ) : (
+          <form className="review-form" onSubmit={handleSubmit}>
+            {/* 1. Rating Selector */}
+            <div className="review-form-group">
+              <label className="review-label">Overall Experience Rating:</label>
+              <div className="review-star-selector">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    className={`star-btn ${rating >= star ? 'active' : ''}`}
+                    onClick={() => setRating(star)}
+                    aria-label={`${star} star`}
+                  >
+                    ★
+                  </button>
+                ))}
+                <span className="rating-desc">
+                  {rating === 5 && '🌟 Excellent experience'}
+                  {rating === 4 && '👍 Good, but has room to grow'}
+                  {rating === 3 && '😐 Average experience'}
+                  {rating === 2 && '⚠️ Needs significant fixes'}
+                  {rating === 1 && '🚨 Very difficult / buggy'}
+                </span>
+              </div>
+            </div>
 
-      {hasClaimed ? (
-        <div className="review-claimed-box">
-          <div className="claimed-icon">🎉</div>
-          <div className="claimed-text">
-            <h4>Reward Already Claimed For This Email</h4>
-            <p>{claimedNotice || 'Your reward of 2 Hours & 300 AI Answers has been added to your live balance.'}</p>
-            {normalizedEmail && (
-              <span className="claimed-email-tag">
-                Account: <strong>{normalizedEmail}</strong> • Limit: 1 Claim per Email
-              </span>
+            {/* 2. Issues Faced */}
+            <div className="review-form-group">
+              <label className="review-label" htmlFor="issues-faced">
+                1. Where did you face issues, bugs, or friction?
+              </label>
+              <textarea
+                id="issues-faced"
+                className="review-textarea"
+                rows={3}
+                placeholder="E.g., Screen streaming lag during peak hours, keyboard input in stealth copilot, setup difficulties on Windows..."
+                value={issuesFaced}
+                onChange={(e) => setIssuesFaced(e.target.value)}
+              />
+            </div>
+
+            {/* 3. Improvements Needed */}
+            <div className="review-form-group">
+              <label className="review-label" htmlFor="improvements-suggested">
+                2. Where should development be done? What features are missing?
+              </label>
+              <textarea
+                id="improvements-suggested"
+                className="review-textarea"
+                rows={3}
+                placeholder="E.g., Mac / Linux support, mobile whisperer view, customizable stealth hotkeys, ATS resume customization for job applies..."
+                value={improvements}
+                onChange={(e) => setImprovements(e.target.value)}
+              />
+            </div>
+
+            {/* 4. Detailed Honest Feedback */}
+            <div className="review-form-group">
+              <label className="review-label" htmlFor="detailed-feedback">
+                3. Any other honest thoughts or impressions?
+              </label>
+              <textarea
+                id="detailed-feedback"
+                className="review-textarea"
+                rows={2}
+                placeholder="Share your overall honest review of Helvia Remote..."
+                value={detailedFeedback}
+                onChange={(e) => setDetailedFeedback(e.target.value)}
+              />
+            </div>
+
+            {errorMessage && (
+              <div className="review-error-banner">
+                <span>⚠️ {errorMessage}</span>
+              </div>
             )}
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="review-form">
-          {submitError && (
-            <div className="review-error-banner">
-              <span>⚠️</span>
-              <span>{submitError}</span>
-            </div>
-          )}
 
-          {/* Star Rating Row */}
-          <div className="review-field-group">
-            <label className="review-label">Your Overall App Experience</label>
-            <div className="review-stars-wrap">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  className={`review-star-btn ${star <= rating ? 'active' : ''}`}
-                  onClick={() => setRating(star)}
-                  title={`${star} Star${star > 1 ? 's' : ''}`}
-                >
-                  ★
-                </button>
-              ))}
-              <span className="review-rating-hint">
-                {rating === 5 ? 'Excellent' : rating === 4 ? 'Good' : rating === 3 ? 'Average' : rating === 2 ? 'Needs Work' : 'Poor'}
-              </span>
-            </div>
-          </div>
-
-          {/* Question 1: Issues / Friction */}
-          <div className="review-field-group">
-            <label className="review-label" htmlFor="review-issues">
-              Where did you face issues or difficulty while using the app?
-            </label>
-            <textarea
-              id="review-issues"
-              className="review-textarea"
-              rows={3}
-              placeholder="e.g. Host connection took a few tries, audio whisper latency on meetings, resume ATS questions formatting, etc."
-              value={issues}
-              onChange={(e) => setIssues(e.target.value)}
-              disabled={isSubmitting}
-            />
-          </div>
-
-          {/* Question 2: Improvements / Development */}
-          <div className="review-field-group">
-            <label className="review-label" htmlFor="review-suggestions">
-              What new features or developments should be done next?
-            </label>
-            <textarea
-              id="review-suggestions"
-              className="review-textarea"
-              rows={3}
-              placeholder="e.g. macOS host client, more job board integrations, custom prompt engineering for interview answers, etc."
-              value={suggestions}
-              onChange={(e) => setSuggestions(e.target.value)}
-              disabled={isSubmitting}
-            />
-          </div>
-
-          <div className="review-submit-row">
-            <div className="review-reward-pill">
-              <span>⚡ Reward:</span>
-              <strong>+2 Hours (7,200s) &amp; +300 Answers</strong>
-              <span className="review-once-tag">Usage Only • Once per email</span>
-            </div>
-
-            {isUsagePlan ? (
+            {/* Submit Button */}
+            <div className="review-action-row">
               <button
                 type="submit"
                 className="review-submit-btn"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <>
-                    <span className="review-spinner"></span>
-                    <span>Crediting Tokens…</span>
-                  </>
+                  <span>Submitting Review…</span>
                 ) : (
                   <>
-                    <span>🎁 Submit Review &amp; Claim Reward</span>
+                    <span>Submit Review &amp; Claim Reward</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
                   </>
                 )}
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={scrollToPlans}
-                className="review-submit-btn locked"
-              >
-                <span>🔒 Upgrade to Usage Plan to Claim</span>
-              </button>
-            )}
-          </div>
-        </form>
-      )}
+              <div className="review-user-info-tag">
+                Reviewing as: <strong>{sessionEmail || 'Guest'}</strong> ({currentPlan.toUpperCase()})
+              </div>
+            </div>
+          </form>
+        )}
+      </div>
     </section>
   )
 }
