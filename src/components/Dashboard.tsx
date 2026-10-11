@@ -3,6 +3,7 @@ import { SkyCanvas3D } from './SkyCanvas3D'
 import { type DbUser, type DbPlan, SEED_PLANS, getPlanInrPrice } from '../lib/database.types'
 import { PaymentModal } from './PaymentModal'
 import { InteractiveTopupStation } from './InteractiveTopupStation'
+import { ReviewSessionCard } from './ReviewSessionCard'
 
 interface DashboardProps {
   displayName: string | null
@@ -73,10 +74,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   upgradeError,
 }) => {
   const [currentPlan, setCurrentPlan] = useState(userProfile?.plan || plan || 'basic')
+  const [liveProfile, setLiveProfile] = useState<DbUser | null>(userProfile || null)
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     setCurrentPlan(userProfile?.plan || plan || 'basic')
+    if (userProfile) setLiveProfile(userProfile)
   }, [userProfile, plan])
 
   useEffect(() => {
@@ -106,8 +109,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
         const res = await fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}`)
         if (res.ok) {
           const json = (await res.json()) as { ok?: boolean; profile?: DbUser }
-          if (json?.profile?.plan) {
-            setCurrentPlan(json.profile.plan.toLowerCase())
+          if (json?.profile) {
+            setLiveProfile(json.profile)
+            if (json.profile.plan) {
+              setCurrentPlan(json.profile.plan.toLowerCase())
+            }
           }
         }
       } catch (err) {
@@ -199,47 +205,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </section>
 
         {/* Live Quotas & Balances Bar */}
-        {userProfile && (
-          <div className="plans-live-stats-bar">
-            <div className="live-stat-pill">
-              <ClockIcon />
-              <div>
-                <span className="live-stat-val">
-                  {userProfile.seconds_remaining != null && userProfile.seconds_remaining > 0
-                    ? `${Math.floor(userProfile.seconds_remaining / 60)} min`
-                    : currentPlan === 'pro plus+'
-                      ? 'Unlimited'
-                      : `${Math.floor((userProfile.seconds_remaining || 0) / 60)} min`}
-                </span>
-                <span className="live-stat-lbl">Time Remaining</span>
+        {(() => {
+          const activeProfile = liveProfile || userProfile
+          if (!activeProfile) return null
+          return (
+            <div className="plans-live-stats-bar">
+              <div className="live-stat-pill">
+                <ClockIcon />
+                <div>
+                  <span className="live-stat-val">
+                    {activeProfile.seconds_remaining != null && activeProfile.seconds_remaining > 0
+                      ? `${Math.floor(activeProfile.seconds_remaining / 60)} min`
+                      : currentPlan === 'pro plus+'
+                        ? 'Unlimited'
+                        : `${Math.floor((activeProfile.seconds_remaining || 0) / 60)} min`}
+                  </span>
+                  <span className="live-stat-lbl">Time Remaining</span>
+                </div>
               </div>
-            </div>
 
-            <div className="live-stat-pill">
-              <SparklesIcon />
-              <div>
-                <span className="live-stat-val">{userProfile.responses_remaining ?? 0}</span>
-                <span className="live-stat-lbl">AI Answers Balance</span>
+              <div className="live-stat-pill">
+                <SparklesIcon />
+                <div>
+                  <span className="live-stat-val">{activeProfile.responses_remaining ?? 0}</span>
+                  <span className="live-stat-lbl">AI Answers Balance</span>
+                </div>
               </div>
-            </div>
 
-            <div className="live-stat-pill">
-              <BriefcaseIcon />
-              <div>
-                <span className="live-stat-val">{userProfile.applications_remaining ?? 10}</span>
-                <span className="live-stat-lbl">Job Auto-Applies</span>
+              <div className="live-stat-pill">
+                <BriefcaseIcon />
+                <div>
+                  <span className="live-stat-val">{activeProfile.applications_remaining ?? 10}</span>
+                  <span className="live-stat-lbl">Job Auto-Applies</span>
+                </div>
               </div>
-            </div>
 
-            <div className={`live-stat-pill ${userProfile.verifier ? 'verified' : ''}`}>
-              <CheckCircleIcon />
-              <div>
-                <span className="live-stat-val">{userProfile.verifier ? 'Host Linked' : 'Standby'}</span>
-                <span className="live-stat-lbl">Windows Host Status</span>
+              <div className={`live-stat-pill ${activeProfile.verifier ? 'verified' : ''}`}>
+                <CheckCircleIcon />
+                <div>
+                  <span className="live-stat-val">{activeProfile.verifier ? 'Host Linked' : 'Standby'}</span>
+                  <span className="live-stat-lbl">Windows Host Status</span>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Success / Error Alerts */}
         {paymentSuccess && (
@@ -255,6 +265,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span>{upgradeError}</span>
           </div>
         )}
+
+        {/* HONEST APP REVIEW & 2-HOUR + 300 ANSWERS BONUS REWARD STATION */}
+        <ReviewSessionCard
+          userEmail={sessionEmail ?? undefined}
+          userId={(liveProfile || userProfile)?.id}
+          currentProfile={liveProfile || userProfile}
+          onBonusClaimed={(updated) => {
+            setLiveProfile(updated)
+            if (updated.plan) {
+              setCurrentPlan(updated.plan.toLowerCase())
+            }
+          }}
+        />
 
         {/* ALL PLANS GRID */}
         <section className="all-plans-grid">
