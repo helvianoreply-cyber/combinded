@@ -257,14 +257,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         )}
 
-        {/* Honest Review & Feedback Session (Earn 2h + 300 answers + 50 jobs) */}
-        <ReviewSessionCard
-          sessionEmail={sessionEmail}
-          currentPlan={currentPlan}
-          userId={userProfile?.id}
-          apiBase={apiBase}
-        />
-
         {/* ALL PLANS GRID */}
         <section className="all-plans-grid">
           {availablePlans.map((p) => {
@@ -468,19 +460,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
           })}
         </section>
 
-        {/* Honest Review & Token Rewards Session Card */}
-        <ReviewSessionCard 
-          sessionEmail={sessionEmail}
-          currentPlan={plan}
-          userId={userProfile?.id}
-        />
-
         {/* Dynamic On-Demand Top-Up Station */}
         <InteractiveTopupStation 
           onTopup={(type, units) => {
             if (startTopup) startTopup(type, units)
           }}
           isProcessing={isUpgrading}
+        />
+
+        {/* Honest Review & Token Rewards Session Card (Single card at bottom) */}
+        <ReviewSessionCard 
+          sessionEmail={sessionEmail}
+          currentPlan={currentPlan}
+          userId={userProfile?.id}
+          apiBase={apiBase}
         />
 
         {/* Global checkout note */}
