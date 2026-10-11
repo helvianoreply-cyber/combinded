@@ -427,6 +427,147 @@ export default {
       }
     }
 
+    // =========================================================
+    // GET ALL REVIEWS LINKED BY EMAIL WITH USER PROFILES & CSV EXPORT
+    // =========================================================
+    if ((url.pathname === '/admin/reviews' || url.pathname === '/get-reviews' || url.pathname === '/export-reviews') && (request.method === 'GET' || request.method === 'POST')) {
+      try {
+        if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+          return json({ ok: false, message: 'Database not configured' }, 500, origin)
+        }
+
+        const supabaseBase = env.SUPABASE_URL.replace(/\/+$/, '')
+        const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
+
+        // 1. Fetch all reviews
+        const reviewsRes = await fetch(`${supabaseBase}/rest/v1/app_reviews?select=*&order=created_at.desc`, {
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+        })
+
+        let reviews = []
+        if (reviewsRes.ok) {
+          reviews = await reviewsRes.json()
+        }
+
+        // 2. Fetch all users to link by email
+        const usersRes = await fetch(`${supabaseBase}/rest/v1/users?select=id,email,plan,seconds_remaining,responses_remaining,applications_remaining,verifier,created_at`, {
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+        })
+
+        let users = []
+        if (usersRes.ok) {
+          users = await usersRes.json()
+        }
+
+        const userMap = new Map()
+        if (Array.isArray(users)) {
+          users.forEach((u) => {
+            if (u && typeof u.email === 'string') {
+              userMap.set(u.email.toLowerCase().trim(), u)
+            }
+          })
+        }
+
+        // 3. Link each review to its user by email
+        const linkedReviews = Array.isArray(reviews) ? reviews.map((r) => {
+          const emailKey = String(r.email || '').toLowerCase().trim()
+          const matchedUser = userMap.get(emailKey) || null
+          return {
+            id: r.id,
+            email: r.email,
+            rating: r.rating,
+            issues: r.issues || '',
+            suggestions: r.suggestions || '',
+            bonus_seconds: r.bonus_seconds || 7200,
+            bonus_responses: r.bonus_responses || 300,
+            created_at: r.created_at,
+            user: matchedUser ? {
+              id: matchedUser.id,
+              email: matchedUser.email,
+              plan: matchedUser.plan || 'basic',
+              seconds_remaining: matchedUser.seconds_remaining ?? 0,
+              minutes_remaining: Math.floor((matchedUser.seconds_remaining || 0) / 60),
+              responses_remaining: matchedUser.responses_remaining ?? 0,
+              applications_remaining: matchedUser.applications_remaining ?? 0,
+              verifier: matchedUser.verifier ?? false,
+              user_created_at: matchedUser.created_at,
+            } : null,
+          }
+        }) : []
+
+        // If CSV format requested via ?format=csv or /export-reviews
+        const format = (url.searchParams.get('format') || '').toLowerCase().trim()
+        if (format === 'csv' || url.pathname === '/export-reviews') {
+          const escapeCsv = (val) => {
+            if (val == null) return '""'
+            const s = String(val).replace(/"/g, '""')
+            return `"${s}"`
+          }
+
+          const header = [
+            'Review ID',
+            'Review Date',
+            'Email',
+            'Rating',
+            'Issues Faced',
+            'Feature Suggestions',
+            'Bonus Seconds',
+            'Bonus Answers',
+            'User Plan',
+            'Minutes Remaining',
+            'AI Answers Balance',
+            'Auto-Applies Balance',
+            'Host Linked Status',
+            'User ID',
+          ]
+
+          const rows = linkedReviews.map((r) => {
+            const u = r.user || {}
+            return [
+              r.id,
+              r.created_at,
+              r.email,
+              r.rating,
+              r.issues,
+              r.suggestions,
+              r.bonus_seconds,
+              r.bonus_responses,
+              u.plan || 'Unknown',
+              u.minutes_remaining ?? '',
+              u.responses_remaining ?? '',
+              u.applications_remaining ?? '',
+              u.verifier ? 'YES' : 'NO',
+              u.id || '',
+            ].map(escapeCsv).join(',')
+          })
+
+          const csvContent = [header.map(escapeCsv).join(','), ...rows].join('\r\n')
+          return new Response(csvContent, {
+            status: 200,
+            headers: {
+              ...corsHeaders(origin),
+              'Content-Type': 'text/csv; charset=utf-8',
+              'Content-Disposition': 'attachment; filename="helvia_reviews_linked_by_email.csv"',
+            },
+          })
+        }
+
+        return json({
+          ok: true,
+          count: linkedReviews.length,
+          reviews: linkedReviews,
+        }, 200, origin)
+      } catch (err) {
+        return json({ ok: false, message: err?.message || 'Failed to retrieve reviews' }, 500, origin)
+      }
+    }
+
     if ((url.pathname === '/link-complete' || url.pathname === '/link/complete') && request.method === 'POST') {
       try {
         const body = await request.json().catch(() => ({}))

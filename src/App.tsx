@@ -4,6 +4,7 @@ import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supab
 import { type DbUser, type DbPlan, SEED_PLANS } from './lib/database.types'
 import { LandingPage } from './components/LandingPage'
 import { Dashboard } from './components/Dashboard'
+import { AdminReviews } from './components/AdminReviews'
 import './App.css'
 
 function PrivacyPolicyPage() {
@@ -1143,6 +1144,8 @@ function App() {
           <Route path="/refundcancellation" element={<RefundPolicyPage />} />
           <Route path="/support" element={<WhatsAppRedirectPage />} />
           <Route path="/whatsapp" element={<WhatsAppRedirectPage />} />
+          <Route path="/admin/reviews" element={<AdminReviews />} />
+          <Route path="/reviews" element={<AdminReviews />} />
           {/* Catch all redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
