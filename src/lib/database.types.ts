@@ -72,7 +72,7 @@ export const SEED_PLANS: DbPlan[] = [
     id: 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901',
     tier: 'usage',
     name: '1 Month Unlimited VIP',
-    price: 24,
+    price: 21,
     included_minutes: 999999,
     included_responses: 999999,
     dodo_product_id: 'pdt_0Nmfh6M8mQGJT0VvCHDzO',
@@ -98,7 +98,7 @@ export function getPlanInrPrice(priceUsd: number): number {
   if (p <= 0) return 0
   if (p <= 8) return 699
   if (p <= 15) return 1299
-  if (p === 24) return 1999
+  if (p === 21 || p === 24) return 1999
   if (p <= 25) return 1999
   if (p <= 35) return 2999
   if (p <= 49) return 4199

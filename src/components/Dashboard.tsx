@@ -345,7 +345,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <span className="unlimited-duration-tag">30 Days Unlimited Access</span>
                   </div>
                   <div className="unlimited-offer-pill">
-                    <span>🔥 Offer: ₹999 with 50% Coupon / $24 Global via Dodo Payments</span>
+                    <span>🔥 Offer: ₹999 with 50% Coupon / ${unlimitedPlan.price} Global via Dodo Payments</span>
                   </div>
                 </div>
 
@@ -421,7 +421,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             disabled={isUpgrading}
                           >
                             <span className="btn-main-text">🌍 Pay with Dodo Payments</span>
-                            <span className="btn-sub-text">$24 USD • Global Cards &amp; Apple Pay</span>
+                            <span className="btn-sub-text">${unlimitedPlan.price} USD • Global Cards &amp; Apple Pay</span>
                           </button>
                         </div>
                       )}
