@@ -947,11 +947,12 @@ function App() {
       const apiBase =
         import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
       const isUnlimited = 
+        productId === 'pdt_0Nmfh6M8mQGJT0VvCHDzO' ||
         productId === 'pdt_0NnIQ_unlimited_vip' ||
         planObj?.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' ||
         Boolean(planObj?.name && planObj.name.toLowerCase().includes('unlimited'))
 
-      const targetProductId = productId || (isUnlimited ? 'pdt_0NnIQ_unlimited_vip' : 'pdt_0NnIQ5VyQfhSXYsFLcojZ')
+      const targetProductId = productId || (isUnlimited ? 'pdt_0Nmfh6M8mQGJT0VvCHDzO' : 'pdt_0NnIQ5VyQfhSXYsFLcojZ')
       const response = await fetch(`${apiBase}/create-dodo-checkout`, {
         method: 'POST',
         headers: {
