@@ -1203,6 +1203,41 @@ export default {
         const isTest = env.DODO_PAYMENTS_MODE === 'test'
         const dodoBase = isTest ? 'https://test.dodopayments.com' : 'https://live.dodopayments.com'
 
+        const rawDiscountCode = String(body.discount_code || body.discountCode || body.couponCode || body.coupon || '').trim()
+        const discountCodes = rawDiscountCode ? [rawDiscountCode] : []
+
+        const checkoutPayload = {
+          billing: {
+            country: 'US',
+          },
+          customer: {
+            email,
+            name: name || email.split('@')[0] || 'Customer',
+          },
+          product_cart: [
+            {
+              product_id: productId,
+              quantity: 1,
+            },
+          ],
+          feature_flags: {
+            allow_discount_code: true,
+          },
+          metadata: {
+            userId,
+            email,
+            productId,
+            planId: body.planId || (isUnlimited ? 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' : ''),
+            plan: planTier,
+            isUnlimited: isUnlimited ? 'true' : 'false',
+          },
+          return_url: returnUrl,
+        }
+
+        if (discountCodes.length > 0) {
+          checkoutPayload.discount_codes = discountCodes
+        }
+
         // 1. Try Dodo Checkout Sessions endpoint (client.checkoutSessions.create)
         let dodoRes = await fetch(`${dodoBase}/checkouts`, {
           method: 'POST',
@@ -1210,34 +1245,22 @@ export default {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${apiKey}`,
           },
-          body: JSON.stringify({
-            billing: {
-              country: 'US',
-            },
-            customer: {
-              email,
-              name: name || email.split('@')[0] || 'Customer',
-            },
-            product_cart: [
-              {
-                product_id: productId,
-                quantity: 1,
-              },
-            ],
-            feature_flags: {
-              allow_discount_code: false,
-            },
-            metadata: {
-              userId,
-              email,
-              productId,
-              planId: body.planId || (isUnlimited ? 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' : ''),
-              plan: planTier,
-              isUnlimited: isUnlimited ? 'true' : 'false',
-            },
-            return_url: returnUrl,
-          }),
+          body: JSON.stringify(checkoutPayload),
         })
+
+        // If checkout creation failed with pre-applied code (e.g. code not created in Dodo yet), retry without discount_codes
+        // but KEEP allow_discount_code: true so customer can still enter valid codes on the checkout page
+        if (!dodoRes.ok && checkoutPayload.discount_codes) {
+          delete checkoutPayload.discount_codes
+          dodoRes = await fetch(`${dodoBase}/checkouts`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify(checkoutPayload),
+          })
+        }
 
         // 2. Fallback to /subscriptions if needed
         if (!dodoRes.ok) {
@@ -1264,7 +1287,10 @@ export default {
               metadata: {
                 userId,
                 email,
-                plan: 'pro',
+                productId,
+                planId: body.planId || (isUnlimited ? 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' : ''),
+                plan: planTier,
+                isUnlimited: isUnlimited ? 'true' : 'false',
               },
               return_url: returnUrl,
             }),
@@ -1300,7 +1326,10 @@ export default {
               metadata: {
                 userId,
                 email,
-                plan: 'pro',
+                productId,
+                planId: body.planId || (isUnlimited ? 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' : ''),
+                plan: planTier,
+                isUnlimited: isUnlimited ? 'true' : 'false',
               },
               return_url: returnUrl,
             }),

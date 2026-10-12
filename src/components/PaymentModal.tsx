@@ -7,7 +7,7 @@ interface PaymentModalProps {
   onClose: () => void
   plan: DbPlan | null
   onSelectRazorpay: (plan: DbPlan, couponCode?: string, customAmountInr?: number) => void
-  onSelectDodo: (plan: DbPlan) => void
+  onSelectDodo: (plan: DbPlan, couponCode?: string) => void
   isProcessing?: boolean
 }
 
@@ -288,7 +288,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           {/* METHOD 2: DODO PAYMENTS (Global & Cards) -> IN-BUILD COUPON ON CHECKOUT */}
           <div 
             className="payment-method-card dodo-card"
-            onClick={() => !isProcessing && onSelectDodo(plan)}
+            onClick={() => {
+              if (isProcessing) return
+              const code = activeCoupon?.code || (couponInput.trim() ? couponInput.trim().toUpperCase() : undefined)
+              onSelectDodo(plan, code)
+            }}
           >
             <div className="payment-card-top">
               <div className="payment-card-badge dodo">
@@ -330,7 +334,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               className="payment-action-btn dodo-btn"
               onClick={(e) => {
                 e.stopPropagation()
-                onSelectDodo(plan)
+                if (isProcessing) return
+                const code = activeCoupon?.code || (couponInput.trim() ? couponInput.trim().toUpperCase() : undefined)
+                onSelectDodo(plan, code)
               }}
               disabled={isProcessing}
             >
