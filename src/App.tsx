@@ -206,18 +206,96 @@ function App() {
         }
       }
 
-      // 3. If found by either ID or Email, safely update login_verifier without failing login
+      // 3. If found by either ID or Email, check expiration & update login_verifier
       if (userRow) {
-        try {
-          await sb
-            .from('users')
-            .update({
-              login_verifier: true,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('email', normalizedEmail)
-        } catch (e) {
-          console.warn('Non-fatal update login_verifier error:', e)
+        let isExpired = false
+        let expiryDateStr = userRow.plan_expires_at || null
+
+        // Check if user has unlimited quotas but plan_expires_at was not yet saved on the row
+        if (!expiryDateStr && (
+          (userRow.responses_remaining != null && userRow.responses_remaining >= 900000) ||
+          (userRow.seconds_remaining != null && userRow.seconds_remaining >= 50000000)
+        )) {
+          try {
+            const { data: payRows } = await sb
+              .from('processed_payments')
+              .select('created_at')
+              .eq('user_id', userRow.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+
+            if (payRows && payRows.length > 0 && payRows[0].created_at) {
+              const paidTime = new Date(payRows[0].created_at).getTime()
+              const expiryTime = paidTime + (30 * 24 * 60 * 60 * 1000)
+              expiryDateStr = new Date(expiryTime).toISOString()
+            }
+          } catch {
+            // Ignore
+          }
+        }
+
+        if (expiryDateStr) {
+          if (new Date(expiryDateStr).getTime() <= Date.now()) {
+            isExpired = true
+          }
+        }
+
+        if (isExpired) {
+          // 1 Month has passed! Automatically downgrade back to basic with NO tokens
+          try {
+            await sb
+              .from('users')
+              .update({
+                plan: 'basic',
+                seconds_remaining: 0,
+                responses_remaining: 0,
+                applications_remaining: 0,
+                plan_expires_at: null,
+                login_verifier: true,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', userRow.id)
+          } catch {
+            try {
+              await sb
+                .from('users')
+                .update({
+                  plan: 'basic',
+                  seconds_remaining: 0,
+                  responses_remaining: 0,
+                  applications_remaining: 0,
+                  login_verifier: true,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', userRow.id)
+            } catch (err) {
+              console.warn('Downgrade error:', err)
+            }
+          }
+
+          userRow = {
+            ...userRow,
+            plan: 'basic',
+            seconds_remaining: 0,
+            responses_remaining: 0,
+            applications_remaining: 0,
+            plan_expires_at: null,
+          }
+          setPlanExpiresAt(null)
+          setPlan('basic')
+        } else {
+          setPlanExpiresAt(expiryDateStr)
+          try {
+            await sb
+              .from('users')
+              .update({
+                login_verifier: true,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('email', normalizedEmail)
+          } catch (e) {
+            console.warn('Non-fatal update login_verifier error:', e)
+          }
         }
         return userRow
       }

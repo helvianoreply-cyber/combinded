@@ -113,7 +113,11 @@ export function calculateDiscount(
 
   if (coupon.discountPercent) {
     const percent = Math.min(100, Math.max(1, coupon.discountPercent))
-    discountedInr = Math.max(1, Math.round(priceInr * (1 - percent / 100)))
+    if (priceInr === 1999 && percent === 50) {
+      discountedInr = 999
+    } else {
+      discountedInr = Math.max(1, Math.round(priceInr * (1 - percent / 100)))
+    }
     label = `${percent}% OFF on Razorpay`
   } else if (coupon.discountInr) {
     discountedInr = Math.max(1, priceInr - coupon.discountInr)

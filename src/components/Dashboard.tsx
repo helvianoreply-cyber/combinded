@@ -124,13 +124,46 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return [...list].sort((a, b) => Number(a.price) - Number(b.price))
   }, [plans])
 
-  const activePlanObj = availablePlans.find(
-    (p) =>
-      p.tier.toLowerCase() === currentPlan.toLowerCase() ||
-      p.name.toLowerCase().includes(currentPlan.toLowerCase())
-  )
-  const planDisplayName = activePlanObj ? activePlanObj.name : currentPlan === 'basic' ? 'Basic Free Tier' : currentPlan
+  const isUserUnlimitedPlan = 
+    currentPlan !== 'basic' && (
+      Boolean(planExpiresAt) ||
+      (userProfile?.responses_remaining != null && userProfile.responses_remaining >= 900000) ||
+      (userProfile?.seconds_remaining != null && userProfile.seconds_remaining >= 50000000)
+    )
+
+  const activePlanObj = availablePlans.find((p) => {
+    if (isUserUnlimitedPlan && p.name.toLowerCase().includes('unlimited')) return true
+    if (currentPlan === 'pro plus+' && p.tier === 'pro plus+') return true
+    if (p.tier.toLowerCase() === currentPlan.toLowerCase() && !p.name.toLowerCase().includes('unlimited')) return true
+    return false
+  })
+
+  const planDisplayName = isUserUnlimitedPlan
+    ? '1 Month Unlimited VIP'
+    : activePlanObj
+      ? activePlanObj.name
+      : currentPlan === 'basic'
+        ? 'Basic Free Tier'
+        : currentPlan
   const isPaid = currentPlan !== 'basic'
+
+  // Real-time check if 1-month unlimited plan expired while dashboard is open
+  useEffect(() => {
+    if (!planExpiresAt || currentPlan === 'basic') return
+
+    const checkExpiration = () => {
+      if (new Date(planExpiresAt).getTime() <= Date.now()) {
+        setCurrentPlan('basic')
+        if (sessionEmail) {
+          fetch(`${apiBase}/get-profile?email=${encodeURIComponent(sessionEmail)}`).catch(() => {})
+        }
+      }
+    }
+
+    checkExpiration()
+    const interval = setInterval(checkExpiration, 60000)
+    return () => clearInterval(interval)
+  }, [planExpiresAt, currentPlan, sessionEmail, apiBase])
 
   const firstName = displayName?.split(' ')[0] || displayName || sessionEmail?.split('@')[0] || 'User'
 
@@ -175,10 +208,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <span>{sessionEmail}</span>
               </span>
             )}
-            {planExpiresAt && (
-              <span className="user-email-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            {planExpiresAt && currentPlan !== 'basic' && (
+              <span className="user-email-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: '1px solid rgba(245, 158, 11, 0.4)', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', fontWeight: 600 }}>
                 <ClockIcon />
-                <span>Expires {new Date(planExpiresAt).toLocaleDateString()}</span>
+                <span>
+                  Expires {new Date(planExpiresAt).toLocaleDateString()}{' '}
+                  {(() => {
+                    const days = Math.max(0, Math.ceil((new Date(planExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                    return `(${days} days left)`
+                  })()}
+                </span>
               </span>
             )}
             <a
@@ -200,47 +239,62 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </section>
 
         {/* Live Quotas & Balances Bar */}
-        {userProfile && (
-          <div className="plans-live-stats-bar">
-            <div className="live-stat-pill">
-              <ClockIcon />
-              <div>
-                <span className="live-stat-val">
-                  {userProfile.seconds_remaining != null && userProfile.seconds_remaining > 0
-                    ? `${Math.floor(userProfile.seconds_remaining / 60)} min`
-                    : currentPlan === 'pro plus+'
-                      ? 'Unlimited'
-                      : `${Math.floor((userProfile.seconds_remaining || 0) / 60)} min`}
-                </span>
-                <span className="live-stat-lbl">Time Remaining</span>
-              </div>
-            </div>
+        {userProfile && (() => {
+          const isUserUnlimited = 
+            currentPlan === 'pro plus+' ||
+            (currentPlan !== 'basic' && (
+              (userProfile.responses_remaining != null && userProfile.responses_remaining >= 900000) ||
+              (userProfile.seconds_remaining != null && userProfile.seconds_remaining >= 50000000) ||
+              Boolean(planExpiresAt) ||
+              Boolean(activePlanObj?.name.toLowerCase().includes('unlimited'))
+            ))
 
-            <div className="live-stat-pill">
-              <SparklesIcon />
-              <div>
-                <span className="live-stat-val">{userProfile.responses_remaining ?? 0}</span>
-                <span className="live-stat-lbl">AI Answers Balance</span>
+          return (
+            <div className="plans-live-stats-bar">
+              <div className="live-stat-pill">
+                <ClockIcon />
+                <div>
+                  <span className="live-stat-val">
+                    {isUserUnlimited
+                      ? '∞ Unlimited'
+                      : userProfile.seconds_remaining != null && userProfile.seconds_remaining > 0
+                        ? `${Math.floor(userProfile.seconds_remaining / 60)} min`
+                        : `${Math.floor((userProfile.seconds_remaining || 0) / 60)} min`}
+                  </span>
+                  <span className="live-stat-lbl">Time Remaining</span>
+                </div>
               </div>
-            </div>
 
-            <div className="live-stat-pill">
-              <BriefcaseIcon />
-              <div>
-                <span className="live-stat-val">{userProfile.applications_remaining ?? 10}</span>
-                <span className="live-stat-lbl">Job Auto-Applies</span>
+              <div className="live-stat-pill">
+                <SparklesIcon />
+                <div>
+                  <span className="live-stat-val">
+                    {isUserUnlimited ? '∞ Unlimited' : (userProfile.responses_remaining ?? 0)}
+                  </span>
+                  <span className="live-stat-lbl">AI Answers Balance</span>
+                </div>
               </div>
-            </div>
 
-            <div className={`live-stat-pill ${userProfile.verifier ? 'verified' : ''}`}>
-              <CheckCircleIcon />
-              <div>
-                <span className="live-stat-val">{userProfile.verifier ? 'Host Linked' : 'Standby'}</span>
-                <span className="live-stat-lbl">Windows Host Status</span>
+              <div className="live-stat-pill">
+                <BriefcaseIcon />
+                <div>
+                  <span className="live-stat-val">
+                    {isUserUnlimited ? '∞ Unlimited' : (userProfile.applications_remaining ?? 10)}
+                  </span>
+                  <span className="live-stat-lbl">Job Auto-Applies</span>
+                </div>
+              </div>
+
+              <div className={`live-stat-pill ${userProfile.verifier ? 'verified' : ''}`}>
+                <CheckCircleIcon />
+                <div>
+                  <span className="live-stat-val">{userProfile.verifier ? 'Host Linked' : 'Standby'}</span>
+                  <span className="live-stat-lbl">Windows Host Status</span>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Success / Error Alerts */}
         {paymentSuccess && (
@@ -269,19 +323,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
               p.dodo_product_id === 'pdt_0NnIQ5VyQfhSXYsFLcojZ' ||
               p.name.includes('Popular')
             const isLifetime = p.tier === 'pro plus+' || p.name.includes('Lifetime')
+            const isUnlimited = p.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' || p.name.toLowerCase().includes('unlimited')
             const isMaxPlus = priceNum === 25
             const isUltraPlus = priceNum === 35
 
             return (
               <div
                 key={p.id}
-                className={`all-plans-card ${isPopular ? 'featured popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''} ${isCurrent ? 'active-plan' : ''}`}
+                className={`all-plans-card ${isPopular ? 'featured popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUnlimited ? 'unlimited-card' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''} ${isCurrent ? 'active-plan' : ''}`}
               >
                 {/* Top Badge & Tier Category Row */}
                 <div className="plan-card-badge-row">
                   {isCurrent ? (
                     <span className="plan-badge-pill active">
                       <CheckCircleIcon /> Current Active Plan
+                    </span>
+                  ) : isUnlimited ? (
+                    <span className="plan-badge-pill unlimited">
+                      👑 1-Month Unlimited Pass
                     </span>
                   ) : isPopular ? (
                     <span className="plan-badge-pill popular">
@@ -308,6 +367,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       🚀 3-in-1 Suite
                     </span>
                   )}
+                  {isUnlimited && <span className="plan-highlight-tag unlimited">Offer: ₹999</span>}
                   {isPopular && <span className="plan-highlight-tag">Best Value</span>}
                   {isLifetime && <span className="plan-highlight-tag vip">VIP License</span>}
                 </div>
@@ -318,7 +378,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div className="plan-card-price-row">
                     <div className="plan-price-main">
                       <span className="plan-price-currency">{isFree ? '' : '$'}</span>
-                      <span className={`plan-card-price ${isFree ? 'free' : isPopular ? 'popular' : ''}`}>
+                      <span className={`plan-card-price ${isFree ? 'free' : isPopular ? 'popular' : isUnlimited ? 'unlimited' : ''}`}>
                         {isFree ? 'Free' : p.price}
                       </span>
                     </div>
@@ -326,7 +386,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <div className="plan-price-sub-wrap">
                         <span className="plan-inr-chip">≈ ₹{getPlanInrPrice(p.price)}</span>
                         <span className="plan-card-period">
-                          {isLifetime ? '/ one-time' : '/ pack'}
+                          {isLifetime ? '/ one-time' : isUnlimited ? '/ month (30 Days)' : '/ pack'}
                         </span>
                       </div>
                     )}
@@ -339,22 +399,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     ? 'Basic account with zero usage quota. Upgrade to unlock remote streaming, AI Copilot, and job auto-applies.'
                     : isLifetime
                       ? 'Unlimited lifetime remote desktop access with Bring Your Own Keys (BYOK) AI Copilot.'
-                      : `Includes ${p.included_minutes} remote minutes, ${p.included_responses} Ans 💡 AI answers, and ${p.included_applications} LinkedIn & ATS job auto-applies.`}
+                      : isUnlimited
+                        ? '30 days of unlimited meeting duration, unlimited AI vision screen answers, and unlimited job auto-applies.'
+                        : `Includes ${p.included_minutes} remote minutes, ${p.included_responses} Ans 💡 AI answers, and ${p.included_applications} LinkedIn & ATS job auto-applies.`}
                 </p>
 
                 {/* Quick Quota Highlights */}
                 <div className="plan-quota-pills">
                   <div className="plan-quota-pill">
-                    <span className="quota-val">{isLifetime ? 'BYOK' : isFree ? '0' : p.included_applications}</span>
-                    <span className="quota-lbl">Auto-Applies</span>
+                    <span className="quota-val">{isUnlimited ? '∞' : isLifetime ? 'BYOK' : isFree ? '0' : p.included_applications}</span>
+                    <span className="quota-lbl">{isUnlimited ? 'Unlimited Jobs' : 'Auto-Applies'}</span>
                   </div>
                   <div className="plan-quota-pill">
-                    <span className="quota-val">{isLifetime ? '∞' : isFree ? '0m' : `${p.included_minutes}m`}</span>
-                    <span className="quota-lbl">Remote Time</span>
+                    <span className="quota-val">{isUnlimited ? '∞' : isLifetime ? '∞' : isFree ? '0m' : `${p.included_minutes}m`}</span>
+                    <span className="quota-lbl">{isUnlimited ? 'Unlimited Time' : 'Remote Time'}</span>
                   </div>
                   <div className="plan-quota-pill">
-                    <span className="quota-val">{isFree ? '0' : isLifetime ? 'BYOK' : p.included_responses}</span>
-                    <span className="quota-lbl">AI Answers</span>
+                    <span className="quota-val">{isUnlimited ? '∞' : isFree ? '0' : isLifetime ? 'BYOK' : p.included_responses}</span>
+                    <span className="quota-lbl">{isUnlimited ? 'Unlimited Answers' : 'AI Answers'}</span>
                   </div>
                 </div>
 
@@ -364,43 +426,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <CheckCircleIcon />
                     <span>
                       <strong>
-                        {isLifetime
-                          ? 'BYOK Job Auto-Apply'
-                          : isFree
-                            ? '0 Job Auto-Applies'
-                            : `${p.included_applications} Job Auto-Applies`}
-                      </strong>
-                      <span className="plan-feat-subtext">
-                        {isFree ? ' (Upgrade required)' : ' (LinkedIn, Indeed & ATS)'}
-                      </span>
-                    </span>
-                  </li>
-                  <li>
-                    <CheckCircleIcon />
-                    <span>
-                      <strong>
-                        {isLifetime
-                          ? 'Unlimited Remote Duration'
-                          : isFree
-                            ? '0 Remote Minutes'
-                            : `${p.included_minutes} Remote Minutes`}
-                      </strong>
-                      <span className="plan-feat-subtext">
-                        {isFree ? ' (Upgrade required)' : ' (Sub-15ms 60 FPS stream)'}
-                      </span>
-                    </span>
-                  </li>
-                  <li>
-                    <CheckCircleIcon />
-                    <span>
-                      <strong>
-                        {isFree
-                          ? '0 Ans 💡 AI Answers'
+                        {isUnlimited
+                          ? 'Unlimited Job Auto-Applies'
                           : isLifetime
-                            ? 'BYOK Ans 💡 AI Screen Copilot'
-                            : `${p.included_responses} Ans 💡 AI Screen Answers`}
+                            ? 'BYOK Job Auto-Apply'
+                            : isFree
+                              ? '0 Job Auto-Applies'
+                              : `${p.included_applications} Job Auto-Applies`}
                       </strong>
-                      {isFree && <span className="plan-feat-subtext"> (Upgrade required)</span>}
+                      <span className="plan-feat-subtext">
+                        {isFree ? ' (Upgrade required)' : isUnlimited ? ' (All portals for 30 Days)' : ' (LinkedIn, Indeed & ATS)'}
+                      </span>
+                    </span>
+                  </li>
+                  <li>
+                    <CheckCircleIcon />
+                    <span>
+                      <strong>
+                        {isUnlimited
+                          ? 'Unlimited Remote & Meeting Time'
+                          : isLifetime
+                            ? 'Unlimited Remote Duration'
+                            : isFree
+                              ? '0 Remote Minutes'
+                              : `${p.included_minutes} Remote Minutes`}
+                      </strong>
+                      <span className="plan-feat-subtext">
+                        {isFree ? ' (Upgrade required)' : isUnlimited ? ' (No minute limits for 30 Days)' : ' (Sub-15ms 60 FPS stream)'}
+                      </span>
+                    </span>
+                  </li>
+                  <li>
+                    <CheckCircleIcon />
+                    <span>
+                      <strong>
+                        {isUnlimited
+                          ? 'Unlimited Ans 💡 AI Vision Answers'
+                          : isFree
+                            ? '0 Ans 💡 AI Answers'
+                            : isLifetime
+                              ? 'BYOK Ans 💡 AI Screen Copilot'
+                              : `${p.included_responses} Ans 💡 AI Screen Answers`}
+                      </strong>
+                      <span className="plan-feat-subtext">
+                        {isFree ? ' (Upgrade required)' : isUnlimited ? ' (Real-time Screen Vision)' : ''}
+                      </span>
                     </span>
                   </li>
                   <li>
@@ -432,7 +502,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                   ) : (
                     <button
-                      className={`plan-card-btn primary ${isPopular ? 'popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''}`}
+                      className={`plan-card-btn primary ${isPopular ? 'popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUnlimited ? 'unlimited' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''}`}
                       type="button"
                       onClick={() => openPaymentModal(p)}
                       disabled={isUpgrading}
@@ -444,7 +514,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           <span>
                             {isLifetime
                               ? `Get Lifetime ($49 / ₹${getPlanInrPrice(49)})`
-                              : `Select Plan ($${p.price} / ₹${getPlanInrPrice(p.price)})`}
+                              : isUnlimited
+                                ? `Get Unlimited ($24 / ₹1,999 → ₹999 with Coupon)`
+                                : `Select Plan ($${p.price} / ₹${getPlanInrPrice(p.price)})`}
                           </span>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="btn-arrow">
                             <line x1="5" y1="12" x2="19" y2="12"></line>

@@ -43,6 +43,7 @@ export default {
         const OFFICIAL_PLANS_BY_ID = {
           '4d569314-3b27-45c8-93ad-3d5c2eebffc0': { name: 'Standard Plan', priceUsd: 8, tier: 'usage' },
           'fdbc4259-cdb8-42b8-a0d5-02b8a7392812': { name: 'Pro+ Pro (Most Popular)', priceUsd: 15, tier: 'usage' },
+          'b1e06fa2-5819-48ce-8d07-28d8cf9c4901': { name: '1 Month Unlimited VIP', priceUsd: 24, tier: 'usage' },
           '13969aad-7309-40ec-9b54-70b39d5b13f6': { name: 'Pro Plus+ Lifetime (BYOK)', priceUsd: 49, tier: 'pro plus+' },
         }
 
@@ -127,7 +128,10 @@ export default {
 
         // Strict calculation: base price minus verified discount (top-ups always 100% full rate)
         // We completely ignore body.amount or customAmountInr!
-        const amount = Math.round(basePlanAmount * (1 - discountFraction))
+        let amount = Math.round(basePlanAmount * (1 - discountFraction))
+        if (baseInr === 1999 && hasValidCoupon) {
+          amount = 999 * 100 // exactly ₹999 with 50% discount offer for 1-Month Unlimited VIP
+        }
 
         const currency = 'INR'
         let receipt = String(body.receipt || `rcpt_${Date.now()}`)
@@ -258,6 +262,70 @@ export default {
 
         const rows = await profileRes.json()
         const profile = Array.isArray(rows) && rows.length > 0 ? rows[0] : null
+
+        if (profile) {
+          let isExpired = false
+          let expiryIso = profile.plan_expires_at || null
+
+          if (expiryIso) {
+            if (new Date(expiryIso).getTime() <= Date.now()) {
+              isExpired = true
+            }
+          } else if (
+            profile.plan === 'usage' && (
+              Number(profile.responses_remaining) >= 900000 ||
+              Number(profile.seconds_remaining) >= 50000000
+            )
+          ) {
+            try {
+              const payRes = await fetch(`${supabaseBase}/rest/v1/processed_payments?user_id=eq.${encodeURIComponent(profile.id)}&order=created_at.desc&limit=1`, {
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+              })
+              if (payRes.ok) {
+                const payRows = await payRes.json()
+                if (Array.isArray(payRows) && payRows.length > 0 && payRows[0].created_at) {
+                  const paidAt = new Date(payRows[0].created_at).getTime()
+                  const expiry = paidAt + (30 * 24 * 60 * 60 * 1000)
+                  if (Date.now() >= expiry) {
+                    isExpired = true
+                  } else {
+                    expiryIso = new Date(expiry).toISOString()
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+
+          if (isExpired) {
+            // Automatically downgrade back to basic with 0 tokens!
+            try {
+              await fetch(`${supabaseBase}/rest/v1/users?id=eq.${encodeURIComponent(profile.id)}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  apikey: serviceKey,
+                  Authorization: `Bearer ${serviceKey}`,
+                },
+                body: JSON.stringify({
+                  plan: 'basic',
+                  seconds_remaining: 0,
+                  responses_remaining: 0,
+                  applications_remaining: 0,
+                  plan_expires_at: null,
+                  updated_at: new Date().toISOString(),
+                }),
+              })
+            } catch (_) {}
+
+            profile.plan = 'basic'
+            profile.seconds_remaining = 0
+            profile.responses_remaining = 0
+            profile.applications_remaining = 0
+            profile.plan_expires_at = null
+          } else if (expiryIso) {
+            profile.plan_expires_at = expiryIso
+          }
+        }
 
         return json({ ok: true, profile }, 200, origin)
       } catch (err) {
@@ -643,12 +711,57 @@ export default {
             profileRows = null
           }
           const profileRow = Array.isArray(profileRows) ? profileRows[0] : null
-          const planValue =
-            profileRow && typeof profileRow === 'object' && 'plan' in profileRow && typeof profileRow.plan === 'string'
-              ? profileRow.plan
-              : ''
-          if (planValue) {
-            plan = planValue
+          if (profileRow) {
+            let isExpired = false
+            let expiryIso = profileRow.plan_expires_at || null
+            if (expiryIso && new Date(expiryIso).getTime() <= Date.now()) {
+              isExpired = true
+            } else if (
+              profileRow.plan === 'usage' && (
+                Number(profileRow.responses_remaining) >= 900000 ||
+                Number(profileRow.seconds_remaining) >= 50000000
+              )
+            ) {
+              try {
+                const payRes = await fetch(`${supabaseBase}/rest/v1/processed_payments?user_id=eq.${encodeURIComponent(profileRow.id || '')}&order=created_at.desc&limit=1`, {
+                  headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+                })
+                if (payRes.ok) {
+                  const payRows = await payRes.json()
+                  if (Array.isArray(payRows) && payRows.length > 0 && payRows[0].created_at) {
+                    const paidAt = new Date(payRows[0].created_at).getTime()
+                    if (Date.now() >= paidAt + (30 * 24 * 60 * 60 * 1000)) {
+                      isExpired = true
+                    }
+                  }
+                }
+              } catch (_) {}
+            }
+
+            if (isExpired) {
+              plan = 'basic'
+              try {
+                await fetch(`${supabaseBase}/rest/v1/users?email=eq.${encodeURIComponent(email)}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    apikey: serviceKey,
+                    Authorization: `Bearer ${serviceKey}`,
+                  },
+                  body: JSON.stringify({
+                    plan: 'basic',
+                    seconds_remaining: 0,
+                    responses_remaining: 0,
+                    applications_remaining: 0,
+                    plan_expires_at: null,
+                    updated_at: new Date().toISOString(),
+                  }),
+                })
+              } catch (_) {}
+            } else {
+              const planValue = typeof profileRow.plan === 'string' ? profileRow.plan : ''
+              if (planValue) plan = planValue
+            }
           }
         } catch {
         }
@@ -942,33 +1055,46 @@ export default {
               finalPlan = 'pro plus+'
             }
 
+            const isUnlimitedOrder = 
+              trustedPlanId === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' || 
+              (planTier === 'usage' && incMinutes >= 900000)
+
             const updateBody = {
               plan: finalPlan,
               login_verifier: true,
               updated_at: new Date().toISOString(),
             }
 
-            // ADD tokens to existing balance instead of replacing
-            if (incMinutes > 0) {
-              updateBody.seconds_remaining = existingSeconds + (incMinutes * 60)
-            } else if (existingSeconds > 0) {
-              updateBody.seconds_remaining = existingSeconds
-            }
+            if (isUnlimitedOrder) {
+              // 30 Days expiration from payment date
+              const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+              updateBody.plan_expires_at = expiresAt
+              updateBody.seconds_remaining = 999999 * 60
+              updateBody.responses_remaining = 999999
+              updateBody.applications_remaining = 999999
+            } else {
+              // ADD tokens to existing balance instead of replacing
+              if (incMinutes > 0) {
+                updateBody.seconds_remaining = existingSeconds + (incMinutes * 60)
+              } else if (existingSeconds > 0) {
+                updateBody.seconds_remaining = existingSeconds
+              }
 
-            if (incResponses > 0) {
-              updateBody.responses_remaining = existingResponses + incResponses
-            } else if (existingResponses > 0) {
-              updateBody.responses_remaining = existingResponses
-            }
+              if (incResponses > 0) {
+                updateBody.responses_remaining = existingResponses + incResponses
+              } else if (existingResponses > 0) {
+                updateBody.responses_remaining = existingResponses
+              }
 
-            if (incApplications > 0) {
-              updateBody.applications_remaining = existingApplications + incApplications
-            } else if (existingApplications > 0) {
-              updateBody.applications_remaining = existingApplications
+              if (incApplications > 0) {
+                updateBody.applications_remaining = existingApplications + incApplications
+              } else if (existingApplications > 0) {
+                updateBody.applications_remaining = existingApplications
+              }
             }
 
             if (targetUrl) {
-              const res = await fetch(targetUrl, {
+              let res = await fetch(targetUrl, {
                 method: 'PATCH',
                 headers: {
                   'Content-Type': 'application/json',
@@ -978,6 +1104,24 @@ export default {
                 },
                 body: JSON.stringify(updateBody),
               })
+
+              // Graceful fallback if plan_expires_at column is not in public.users yet
+              if (!res.ok && updateBody.plan_expires_at) {
+                const errText = await res.text()
+                if (errText.includes('plan_expires_at')) {
+                  const { plan_expires_at, ...safeBody } = updateBody
+                  res = await fetch(targetUrl, {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      apikey: serviceKey,
+                      Authorization: `Bearer ${serviceKey}`,
+                      Prefer: 'return=minimal',
+                    },
+                    body: JSON.stringify(safeBody),
+                  })
+                }
+              }
 
               if (!res.ok) {
                 console.error('Failed to update user in verify-payment:', await res.text())
@@ -1486,6 +1630,7 @@ export default {
           { id: 'ee803f63-7ffc-4c93-bd79-2cb349c318b1', tier: 'basic', name: 'Basic Free Tier', price: 0, included_minutes: 5, included_responses: 5, dodo_product_id: null, included_applications: 5 },
           { id: '4d569314-3b27-45c8-93ad-3d5c2eebffc0', tier: 'usage', name: 'Standard Plan', price: 8, included_minutes: 300, included_responses: 500, dodo_product_id: 'pdt_0NnIPft32K3WxEEJbH04J', included_applications: 200 },
           { id: 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812', tier: 'usage', name: 'Pro+ Pro (Most Popular)', price: 15, included_minutes: 1000, included_responses: 1500, dodo_product_id: 'pdt_0NnIQ5VyQfhSXYsFLcojZ', included_applications: 600 },
+          { id: 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901', tier: 'usage', name: '1 Month Unlimited VIP', price: 24, included_minutes: 999999, included_responses: 999999, dodo_product_id: null, included_applications: 999999 },
           { id: '13969aad-7309-40ec-9b54-70b39d5b13f6', tier: 'pro plus+', name: 'Pro Plus+ Lifetime (BYOK)', price: 49, included_minutes: 0, included_responses: 0, dodo_product_id: 'pdt_0NnIQqc0EzhEoVKHtBWTx', included_applications: 0 }
         ] 
       }, 200, origin)
@@ -1747,7 +1892,8 @@ function getOfficialPlanInrPrice(priceUsd) {
   if (p <= 0) return 0
   if (p <= 8) return 699
   if (p <= 15) return 1299
-  if (p <= 25) return 2199
+  if (p === 24) return 1999
+  if (p <= 25) return 1999
   if (p <= 35) return 2999
   if (p <= 49) return 4199
   return Math.round(p * 86)

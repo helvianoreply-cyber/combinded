@@ -22,6 +22,7 @@ export interface DbUser {
   applications_remaining: number
   applications_applied: number
   login_verifier: boolean
+  plan_expires_at?: string | null
 }
 
 export interface DbPlan {
@@ -68,6 +69,16 @@ export const SEED_PLANS: DbPlan[] = [
     included_applications: 600,
   },
   {
+    id: 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901',
+    tier: 'usage',
+    name: '1 Month Unlimited VIP',
+    price: 24,
+    included_minutes: 999999,
+    included_responses: 999999,
+    dodo_product_id: null,
+    included_applications: 999999,
+  },
+  {
     id: '13969aad-7309-40ec-9b54-70b39d5b13f6',
     tier: 'pro plus+',
     name: 'Pro Plus+ Lifetime (BYOK)',
@@ -87,7 +98,8 @@ export function getPlanInrPrice(priceUsd: number): number {
   if (p <= 0) return 0
   if (p <= 8) return 699
   if (p <= 15) return 1299
-  if (p <= 25) return 2199
+  if (p === 24) return 1999
+  if (p <= 25) return 1999
   if (p <= 35) return 2999
   if (p <= 49) return 4199
   return Math.round(p * 86)
