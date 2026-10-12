@@ -207,7 +207,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   <input
                     type="text"
                     className={`payment-coupon-input ${appliedCoupon ? 'applied' : ''}`}
-                    placeholder="Coupon code (e.g. FIRST_50)"
+                    placeholder="Enter coupon code"
                     value={couponInput}
                     onChange={(e) => {
                       setCouponInput(e.target.value)

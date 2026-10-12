@@ -345,7 +345,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <span className="unlimited-duration-tag">30 Days Unlimited Access</span>
                   </div>
                   <div className="unlimited-offer-pill">
-                    <span>🔥 Offer: ₹999 with 50% Coupon / ${unlimitedPlan.price} Global via Dodo Payments</span>
+                    <span>🔥 Special: ₹999 / ${unlimitedPlan.price} Global via Dodo Payments</span>
                   </div>
                 </div>
 
@@ -365,7 +365,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                       <div className="unlimited-inr-row">
                         <span className="unlimited-inr-base">≈ ₹{inrPrice.toLocaleString('en-IN')} Base</span>
-                        <span className="unlimited-coupon-deal">Special: ₹999 with Coupon (FIRST_50)</span>
+                        <span className="unlimited-coupon-deal">Special Price: ₹999</span>
                       </div>
                     </div>
 
@@ -411,7 +411,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             disabled={isUpgrading}
                           >
                             <span className="btn-main-text">🇮🇳 Get with Razorpay / UPI</span>
-                            <span className="btn-sub-text">₹1,999 → ₹999 with Coupon</span>
+                            <span className="btn-sub-text">₹1,999 → ₹999 (Special Price)</span>
                           </button>
 
                           <button
