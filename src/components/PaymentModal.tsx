@@ -49,6 +49,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const originalInrAmount = getPlanInrPrice(plan.price)
   const isLifetime = plan.tier === 'pro plus+' || plan.name.toLowerCase().includes('lifetime')
+  const isUnlimited = plan.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' || plan.name.toLowerCase().includes('unlimited')
 
   // Auto-detect coupon: either explicitly applied or currently typed valid coupon
   const activeCoupon = appliedCoupon || (couponInput.trim() ? validateCoupon(couponInput.trim()) : null)
@@ -179,7 +180,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               ) : (
                 <span className="payment-card-price">₹{originalInrAmount.toLocaleString('en-IN')}</span>
               )}
-              <span className="payment-card-period">{isLifetime ? 'one-time' : 'total INR'}</span>
+              <span className="payment-card-period">{isLifetime ? 'one-time' : isUnlimited ? 'INR / month (30 Days)' : 'total INR'}</span>
             </div>
 
             <p className="payment-card-desc">
@@ -300,7 +301,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
             <div className="payment-card-price-row">
               <span className="payment-card-price">${plan.price}</span>
-              <span className="payment-card-period">{isLifetime ? 'one-time' : 'USD'}</span>
+              <span className="payment-card-period">{isLifetime ? 'one-time' : isUnlimited ? 'USD / month (30 Days)' : 'USD'}</span>
             </div>
 
             <p className="payment-card-desc">

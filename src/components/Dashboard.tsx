@@ -14,7 +14,7 @@ interface DashboardProps {
   planExpiresAt: string | null
   startUpgrade: (plan: DbPlan | '24h' | 'month', couponCode?: string, customAmountInr?: number) => void
   startTopup?: (type: 'copilot' | 'autoapply', units: number, couponCode?: string) => void
-  startDodoUpgrade?: (productId?: string, couponCode?: string) => void
+  startDodoUpgrade?: (productId?: string, couponCode?: string, planObj?: DbPlan) => void
   isUpgrading: boolean
   upgradeError: string | null
 }
@@ -124,6 +124,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return [...list].sort((a, b) => Number(a.price) - Number(b.price))
   }, [plans])
 
+  const unlimitedPlan = useMemo(() => {
+    return (
+      availablePlans.find(
+        (p) => p.name.toLowerCase().includes('unlimited') || p.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901'
+      ) || SEED_PLANS.find((p) => p.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901')
+    )
+  }, [availablePlans])
+
+  const standardPlans = useMemo(() => {
+    return availablePlans.filter(
+      (p) => !p.name.toLowerCase().includes('unlimited') && p.id !== 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901'
+    )
+  }, [availablePlans])
+
   const isUserUnlimitedPlan = 
     currentPlan !== 'basic' && (
       Boolean(planExpiresAt) ||
@@ -183,7 +197,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleDodoUpgrade = (p: DbPlan, couponCode?: string) => {
     setIsPaymentModalOpen(false)
     if (startDodoUpgrade) {
-      startDodoUpgrade(p.dodo_product_id || undefined, couponCode)
+      startDodoUpgrade(p.dodo_product_id || undefined, couponCode, p)
     }
   }
 
@@ -311,36 +325,181 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         )}
 
-        {/* ALL PLANS GRID */}
+        {/* =========================================================
+            FEATURED 1-MONTH UNLIMITED VIP SPOTLIGHT (STANDALONE SECTION)
+            ========================================================= */}
+        {unlimitedPlan && (() => {
+          const inrPrice = getPlanInrPrice(unlimitedPlan.price)
+          const isCurrentUnlimited = isUserUnlimitedPlan
+
+          return (
+            <section className="unlimited-spotlight-section">
+              <div className={`unlimited-spotlight-card ${isCurrentUnlimited ? 'active-plan' : ''}`}>
+                <div className="unlimited-spotlight-glow" />
+
+                <div className="unlimited-spotlight-header">
+                  <div className="unlimited-badge-cluster">
+                    <span className="unlimited-crown-badge">
+                      👑 1-Month Unlimited VIP Pass
+                    </span>
+                    <span className="unlimited-duration-tag">30 Days Unlimited Access</span>
+                  </div>
+                  <div className="unlimited-offer-pill">
+                    <span>🔥 Offer: ₹999 with 50% Coupon / $24 Global via Dodo Payments</span>
+                  </div>
+                </div>
+
+                <div className="unlimited-spotlight-body">
+                  {/* Left Column: Details & Pricing & Dual CTAs */}
+                  <div className="unlimited-spotlight-main">
+                    <h2 className="unlimited-spotlight-title">{unlimitedPlan.name}</h2>
+                    <p className="unlimited-spotlight-subtitle">
+                      Complete unrestricted access for 30 days. Run long meetings, continuous AI screen analysis, and bulk auto-apply to hundreds of jobs with zero per-minute deductions.
+                    </p>
+
+                    <div className="unlimited-pricing-block">
+                      <div className="unlimited-price-tag">
+                        <span className="unlimited-currency">$</span>
+                        <span className="unlimited-amount">{unlimitedPlan.price}</span>
+                        <span className="unlimited-period">/ month (30 Days)</span>
+                      </div>
+                      <div className="unlimited-inr-row">
+                        <span className="unlimited-inr-base">≈ ₹{inrPrice.toLocaleString('en-IN')} Base</span>
+                        <span className="unlimited-coupon-deal">Special: ₹999 with Coupon (FIRST_50)</span>
+                      </div>
+                    </div>
+
+                    {/* Unlimited Badges / Quotas */}
+                    <div className="unlimited-stats-row">
+                      <div className="unlimited-stat-card">
+                        <div className="unlimited-stat-icon">⏱️</div>
+                        <div>
+                          <div className="unlimited-stat-number">∞ Unlimited</div>
+                          <div className="unlimited-stat-label">Remote &amp; Meeting Time</div>
+                        </div>
+                      </div>
+
+                      <div className="unlimited-stat-card">
+                        <div className="unlimited-stat-icon">💡</div>
+                        <div>
+                          <div className="unlimited-stat-number">∞ Unlimited</div>
+                          <div className="unlimited-stat-label">AI Screen Vision Answers</div>
+                        </div>
+                      </div>
+
+                      <div className="unlimited-stat-card">
+                        <div className="unlimited-stat-icon">💼</div>
+                        <div>
+                          <div className="unlimited-stat-number">∞ Unlimited</div>
+                          <div className="unlimited-stat-label">Job Auto-Applies</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dual Gateway Checkout Buttons */}
+                    <div className="unlimited-cta-container">
+                      {isCurrentUnlimited ? (
+                        <button className="unlimited-current-badge-btn" type="button" disabled>
+                          <CheckCircleIcon /> Current Active Plan {planExpiresAt && `(Expires ${new Date(planExpiresAt).toLocaleDateString()})`}
+                        </button>
+                      ) : (
+                        <div className="unlimited-buttons-grid">
+                          <button
+                            type="button"
+                            className="unlimited-btn razorpay-btn"
+                            onClick={() => openPaymentModal(unlimitedPlan)}
+                            disabled={isUpgrading}
+                          >
+                            <span className="btn-main-text">🇮🇳 Get with Razorpay / UPI</span>
+                            <span className="btn-sub-text">₹1,999 → ₹999 with Coupon</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className="unlimited-btn dodo-btn"
+                            onClick={() => handleDodoUpgrade(unlimitedPlan)}
+                            disabled={isUpgrading}
+                          >
+                            <span className="btn-main-text">🌍 Pay with Dodo Payments</span>
+                            <span className="btn-sub-text">$24 USD • Global Cards &amp; Apple Pay</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Key Feature Highlights */}
+                  <div className="unlimited-spotlight-sidebar">
+                    <h3 className="unlimited-features-heading">⚡ What's Included in Unlimited VIP:</h3>
+                    <ul className="unlimited-features-list">
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Zero Minute Limits:</strong> Stream continuously with no countdown or balance depletion.</span>
+                      </li>
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Real-time Vision AI:</strong> Unlimited instant screen questions, code explanations, and answers.</span>
+                      </li>
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Bulk ATS Auto-Apply:</strong> Automate applications on LinkedIn, Indeed, and company portals.</span>
+                      </li>
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Sub-15ms 60 FPS Stream:</strong> Ultra-fast WebRTC direct p2p connection with low latency.</span>
+                      </li>
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Stealth Host Controls:</strong> Ghost click loopback and microphone forwarding.</span>
+                      </li>
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Automatic 30-Day Expiry:</strong> Valid for exactly 30 days from purchase. Automatically resets to Basic with zero recurring charges.</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )
+        })()}
+
+        {/* Section Divider */}
+        <div className="dashboard-section-divider">
+          <div className="divider-line" />
+          <div className="divider-badge">
+            <span>📦 STANDARD USAGE &amp; TOP-UP PACKS</span>
+          </div>
+          <div className="divider-line" />
+        </div>
+
+        {/* ALL STANDARD PLANS GRID */}
         <section className="all-plans-grid">
-          {availablePlans.map((p) => {
+          {standardPlans.map((p) => {
             const priceNum = Number(p.price)
             const isFree = priceNum === 0
             const isCurrent =
-              p.tier.toLowerCase() === currentPlan.toLowerCase() ||
-              (p.tier === 'usage' && activePlanObj?.id === p.id)
+              !isUserUnlimitedPlan && (
+                p.tier.toLowerCase() === currentPlan.toLowerCase() ||
+                (p.tier === 'usage' && activePlanObj?.id === p.id)
+              )
             const isPopular =
               p.dodo_product_id === 'pdt_0NnIQ5VyQfhSXYsFLcojZ' ||
               p.name.includes('Popular')
             const isLifetime = p.tier === 'pro plus+' || p.name.includes('Lifetime')
-            const isUnlimited = p.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' || p.name.toLowerCase().includes('unlimited')
             const isMaxPlus = priceNum === 25
             const isUltraPlus = priceNum === 35
 
             return (
               <div
                 key={p.id}
-                className={`all-plans-card ${isPopular ? 'featured popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUnlimited ? 'unlimited-card' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''} ${isCurrent ? 'active-plan' : ''}`}
+                className={`all-plans-card ${isPopular ? 'featured popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''} ${isCurrent ? 'active-plan' : ''}`}
               >
                 {/* Top Badge & Tier Category Row */}
                 <div className="plan-card-badge-row">
                   {isCurrent ? (
                     <span className="plan-badge-pill active">
                       <CheckCircleIcon /> Current Active Plan
-                    </span>
-                  ) : isUnlimited ? (
-                    <span className="plan-badge-pill unlimited">
-                      👑 1-Month Unlimited Pass
                     </span>
                   ) : isPopular ? (
                     <span className="plan-badge-pill popular">
@@ -367,7 +526,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       🚀 3-in-1 Suite
                     </span>
                   )}
-                  {isUnlimited && <span className="plan-highlight-tag unlimited">Offer: ₹999</span>}
                   {isPopular && <span className="plan-highlight-tag">Best Value</span>}
                   {isLifetime && <span className="plan-highlight-tag vip">VIP License</span>}
                 </div>
@@ -378,7 +536,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div className="plan-card-price-row">
                     <div className="plan-price-main">
                       <span className="plan-price-currency">{isFree ? '' : '$'}</span>
-                      <span className={`plan-card-price ${isFree ? 'free' : isPopular ? 'popular' : isUnlimited ? 'unlimited' : ''}`}>
+                      <span className={`plan-card-price ${isFree ? 'free' : isPopular ? 'popular' : ''}`}>
                         {isFree ? 'Free' : p.price}
                       </span>
                     </div>
@@ -386,7 +544,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <div className="plan-price-sub-wrap">
                         <span className="plan-inr-chip">≈ ₹{getPlanInrPrice(p.price)}</span>
                         <span className="plan-card-period">
-                          {isLifetime ? '/ one-time' : isUnlimited ? '/ month (30 Days)' : '/ pack'}
+                          {isLifetime ? '/ one-time' : '/ pack'}
                         </span>
                       </div>
                     )}
@@ -399,24 +557,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     ? 'Basic account with zero usage quota. Upgrade to unlock remote streaming, AI Copilot, and job auto-applies.'
                     : isLifetime
                       ? 'Unlimited lifetime remote desktop access with Bring Your Own Keys (BYOK) AI Copilot.'
-                      : isUnlimited
-                        ? '30 days of unlimited meeting duration, unlimited AI vision screen answers, and unlimited job auto-applies.'
-                        : `Includes ${p.included_minutes} remote minutes, ${p.included_responses} Ans 💡 AI answers, and ${p.included_applications} LinkedIn & ATS job auto-applies.`}
+                      : `Includes ${p.included_minutes} remote minutes, ${p.included_responses} Ans 💡 AI answers, and ${p.included_applications} LinkedIn & ATS job auto-applies.`}
                 </p>
 
                 {/* Quick Quota Highlights */}
                 <div className="plan-quota-pills">
                   <div className="plan-quota-pill">
-                    <span className="quota-val">{isUnlimited ? '∞' : isLifetime ? 'BYOK' : isFree ? '0' : p.included_applications}</span>
-                    <span className="quota-lbl">{isUnlimited ? 'Unlimited Jobs' : 'Auto-Applies'}</span>
+                    <span className="quota-val">{isLifetime ? 'BYOK' : isFree ? '0' : p.included_applications}</span>
+                    <span className="quota-lbl">Auto-Applies</span>
                   </div>
                   <div className="plan-quota-pill">
-                    <span className="quota-val">{isUnlimited ? '∞' : isLifetime ? '∞' : isFree ? '0m' : `${p.included_minutes}m`}</span>
-                    <span className="quota-lbl">{isUnlimited ? 'Unlimited Time' : 'Remote Time'}</span>
+                    <span className="quota-val">{isLifetime ? '∞' : isFree ? '0m' : `${p.included_minutes}m`}</span>
+                    <span className="quota-lbl">Remote Time</span>
                   </div>
                   <div className="plan-quota-pill">
-                    <span className="quota-val">{isUnlimited ? '∞' : isFree ? '0' : isLifetime ? 'BYOK' : p.included_responses}</span>
-                    <span className="quota-lbl">{isUnlimited ? 'Unlimited Answers' : 'AI Answers'}</span>
+                    <span className="quota-val">{isFree ? '0' : isLifetime ? 'BYOK' : p.included_responses}</span>
+                    <span className="quota-lbl">AI Answers</span>
                   </div>
                 </div>
 
@@ -426,50 +582,44 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <CheckCircleIcon />
                     <span>
                       <strong>
-                        {isUnlimited
-                          ? 'Unlimited Job Auto-Applies'
-                          : isLifetime
-                            ? 'BYOK Job Auto-Apply'
-                            : isFree
-                              ? '0 Job Auto-Applies'
-                              : `${p.included_applications} Job Auto-Applies`}
-                      </strong>
-                      <span className="plan-feat-subtext">
-                        {isFree ? ' (Upgrade required)' : isUnlimited ? ' (All portals for 30 Days)' : ' (LinkedIn, Indeed & ATS)'}
-                      </span>
-                    </span>
-                  </li>
-                  <li>
-                    <CheckCircleIcon />
-                    <span>
-                      <strong>
-                        {isUnlimited
-                          ? 'Unlimited Remote & Meeting Time'
-                          : isLifetime
-                            ? 'Unlimited Remote Duration'
-                            : isFree
-                              ? '0 Remote Minutes'
-                              : `${p.included_minutes} Remote Minutes`}
-                      </strong>
-                      <span className="plan-feat-subtext">
-                        {isFree ? ' (Upgrade required)' : isUnlimited ? ' (No minute limits for 30 Days)' : ' (Sub-15ms 60 FPS stream)'}
-                      </span>
-                    </span>
-                  </li>
-                  <li>
-                    <CheckCircleIcon />
-                    <span>
-                      <strong>
-                        {isUnlimited
-                          ? 'Unlimited Ans 💡 AI Vision Answers'
+                        {isLifetime
+                          ? 'BYOK Job Auto-Apply'
                           : isFree
-                            ? '0 Ans 💡 AI Answers'
-                            : isLifetime
-                              ? 'BYOK Ans 💡 AI Screen Copilot'
-                              : `${p.included_responses} Ans 💡 AI Screen Answers`}
+                            ? '0 Job Auto-Applies'
+                            : `${p.included_applications} Job Auto-Applies`}
                       </strong>
                       <span className="plan-feat-subtext">
-                        {isFree ? ' (Upgrade required)' : isUnlimited ? ' (Real-time Screen Vision)' : ''}
+                        {isFree ? ' (Upgrade required)' : ' (LinkedIn, Indeed & ATS)'}
+                      </span>
+                    </span>
+                  </li>
+                  <li>
+                    <CheckCircleIcon />
+                    <span>
+                      <strong>
+                        {isLifetime
+                          ? 'Unlimited Remote Duration'
+                          : isFree
+                            ? '0 Remote Minutes'
+                            : `${p.included_minutes} Remote Minutes`}
+                      </strong>
+                      <span className="plan-feat-subtext">
+                        {isFree ? ' (Upgrade required)' : ' (Sub-15ms 60 FPS stream)'}
+                      </span>
+                    </span>
+                  </li>
+                  <li>
+                    <CheckCircleIcon />
+                    <span>
+                      <strong>
+                        {isFree
+                          ? '0 Ans 💡 AI Answers'
+                          : isLifetime
+                            ? 'BYOK Ans 💡 AI Screen Copilot'
+                            : `${p.included_responses} Ans 💡 AI Screen Answers`}
+                      </strong>
+                      <span className="plan-feat-subtext">
+                        {isFree ? ' (Upgrade required)' : ''}
                       </span>
                     </span>
                   </li>
@@ -502,7 +652,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                   ) : (
                     <button
-                      className={`plan-card-btn primary ${isPopular ? 'popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUnlimited ? 'unlimited' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''}`}
+                      className={`plan-card-btn primary ${isPopular ? 'popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''}`}
                       type="button"
                       onClick={() => openPaymentModal(p)}
                       disabled={isUpgrading}
@@ -514,9 +664,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           <span>
                             {isLifetime
                               ? `Get Lifetime ($49 / ₹${getPlanInrPrice(49)})`
-                              : isUnlimited
-                                ? `Get Unlimited ($24 / ₹1,999 → ₹999 with Coupon)`
-                                : `Select Plan ($${p.price} / ₹${getPlanInrPrice(p.price)})`}
+                              : `Select Plan ($${p.price} / ₹${getPlanInrPrice(p.price)})`}
                           </span>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="btn-arrow">
                             <line x1="5" y1="12" x2="19" y2="12"></line>

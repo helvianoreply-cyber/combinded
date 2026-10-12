@@ -935,7 +935,7 @@ function App() {
     }
   }, [displayName, loadRazorpay, navigate, sessionEmail, syncUserWithDatabase, userId])
 
-  const startDodoUpgrade = useCallback(async (productId?: string, couponCode?: string) => {
+  const startDodoUpgrade = useCallback(async (productId?: string, couponCode?: string, planObj?: DbPlan) => {
     setUpgradeError(null)
     if (!userId || !sessionEmail) {
       setUpgradeError('You must be signed in to upgrade')
@@ -946,7 +946,12 @@ function App() {
     try {
       const apiBase =
         import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
-      const targetProductId = productId || 'pdt_0NnIQ5VyQfhSXYsFLcojZ'
+      const isUnlimited = 
+        productId === 'pdt_0NnIQ_unlimited_vip' ||
+        planObj?.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' ||
+        Boolean(planObj?.name && planObj.name.toLowerCase().includes('unlimited'))
+
+      const targetProductId = productId || (isUnlimited ? 'pdt_0NnIQ_unlimited_vip' : 'pdt_0NnIQ5VyQfhSXYsFLcojZ')
       const response = await fetch(`${apiBase}/create-dodo-checkout`, {
         method: 'POST',
         headers: {
@@ -958,6 +963,10 @@ function App() {
           name: displayName || sessionEmail.split('@')[0],
           productId: targetProductId,
           dodo_product_id: targetProductId,
+          planId: planObj?.id || (isUnlimited ? 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' : undefined),
+          plan: isUnlimited ? 'usage' : (planObj?.tier || 'usage'),
+          planTitle: planObj?.name || (isUnlimited ? '1 Month Unlimited VIP' : undefined),
+          isUnlimited: isUnlimited ? 'true' : 'false',
           couponCode: couponCode || undefined,
           discount_code: couponCode || undefined,
           returnUrl: `${window.location.origin}/dashboard?payment=success`,

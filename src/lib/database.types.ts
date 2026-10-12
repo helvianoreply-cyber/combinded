@@ -75,7 +75,7 @@ export const SEED_PLANS: DbPlan[] = [
     price: 24,
     included_minutes: 999999,
     included_responses: 999999,
-    dodo_product_id: null,
+    dodo_product_id: 'pdt_0NnIQ_unlimited_vip',
     included_applications: 999999,
   },
   {
