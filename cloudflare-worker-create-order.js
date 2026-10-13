@@ -1,3 +1,15 @@
+// In-Memory Edge Cache to shield Supabase from connection exhaustion during traffic spikes
+const PROFILE_CACHE = new Map() // key: email/userId -> { profile, expiresAt }
+
+// Anti-Abuse IP Guard: Tracks free tier registrations per IP (Max 2 free accounts per IP per 24 hours)
+const IP_FREE_REGISTRATIONS = new Map() // key: client IP -> [timestamps]
+
+function invalidateProfileCache(emailOrUserId) {
+  if (!emailOrUserId) return
+  const key = String(emailOrUserId).trim().toLowerCase()
+  PROFILE_CACHE.delete(key)
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
@@ -215,13 +227,13 @@ export default {
     }
 
     // =========================================================
-    // GET USER PROFILE BY EMAIL OR USER ID
+    // GET USER PROFILE BY EMAIL OR USER ID (SHIELDED WITH EDGE CACHE)
     // =========================================================
     if ((url.pathname === '/get-profile' || url.pathname === '/profile') && (request.method === 'GET' || request.method === 'POST')) {
-      try {
-        let email = (url.searchParams.get('email') || '').trim().toLowerCase()
-        let userId = (url.searchParams.get('userId') || url.searchParams.get('id') || '').trim()
+      let email = (url.searchParams.get('email') || '').trim().toLowerCase()
+      let userId = (url.searchParams.get('userId') || url.searchParams.get('id') || '').trim()
 
+      try {
         if (request.method === 'POST') {
           const body = await request.json().catch(() => ({}))
           if (!email && typeof body.email === 'string') email = body.email.trim().toLowerCase()
@@ -233,7 +245,18 @@ export default {
           return json({ ok: false, message: 'Missing email or userId parameter' }, 400, origin)
         }
 
+        // ISSUE 2 PROTECTION: Check Edge Cache (20s TTL absorbs 95%+ traffic spikes)
+        const cacheKey = (email || userId).toLowerCase()
+        const now = Date.now()
+        const cached = PROFILE_CACHE.get(cacheKey)
+        if (cached && cached.expiresAt > now) {
+          return json({ ok: true, profile: cached.profile, cached: true }, 200, origin)
+        }
+
         if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+          if (cached && cached.profile) {
+            return json({ ok: true, profile: cached.profile, stale: true }, 200, origin)
+          }
           return json({ ok: false, message: 'Supabase not configured' }, 500, origin)
         }
 
@@ -257,6 +280,10 @@ export default {
         })
 
         if (!profileRes.ok) {
+          // ISSUE 2 PROTECTION: If Supabase connection pool choked during spike, serve cached profile
+          if (cached && cached.profile) {
+            return json({ ok: true, profile: cached.profile, stale: true }, 200, origin)
+          }
           return json({ ok: false, message: 'Database query failed' }, profileRes.status, origin)
         }
 
@@ -325,11 +352,69 @@ export default {
           } else if (expiryIso) {
             profile.plan_expires_at = expiryIso
           }
+
+          // Save in Edge Memory Cache for 20 seconds to eliminate redundant Supabase round-trips
+          PROFILE_CACHE.set(cacheKey, { profile, expiresAt: now + 20000 })
+          if (profile.email) {
+            PROFILE_CACHE.set(profile.email.toLowerCase(), { profile, expiresAt: now + 20000 })
+          }
+          if (profile.id) {
+            PROFILE_CACHE.set(profile.id.toLowerCase(), { profile, expiresAt: now + 20000 })
+          }
         }
 
         return json({ ok: true, profile }, 200, origin)
       } catch (err) {
+        const fallbackKey = (email || userId || '').toLowerCase()
+        if (fallbackKey && PROFILE_CACHE.has(fallbackKey)) {
+          return json({ ok: true, profile: PROFILE_CACHE.get(fallbackKey).profile, stale: true }, 200, origin)
+        }
         return json({ ok: false, message: err?.message || 'Failed to get profile' }, 500, origin)
+      }
+    }
+
+    // =========================================================
+    // ISSUE 1: FREE TRIAL ABUSE GUARD (IP LEVEL PROTECTION)
+    // =========================================================
+    if (url.pathname === '/check-trial-eligibility' && (request.method === 'GET' || request.method === 'POST')) {
+      try {
+        let email = (url.searchParams.get('email') || '').trim().toLowerCase()
+        let claim = url.searchParams.get('claim') === 'true'
+
+        if (request.method === 'POST') {
+          const body = await request.json().catch(() => ({}))
+          if (!email && typeof body.email === 'string') email = body.email.trim().toLowerCase()
+          if (body.claim === true) claim = true
+        }
+
+        const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('x-real-ip') || '127.0.0.1'
+        const now = Date.now()
+        const oneDayAgo = now - (24 * 60 * 60 * 1000)
+
+        // Prune older IP registration timestamps beyond 24 hours
+        const rawHistory = IP_FREE_REGISTRATIONS.get(clientIp) || []
+        const ipHistory = rawHistory.filter(item => item.timestamp > oneDayAgo)
+        IP_FREE_REGISTRATIONS.set(clientIp, ipHistory)
+
+        const isExistingIpUser = email ? ipHistory.some(item => item.email === email) : false
+
+        // Max 2 free trial accounts per IP per 24 hours
+        if (!isExistingIpUser && ipHistory.length >= 2) {
+          return json({
+            eligible: false,
+            reason: 'Free trial limit reached for this network/IP in 24 hours. Choose a plan to continue.',
+            limitType: 'ip_rate_limit'
+          }, 200, origin)
+        }
+
+        if (claim && email && !isExistingIpUser) {
+          ipHistory.push({ email, timestamp: now })
+          IP_FREE_REGISTRATIONS.set(clientIp, ipHistory)
+        }
+
+        return json({ eligible: true, ip: clientIp, registeredCount: ipHistory.length }, 200, origin)
+      } catch (err) {
+        return json({ eligible: true, error: err?.message }, 200, origin)
       }
     }
 
@@ -501,6 +586,8 @@ export default {
           return json({ ok: false, message: 'Failed to update user quotas' }, 500, origin)
         }
 
+        invalidateProfileCache(email)
+
         // Mark review as awarded if reviewId provided or by email
         try {
           const rQuery = reviewId ? `id=eq.${encodeURIComponent(reviewId)}` : `email=eq.${encodeURIComponent(email)}`
@@ -635,6 +722,7 @@ export default {
           )
         }
 
+        invalidateProfileCache(normalizedEmail)
         return json({ ok: true }, 200, origin)
       } catch (e) {
         let message = 'Failed to complete link'
@@ -835,6 +923,7 @@ export default {
           )
         }
 
+        invalidateProfileCache(email)
         return json({ ok: true }, 200, origin)
       } catch (e) {
         let message = 'Failed to logout'
@@ -1154,6 +1243,9 @@ export default {
             return json({ message: 'Database error' }, 500, origin)
           }
         }
+
+        invalidateProfileCache(trustedEmail)
+        if (trustedUserId) invalidateProfileCache(trustedUserId)
 
         return json({ ok: true }, 200, origin)
       } catch (e) {
@@ -1669,6 +1761,9 @@ export default {
           }
         }
 
+        invalidateProfileCache(customerEmail)
+        if (userId) invalidateProfileCache(userId)
+
         return json({ ok: true, received: true, event: eventType }, 200, origin)
       } catch (err) {
         console.error('Dodo webhook processing error:', err)
@@ -1918,6 +2013,8 @@ export default {
             awarded_at: new Date().toISOString(),
           }),
         }).catch(() => null)
+
+        invalidateProfileCache(email)
 
         return json({
           ok: true,

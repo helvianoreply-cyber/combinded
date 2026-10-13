@@ -98,8 +98,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
   }, [])
 
-  // Auto-sync latest profile
+  // Auto-sync latest profile if not already provided via props
   useEffect(() => {
+    if (userProfile?.plan) return
+
     const fetchLatestProfile = async () => {
       const email = (sessionEmail || '').trim().toLowerCase()
       if (!email) return
@@ -116,7 +118,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       }
     }
     fetchLatestProfile()
-  }, [apiBase, sessionEmail])
+  }, [apiBase, sessionEmail, userProfile])
 
   // Sort available plans in ascending price order: $0 -> $8 -> $15 -> $25 -> $35 -> $49
   const availablePlans = useMemo(() => {
@@ -322,6 +324,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="dashboard-alert error" style={{ maxWidth: 840, margin: '0 auto 2rem auto' }}>
             <span>⚠️</span>
             <span>{upgradeError}</span>
+          </div>
+        )}
+
+        {/* Anti-Abuse Notice: Free Trial already claimed on this device */}
+        {currentPlan === 'basic' && userProfile && userProfile.seconds_remaining === 0 && userProfile.seconds_used === 0 && (
+          <div className="dashboard-alert warning" style={{ maxWidth: 840, margin: '0 auto 2rem auto', border: '1px solid rgba(245, 158, 11, 0.4)', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.9rem 1.25rem', borderRadius: 12 }}>
+            <span>⚠️</span>
+            <span>
+              <strong>Free Trial Notice:</strong> A free trial has already been claimed on this device. Select a plan below to activate your quotas.
+            </span>
           </div>
         )}
 

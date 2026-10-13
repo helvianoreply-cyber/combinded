@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supabaseClient'
 import { type DbUser, type DbPlan, SEED_PLANS } from './lib/database.types'
+import { isDeviceEligibleForNewTrial, recordDeviceTrialClaim, getOrCreateDeviceId } from './lib/deviceTrialLock'
 import { LandingPage } from './components/LandingPage'
 import { Dashboard } from './components/Dashboard'
 import { AdminReviewsPanel } from './components/AdminReviewsPanel'
@@ -300,7 +301,37 @@ function App() {
         return userRow
       }
 
-      // 4. Only if user does NOT exist: insert new record
+      // 4. Only if user does NOT exist: insert new record with Anti-Abuse Device Lock & IP Guard
+      let isEligibleForTrial = isDeviceEligibleForNewTrial(normalizedEmail)
+
+      // Double-check with Cloudflare Worker Edge IP rate guard (max 2 free accounts per IP per 24h)
+      if (isEligibleForTrial) {
+        try {
+          const apiBase =
+            import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+          const checkRes = await fetch(
+            `${apiBase}/check-trial-eligibility?email=${encodeURIComponent(normalizedEmail)}&claim=true`,
+            { method: 'GET' }
+          )
+          if (checkRes.ok) {
+            const checkData = (await checkRes.json()) as { eligible?: boolean }
+            if (checkData.eligible === false) {
+              isEligibleForTrial = false
+            }
+          }
+        } catch {
+          // Graceful fallback to local device check if network drops
+        }
+      }
+
+      const trialSeconds = isEligibleForTrial ? 300 : 0
+      const trialResponses = isEligibleForTrial ? 5 : 0
+      const trialApps = isEligibleForTrial ? 5 : 0
+
+      if (isEligibleForTrial) {
+        recordDeviceTrialClaim(normalizedEmail)
+      }
+
       const newRecord: Partial<DbUser> = {
         id,
         email: normalizedEmail,
@@ -308,11 +339,11 @@ function App() {
         verifier: false,
         login_verifier: true,
         session_verifier: false,
-        responses_remaining: 5,
+        responses_remaining: trialResponses,
         responses_used: 0,
-        seconds_remaining: 300, // 5 mins
+        seconds_remaining: trialSeconds, // 5 mins if eligible, 0 if device already used trial
         seconds_used: 0,
-        applications_remaining: 5,
+        applications_remaining: trialApps,
         applications_applied: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -345,8 +376,9 @@ function App() {
       if (!userRow) {
         const apiBase =
           import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+        const deviceId = getOrCreateDeviceId()
         const res = await fetch(
-          `${apiBase}/get-profile?email=${encodeURIComponent(normalizedEmail)}&userId=${encodeURIComponent(id)}`
+          `${apiBase}/get-profile?email=${encodeURIComponent(normalizedEmail)}&userId=${encodeURIComponent(id)}&deviceId=${encodeURIComponent(deviceId)}`
         )
         if (res.ok) {
           const json = (await res.json()) as { ok?: boolean; profile?: DbUser }
@@ -365,11 +397,11 @@ function App() {
           verifier: false,
           login_verifier: true,
           session_verifier: false,
-          responses_remaining: 5,
+          responses_remaining: trialResponses,
           responses_used: 0,
-          seconds_remaining: 300,
+          seconds_remaining: trialSeconds,
           seconds_used: 0,
-          applications_remaining: 5,
+          applications_remaining: trialApps,
           applications_applied: 0,
         }
       }
@@ -377,6 +409,7 @@ function App() {
       return userRow
     } catch (err) {
       console.error('Error syncing user record:', err)
+      const isEligibleForTrial = isDeviceEligibleForNewTrial(normalizedEmail)
       return {
         id,
         email: normalizedEmail,
@@ -384,11 +417,11 @@ function App() {
         verifier: false,
         login_verifier: true,
         session_verifier: false,
-        responses_remaining: 5,
+        responses_remaining: isEligibleForTrial ? 5 : 0,
         responses_used: 0,
-        seconds_remaining: 300,
+        seconds_remaining: isEligibleForTrial ? 300 : 0,
         seconds_used: 0,
-        applications_remaining: 5,
+        applications_remaining: isEligibleForTrial ? 5 : 0,
         applications_applied: 0,
       } as DbUser
     }
