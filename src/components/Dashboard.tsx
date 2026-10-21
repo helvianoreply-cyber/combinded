@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { SkyCanvas3D } from './SkyCanvas3D'
 import { type DbUser, type DbPlan, SEED_PLANS, getPlanInrPrice } from '../lib/database.types'
+import { HELVIA_APPS_CATALOG } from '../lib/downloadLinks'
 import { PaymentModal } from './PaymentModal'
 import { InteractiveTopupStation } from './InteractiveTopupStation'
 import { ReviewSessionCard } from './ReviewSessionCard'
@@ -336,6 +337,99 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </span>
           </div>
         )}
+
+        {/* =========================================================
+            DESKTOP APPS & INSTALLERS SUITE
+            ========================================================= */}
+        <section className="dashboard-downloads-section" style={{ maxWidth: 1100, margin: '0 auto 2.5rem auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f8fafc', margin: 0, display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                <span>💻</span> Desktop Applications Suite
+              </h2>
+              <p style={{ color: '#94a3b8', fontSize: '0.86rem', margin: '0.25rem 0 0 0' }}>
+                Download and install the official Windows desktop applications included with your account.
+              </p>
+            </div>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.35rem 0.8rem', borderRadius: 999, background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+              Windows 10 / 11 (64-bit) Supported
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '1.15rem' }}>
+            {HELVIA_APPS_CATALOG.map((app) => (
+              <div 
+                key={app.id} 
+                style={{
+                  background: 'rgba(15, 23, 42, 0.82)',
+                  backdropFilter: 'blur(20px)',
+                  border: `1px solid ${app.id === 'remote' ? 'rgba(59, 130, 246, 0.35)' : app.id === 'meet' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(245, 158, 11, 0.35)'}`,
+                  borderRadius: 18,
+                  padding: '1.35rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 12px 35px rgba(0, 0, 0, 0.35)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: app.accentColor, background: `${app.accentColor}18`, padding: '0.28rem 0.65rem', borderRadius: 6, border: `1px solid ${app.accentColor}35` }}>
+                      {app.badge}
+                    </span>
+                    <span style={{ fontSize: '0.74rem', color: '#94a3b8', fontWeight: 700 }}>v{app.version}</span>
+                  </div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', margin: '0 0 0.35rem 0' }}>
+                    {app.name}
+                  </h3>
+                  <p style={{ color: '#94a3b8', fontSize: '0.82rem', lineHeight: 1.55, margin: '0 0 1.25rem 0' }}>
+                    {app.description}
+                  </p>
+                </div>
+
+                <div>
+                  <a 
+                    href={app.downloadUrl}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.55rem',
+                      width: '100%',
+                      padding: '0.8rem 1rem',
+                      borderRadius: 12,
+                      background: app.id === 'remote' 
+                        ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' 
+                        : app.id === 'meet' 
+                          ? 'linear-gradient(135deg, #9333ea, #7e22ce)' 
+                          : 'linear-gradient(135deg, #d97706, #b45309)',
+                      color: '#ffffff',
+                      textDecoration: 'none',
+                      fontWeight: 750,
+                      fontSize: '0.9rem',
+                      boxShadow: `0 4px 18px ${app.accentColor}40`,
+                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                    }}
+                    title={`Download ${app.filename}`}
+                  >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Download {app.tag}</span>
+                  </a>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.55rem', color: '#64748b', fontSize: '0.72rem' }}>
+                    <span>{app.filename}</span>
+                    <span>✓ SHA-256 Verified</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* =========================================================
             FEATURED 1-MONTH UNLIMITED VIP SPOTLIGHT (STANDALONE SECTION)

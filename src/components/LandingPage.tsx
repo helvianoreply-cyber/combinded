@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { SkyCanvas3D } from './SkyCanvas3D'
 import { UnifiedSimultaneousPracticalsArena } from './UnifiedSimultaneousPracticalsArena'
 import { type DbPlan, SEED_PLANS, getPlanInrPrice } from '../lib/database.types'
+import { HELVIA_DOWNLOAD_LINKS } from '../lib/downloadLinks'
 import { PaymentModal } from './PaymentModal'
 import { InteractiveTopupStation } from './InteractiveTopupStation'
 
@@ -735,11 +736,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <div className="launchpad-actions">
                   <a 
-                    href="https://pub-4ec430c8cdbd49ffb57191dca016c43b.r2.dev/Helvia%20Remote%20Setup%200.1.0.exe"
+                    href={HELVIA_DOWNLOAD_LINKS.remote}
                     className="launchpad-btn blue"
-                    title="Download Windows Host (.exe)"
+                    title="Download Helvia Remote Host (.exe v0.2.5)"
                   >
-                    <span>Download Host (.exe)</span>
+                    <span>Download Host v0.2.5</span>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                   </a>
                   <form className="launchpad-quick-pin" onSubmit={handleQuickConnect}>
@@ -768,20 +769,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span>🛡️ Hardware Capture Privacy • Sub-18ms Local Ingest</span>
                 </div>
                 <div className="launchpad-actions">
+                  <a 
+                    href={HELVIA_DOWNLOAD_LINKS.meet}
+                    className="launchpad-btn purple"
+                    title="Download Helvia Meet (.exe)"
+                  >
+                    <span>Download Meet (.exe)</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  </a>
                   <button 
                     type="button"
-                    className="launchpad-btn purple"
+                    className="launchpad-pin-btn"
+                    style={{ width: '100%', marginTop: '0.4rem', background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' }}
                     onClick={() => {
                       if (isSignedIn) navigate('/dashboard')
                       else signInWithGoogle()
                     }}
                   >
-                    <span>Launch Executive Copilot</span>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    <span>Launch Web HUD</span>
                   </button>
-                  <a href="#meeting-copilot" className="eco-secondary-btn" style={{ textAlign: 'center', textDecoration: 'none' }}>
-                    <span>Explore Executive HUD</span>
-                  </a>
                 </div>
               </div>
 
@@ -798,20 +804,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span>📄 99% ATS Compliance • Executive Interview Drills</span>
                 </div>
                 <div className="launchpad-actions">
+                  <a 
+                    href={HELVIA_DOWNLOAD_LINKS.apply}
+                    className="launchpad-btn gold"
+                    title="Download Helvia Apply (.exe)"
+                  >
+                    <span>Download Apply (.exe)</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  </a>
                   <button 
                     type="button"
-                    className="launchpad-btn gold"
+                    className="launchpad-pin-btn"
+                    style={{ width: '100%', marginTop: '0.4rem', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}
                     onClick={() => {
                       if (isSignedIn) navigate('/dashboard')
                       else signInWithGoogle()
                     }}
                   >
-                    <span>Launch Talent Mobility</span>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    <span>Launch ATS Dashboard</span>
                   </button>
-                  <a href="#auto-apply" className="eco-secondary-btn" style={{ textAlign: 'center', textDecoration: 'none' }}>
-                    <span>Explore ATS Pipeline</span>
-                  </a>
                 </div>
               </div>
             </div>
@@ -956,10 +967,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               {/* Card Footer Actions */}
               <div className="eco-card-footer">
                 <a 
-                  href="https://pub-4ec430c8cdbd49ffb57191dca016c43b.r2.dev/Helvia%20Remote%20Setup%200.1.0.exe"
+                  href={HELVIA_DOWNLOAD_LINKS.remote}
                   className="eco-primary-btn blue"
+                  title="Download Helvia Remote Host (.exe v0.2.5)"
                 >
-                  <span>Download Windows Host (.exe)</span>
+                  <span>Download Remote Host v0.2.5 (.exe)</span>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 </a>
                 <button 
@@ -1045,17 +1057,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               {/* Card Footer Actions */}
-              <div className="eco-card-footer">
+              <div className="eco-card-footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <a 
+                  href={HELVIA_DOWNLOAD_LINKS.meet}
+                  className="eco-primary-btn purple"
+                  title="Download Helvia Meet (.exe)"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <span>Download Helvia Meet (.exe)</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                </a>
                 <button 
                   type="button" 
-                  className="eco-primary-btn purple"
+                  className="eco-secondary-btn"
                   onClick={() => {
                     if (isSignedIn) navigate('/dashboard')
                     else signInWithGoogle()
                   }}
                 >
-                  <span>Launch Executive Copilot</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  <span>Launch Web Copilot Dashboard</span>
                 </button>
                 <div className="eco-card-subtext">
                   <span>Included with Advisory Responses Quota</span>
@@ -1137,17 +1157,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               {/* Card Footer Actions */}
-              <div className="eco-card-footer">
+              <div className="eco-card-footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <a 
+                  href={HELVIA_DOWNLOAD_LINKS.apply}
+                  className="eco-primary-btn gold"
+                  title="Download Helvia Apply (.exe)"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <span>Download Helvia Apply (.exe)</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                </a>
                 <button 
                   type="button" 
-                  className="eco-primary-btn gold"
+                  className="eco-secondary-btn"
                   onClick={() => {
                     if (isSignedIn) navigate('/dashboard')
                     else signInWithGoogle()
                   }}
                 >
-                  <span>Launch Talent Mobility</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  <span>Launch Talent Mobility Dashboard</span>
                 </button>
                 <div className="eco-card-subtext">
                   <span>Included with Job Auto-Apply Quota</span>
@@ -3207,19 +3235,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <a 
+              href={HELVIA_DOWNLOAD_LINKS.meet}
+              className="eco-primary-btn purple"
+              style={{ width: 'auto', minWidth: 260, padding: '0.9rem 2.25rem', fontSize: '1rem', textDecoration: 'none' }}
+              title="Download Helvia Meet Desktop (.exe)"
+            >
+              <GhostIcon />
+              <span>Download Helvia Meet (.exe)</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </a>
             <button 
               type="button" 
-              className="eco-primary-btn purple"
-              style={{ width: 'auto', minWidth: 260, padding: '0.9rem 2.25rem', fontSize: '1rem' }}
+              className="eco-secondary-btn"
+              style={{ width: 'auto', minWidth: 220, padding: '0.9rem 1.75rem', fontSize: '1rem' }}
               onClick={() => {
                 if (isSignedIn) navigate('/dashboard')
                 else signInWithGoogle()
               }}
             >
-              <GhostIcon />
-              <span>Launch Meeting Copilot</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              <span>Open Meeting Dashboard</span>
             </button>
           </div>
         </div>
@@ -4230,13 +4266,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           <div className="footer-nav-columns">
             <div className="footer-nav-col">
-              <h4>Platforms</h4>
+              <h4>Platforms &amp; Downloads</h4>
               <ul>
                 <li><a href="#practical-remote">Helvia Remote Desktop</a></li>
                 <li><a href="#meeting-copilot">Executive Meeting Copilot</a></li>
                 <li><a href="#auto-apply">Talent Mobility &amp; ATS</a></li>
-                <li><a href="#controllers">Zero-Install Web Access</a></li>
-                <li><a href="https://pub-4ec430c8cdbd49ffb57191dca016c43b.r2.dev/Helvia%20Remote%20Setup%200.1.0.exe">Windows Host Client (.exe)</a></li>
+                <li><a href={HELVIA_DOWNLOAD_LINKS.remote}>📥 Remote Host v0.2.5 (.exe)</a></li>
+                <li><a href={HELVIA_DOWNLOAD_LINKS.meet}>🎙️ Helvia Meet Setup (.exe)</a></li>
+                <li><a href={HELVIA_DOWNLOAD_LINKS.apply}>📄 Helvia Apply Setup (.exe)</a></li>
               </ul>
             </div>
 

@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-
 import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supabaseClient'
 import { type DbUser, type DbPlan, SEED_PLANS } from './lib/database.types'
 import { isDeviceEligibleForNewTrial, recordDeviceTrialClaim, getOrCreateDeviceId } from './lib/deviceTrialLock'
+import { HELVIA_DOWNLOAD_LINKS } from './lib/downloadLinks'
 import { LandingPage } from './components/LandingPage'
 import { Dashboard } from './components/Dashboard'
 import { AdminReviewsPanel } from './components/AdminReviewsPanel'
@@ -1072,13 +1073,13 @@ function App() {
         <div className="account">
           <a 
             className="download-host-nav-btn" 
-            href="https://pub-4ec430c8cdbd49ffb57191dca016c43b.r2.dev/Helvia%20Remote%20Setup%200.1.0.exe"
-            title="Download Windows Host (.exe)"
+            href={HELVIA_DOWNLOAD_LINKS.remote}
+            title="Download Helvia Remote Host (.exe v0.2.5)"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
               <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
             </svg>
-            <span>Host .exe</span>
+            <span>Host v0.2.5</span>
           </a>
 
           {isSignedIn ? (
@@ -1141,13 +1142,27 @@ function App() {
               <a href="#pricing" onClick={() => setMobileNavOpen(false)}>Enterprise Pricing</a>
             </nav>
           )}
-          <div className="mobile-nav-actions">
+          <div className="mobile-nav-actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
             <a 
               className="secondary mobile-download-link"
-              href="https://pub-4ec430c8cdbd49ffb57191dca016c43b.r2.dev/Helvia%20Remote%20Setup%200.1.0.exe"
+              href={HELVIA_DOWNLOAD_LINKS.remote}
               onClick={() => setMobileNavOpen(false)}
             >
-              Download Windows Host (.exe)
+              📥 Download Helvia Remote (v0.2.5)
+            </a>
+            <a 
+              className="secondary mobile-download-link"
+              href={HELVIA_DOWNLOAD_LINKS.meet}
+              onClick={() => setMobileNavOpen(false)}
+            >
+              🎙️ Download Helvia Meet (.exe)
+            </a>
+            <a 
+              className="secondary mobile-download-link"
+              href={HELVIA_DOWNLOAD_LINKS.apply}
+              onClick={() => setMobileNavOpen(false)}
+            >
+              📄 Download Helvia Apply (.exe)
             </a>
             {isSignedIn ? (
               <>
