@@ -68,6 +68,16 @@ export const SEED_PLANS: DbPlan[] = [
     dodo_product_id: 'pdt_0NnIQ5VyQfhSXYsFLcojZ',
     included_applications: 600,
   },
+  {
+    id: 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901',
+    tier: 'usage',
+    name: '1 Month Unlimited VIP',
+    price: 21,
+    included_minutes: 999999,
+    included_responses: 999999,
+    dodo_product_id: 'pdt_0Nmfh6M8mQGJT0VvCHDzO',
+    included_applications: 999999,
+  },
 ]
 
 /**

@@ -170,7 +170,8 @@ function App() {
       try {
         const { data, error } = await sb.from('plans').select('*').order('price', { ascending: true })
         if (!error && Array.isArray(data) && data.length > 0) {
-          const normalized = data.map((plan: any) => {
+          const filtered = data.filter((p: any) => p.id !== '13969aad-7309-40ec-9b54-70b39d5b13f6' && p.tier !== 'pro plus+')
+          const normalized = filtered.map((plan: any) => {
             if (Number(plan.price) === 0 || plan.tier === 'basic') {
               return { ...plan, included_minutes: 0, included_responses: 0, included_applications: 0 }
             }
@@ -980,7 +981,13 @@ function App() {
     try {
       const apiBase =
         import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
-      const targetProductId = productId || planObj?.dodo_product_id || 'pdt_0NnIQ5VyQfhSXYsFLcojZ'
+      const isUnlimited = 
+        productId === 'pdt_0Nmfh6M8mQGJT0VvCHDzO' ||
+        productId === 'pdt_0NnIQ_unlimited_vip' ||
+        planObj?.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' ||
+        Boolean(planObj?.name && planObj.name.toLowerCase().includes('unlimited'))
+
+      const targetProductId = productId || (isUnlimited ? 'pdt_0Nmfh6M8mQGJT0VvCHDzO' : 'pdt_0NnIQ5VyQfhSXYsFLcojZ')
       const response = await fetch(`${apiBase}/create-dodo-checkout`, {
         method: 'POST',
         headers: {
@@ -992,9 +999,10 @@ function App() {
           name: displayName || sessionEmail.split('@')[0],
           productId: targetProductId,
           dodo_product_id: targetProductId,
-          planId: planObj?.id,
-          plan: planObj?.tier || 'usage',
-          planTitle: planObj?.name,
+          planId: planObj?.id || (isUnlimited ? 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' : undefined),
+          plan: isUnlimited ? 'usage' : (planObj?.tier || 'usage'),
+          planTitle: planObj?.name || (isUnlimited ? '1 Month Unlimited VIP' : undefined),
+          isUnlimited: isUnlimited ? 'true' : 'false',
           couponCode: couponCode || undefined,
           discount_code: couponCode || undefined,
           returnUrl: `${window.location.origin}/dashboard?payment=success`,

@@ -322,7 +322,7 @@ const WORKFLOW_SCENARIOS = [
 const FAQS = [
   {
     q: 'Are all 3 apps (Remote Desktop, Meeting Copilot, Auto Apply) included in one unified subscription?',
-    a: 'Yes! Every paid plan (Standard $8, Pro+ $15) gives you unified access to all 3 platforms in one single account. You receive bundled pools of Remote Desktop minutes, live AI Copilot answer credits ("Ans 💡" & meeting whisperer), and Auto Apply job application quotas.',
+    a: 'Yes! Every paid plan (Standard $8, Pro+ Pro $15, and 1-Month Unlimited VIP $21) gives you unified access to all 3 platforms in one single account. You receive bundled pools of Remote Desktop minutes, live AI Copilot answer credits ("Ans 💡" & meeting whisperer), and Auto Apply job application quotas.',
   },
   {
     q: 'How is Helvia Meeting Copilot 100% invisible during Zoom, Teams, and Google Meet screenshares?',
@@ -3874,14 +3874,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           
           <div className="plans-grid">
             {(plans && plans.length > 0 ? plans : SEED_PLANS)
-              .filter(
-                (p) =>
-                  p.id !== 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' &&
-                  p.id !== '13969aad-7309-40ec-9b54-70b39d5b13f6' &&
-                  p.tier !== 'pro plus+' &&
-                  !p.name.toLowerCase().includes('unlimited') &&
-                  !p.name.toLowerCase().includes('lifetime')
-              )
+              .filter((p) => p.id !== '13969aad-7309-40ec-9b54-70b39d5b13f6' && p.tier !== 'pro plus+')
               .map((p, idx) => {
               const isPopular = p.name.toLowerCase().includes('most popular') || p.name.toLowerCase().includes('pro+ pro')
               const isLifetime = p.tier === 'pro plus+'

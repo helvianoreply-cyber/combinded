@@ -121,20 +121,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
     fetchLatestProfile()
   }, [apiBase, sessionEmail, userProfile])
 
-  // Available plans filtered strictly to standard usage tiers ($0 Basic, $8 Standard, $15 Pro+)
+  // Sort available plans in ascending price order: $0 -> $8 -> $15 -> $21
   const availablePlans = useMemo(() => {
-    const list = (plans && plans.length > 0 ? plans : SEED_PLANS).filter(
-      (p) =>
-        p.id !== 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' &&
-        p.id !== '13969aad-7309-40ec-9b54-70b39d5b13f6' &&
-        p.tier !== 'pro plus+' &&
-        !p.name.toLowerCase().includes('unlimited') &&
-        !p.name.toLowerCase().includes('lifetime')
-    )
-    return [...list].sort((a, b) => Number(a.price) - Number(b.price))
+    const list = plans && plans.length > 0 ? plans : SEED_PLANS
+    return [...list]
+      .filter((p) => p.id !== '13969aad-7309-40ec-9b54-70b39d5b13f6' && p.tier !== 'pro plus+')
+      .sort((a, b) => Number(a.price) - Number(b.price))
   }, [plans])
 
-  const standardPlans = availablePlans
+  const unlimitedPlan = useMemo(() => {
+    return (
+      availablePlans.find(
+        (p) => p.name.toLowerCase().includes('unlimited') || p.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901'
+      ) || SEED_PLANS.find((p) => p.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901')
+    )
+  }, [availablePlans])
+
+  const standardPlans = useMemo(() => {
+    return availablePlans.filter(
+      (p) => !p.name.toLowerCase().includes('unlimited') && p.id !== 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901'
+    )
+  }, [availablePlans])
 
   const isUserUnlimitedPlan = 
     currentPlan !== 'basic' && (
@@ -144,15 +151,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
     )
 
   const activePlanObj = availablePlans.find((p) => {
-    if (p.tier.toLowerCase() === currentPlan.toLowerCase()) return true
+    if (isUserUnlimitedPlan && p.name.toLowerCase().includes('unlimited')) return true
+    if (currentPlan === 'pro plus+' && p.tier === 'pro plus+') return true
+    if (p.tier.toLowerCase() === currentPlan.toLowerCase() && !p.name.toLowerCase().includes('unlimited')) return true
     return false
   })
 
-  const planDisplayName = activePlanObj
-    ? activePlanObj.name
-    : currentPlan === 'basic'
-      ? 'Basic Free Tier'
-      : currentPlan
+  const planDisplayName = isUserUnlimitedPlan
+    ? '1 Month Unlimited VIP'
+    : activePlanObj
+      ? activePlanObj.name
+      : currentPlan === 'basic'
+        ? 'Basic Free Tier'
+        : currentPlan
   const isPaid = currentPlan !== 'basic'
 
   // Real-time check if 1-month unlimited plan expired while dashboard is open
@@ -422,11 +433,149 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </section>
 
+        {/* =========================================================
+            FEATURED 1-MONTH UNLIMITED VIP SPOTLIGHT (STANDALONE SECTION)
+            ========================================================= */}
+        {unlimitedPlan && (() => {
+          const inrPrice = getPlanInrPrice(unlimitedPlan.price)
+          const isCurrentUnlimited = isUserUnlimitedPlan
+
+          return (
+            <section className="unlimited-spotlight-section">
+              <div className={`unlimited-spotlight-card ${isCurrentUnlimited ? 'active-plan' : ''}`}>
+                <div className="unlimited-spotlight-glow" />
+
+                <div className="unlimited-spotlight-header">
+                  <div className="unlimited-badge-cluster">
+                    <span className="unlimited-crown-badge">
+                      👑 1-Month Unlimited VIP Pass
+                    </span>
+                    <span className="unlimited-duration-tag">30 Days Unlimited Access</span>
+                  </div>
+                  <div className="unlimited-offer-pill">
+                    <span>⚡ Unlimited Remote &amp; Vision AI • 30 Days Full Access</span>
+                  </div>
+                </div>
+
+                <div className="unlimited-spotlight-body">
+                  {/* Left Column: Details & Pricing & Dual CTAs */}
+                  <div className="unlimited-spotlight-main">
+                    <h2 className="unlimited-spotlight-title">{unlimitedPlan.name}</h2>
+                    <p className="unlimited-spotlight-subtitle">
+                      Complete unrestricted access for 30 days. Run long meetings, continuous AI screen analysis, and bulk auto-apply to hundreds of jobs with zero per-minute deductions.
+                    </p>
+
+                    <div className="unlimited-pricing-block">
+                      <div className="unlimited-price-tag">
+                        <span className="unlimited-currency">$</span>
+                        <span className="unlimited-amount">{unlimitedPlan.price}</span>
+                        <span className="unlimited-period">USD / month (30 Days)</span>
+                      </div>
+                      <div className="unlimited-inr-row">
+                        <span className="unlimited-inr-base">≈ ₹{inrPrice.toLocaleString('en-IN')} INR</span>
+                      </div>
+                    </div>
+
+                    {/* Unlimited Badges / Quotas */}
+                    <div className="unlimited-stats-row">
+                      <div className="unlimited-stat-card">
+                        <div className="unlimited-stat-icon">⏱️</div>
+                        <div>
+                          <div className="unlimited-stat-number">∞ Unlimited</div>
+                          <div className="unlimited-stat-label">Remote &amp; Meeting Time</div>
+                        </div>
+                      </div>
+
+                      <div className="unlimited-stat-card">
+                        <div className="unlimited-stat-icon">💡</div>
+                        <div>
+                          <div className="unlimited-stat-number">∞ Unlimited</div>
+                          <div className="unlimited-stat-label">AI Screen Vision Answers</div>
+                        </div>
+                      </div>
+
+                      <div className="unlimited-stat-card">
+                        <div className="unlimited-stat-icon">💼</div>
+                        <div>
+                          <div className="unlimited-stat-number">∞ Unlimited</div>
+                          <div className="unlimited-stat-label">Job Auto-Applies</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dual Gateway Checkout Buttons */}
+                    <div className="unlimited-cta-container">
+                      {isCurrentUnlimited ? (
+                        <button className="unlimited-current-badge-btn" type="button" disabled>
+                          <CheckCircleIcon /> Current Active Plan {planExpiresAt && `(Expires ${new Date(planExpiresAt).toLocaleDateString()})`}
+                        </button>
+                      ) : (
+                        <div className="unlimited-buttons-grid">
+                          <button
+                            type="button"
+                            className="unlimited-btn razorpay-btn"
+                            onClick={() => openPaymentModal(unlimitedPlan)}
+                            disabled={isUpgrading}
+                          >
+                            <span className="btn-main-text">🇮🇳 Get with Razorpay / UPI</span>
+                            <span className="btn-sub-text">₹{inrPrice.toLocaleString('en-IN')} INR • UPI &amp; Cards</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className="unlimited-btn dodo-btn"
+                            onClick={() => handleDodoUpgrade(unlimitedPlan)}
+                            disabled={isUpgrading}
+                          >
+                            <span className="btn-main-text">🌍 Pay with Dodo Payments</span>
+                            <span className="btn-sub-text">${unlimitedPlan.price} USD • Global Cards &amp; Apple Pay</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Key Feature Highlights */}
+                  <div className="unlimited-spotlight-sidebar">
+                    <h3 className="unlimited-features-heading">⚡ What's Included in Unlimited VIP:</h3>
+                    <ul className="unlimited-features-list">
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Zero Minute Limits:</strong> Stream continuously with no countdown or balance depletion.</span>
+                      </li>
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Real-time Vision AI:</strong> Unlimited instant screen questions, code explanations, and answers.</span>
+                      </li>
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Bulk ATS Auto-Apply:</strong> Automate applications on LinkedIn, Indeed, and company portals.</span>
+                      </li>
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Sub-15ms 60 FPS Stream:</strong> Ultra-fast WebRTC direct p2p connection with low latency.</span>
+                      </li>
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Stealth Host Controls:</strong> Ghost click loopback and microphone forwarding.</span>
+                      </li>
+                      <li>
+                        <CheckCircleIcon />
+                        <span><strong>Automatic 30-Day Expiry:</strong> Valid for exactly 30 days from purchase. Automatically resets to Basic with zero recurring charges.</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )
+        })()}
+
         {/* Section Divider */}
         <div className="dashboard-section-divider">
           <div className="divider-line" />
           <div className="divider-badge">
-            <span>💎 SUBSCRIPTION PLANS &amp; PACKS</span>
+            <span>📦 STANDARD USAGE &amp; TOP-UP PACKS</span>
           </div>
           <div className="divider-line" />
         </div>
