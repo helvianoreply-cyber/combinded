@@ -3834,9 +3834,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               .filter(
                 (p) =>
                   p.id !== '13969aad-7309-40ec-9b54-70b39d5b13f6' &&
-                  p.tier !== 'pro plus+' &&
-                  Number(p.price) > 0 &&
-                  p.tier !== 'basic'
+                  p.tier !== 'pro plus+'
               )
               .map((p, idx) => {
               const isPopular = p.name.toLowerCase().includes('most popular') || p.name.toLowerCase().includes('pro+ pro')
@@ -3896,8 +3894,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                   <div className="plan-cta">
                     {isFree ? (
-                      <button className="plan-cta-main secondary" type="button" disabled>
-                        Active by Default
+                      <button 
+                        className="plan-cta-main secondary" 
+                        type="button" 
+                        onClick={() => {
+                          if (isSignedIn) navigate('/dashboard')
+                          else signInWithGoogle()
+                        }}
+                      >
+                        {isSignedIn ? 'Active Default Tier' : 'Get Started Free'}
                       </button>
                     ) : isCurrentActive ? (
                       <button className="plan-cta-main secondary" type="button" disabled>
