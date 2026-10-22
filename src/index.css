@@ -65,10 +65,8 @@
 }
 
 html {
-  scroll-behavior: smooth;
   font-size: 12px;
   overflow-x: hidden;
-  overflow-y: auto;
   margin: 0;
   padding: 0;
   width: 100%;
@@ -81,8 +79,7 @@ body {
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  overflow: visible !important;
-  overflow-x: clip !important;
+  overflow-x: hidden;
   background-color: transparent;
   color: #fdf2f8;
 }
@@ -109,26 +106,6 @@ html::-webkit-scrollbar-thumb:hover {
   html {
     font-size: 11.5px;
   }
-}
-
-/* Atmospheric floating twilight stars / particles */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    radial-gradient(1.5px 1.5px at 15% 20%, rgba(254, 210, 170, 0.8) 0%, transparent 100%),
-    radial-gradient(1px 1px at 45% 15%, rgba(255, 255, 255, 0.7) 0%, transparent 100%),
-    radial-gradient(2px 2px at 75% 25%, rgba(246, 168, 158, 0.9) 0%, transparent 100%),
-    radial-gradient(1px 1px at 85% 10%, rgba(255, 255, 255, 0.6) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 30% 60%, rgba(254, 210, 170, 0.7) 0%, transparent 100%),
-    radial-gradient(2px 2px at 90% 70%, rgba(224, 122, 120, 0.8) 0%, transparent 100%),
-    radial-gradient(1px 1px at 10% 85%, rgba(255, 255, 255, 0.6) 0%, transparent 100%);
-  pointer-events: none;
-  z-index: -1;
 }
 
 h1 {
@@ -223,48 +200,44 @@ button {
   opacity: 0;
   transform: translateY(12px);
   transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
 }
 
 .reveal.visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
 .reveal-left {
   opacity: 0;
   transform: translateX(-14px);
   transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
 }
 
 .reveal-left.visible {
   opacity: 1;
-  transform: translateX(0);
+  transform: none;
 }
 
 .reveal-right {
   opacity: 0;
   transform: translateX(14px);
   transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
 }
 
 .reveal-right.visible {
   opacity: 1;
-  transform: translateX(0);
+  transform: none;
 }
 
 .reveal-scale {
   opacity: 0;
   transform: scale(0.98);
   transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
 }
 
 .reveal-scale.visible {
   opacity: 1;
-  transform: scale(1);
+  transform: none;
 }
 
 .stagger-1 { transition-delay: 0.03s; }

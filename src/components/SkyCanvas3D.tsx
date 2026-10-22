@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 
 interface SkyCanvas3DProps {
-  scrollProgress: number // 0 to 1
+  scrollProgress?: number // 0 to 1 (optional; defaults to auto document scroll)
   manualTimeOverride?: number | null // 0 to 1 or null for auto
 }
 
@@ -117,9 +117,11 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
   }>({ peaks: [], midRidge: [], trees: [] })
 
   const effectiveProgress = manualTimeOverride !== undefined && manualTimeOverride !== null ? manualTimeOverride : scrollProgress
-  const progressRef = useRef(effectiveProgress)
+  const progressRef = useRef(effectiveProgress ?? 0)
   useEffect(() => {
-    progressRef.current = effectiveProgress
+    if (effectiveProgress !== undefined && effectiveProgress !== null) {
+      progressRef.current = effectiveProgress
+    }
   }, [effectiveProgress])
 
   // Initialize all graphical entities
@@ -133,7 +135,7 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
       [255, 175, 150],
     ]
     const stars: Array<{ x: number; y: number; z: number; size: number; baseAlpha: number; twinkleSpeed: number; phase: number; r: number; g: number; b: number }> = []
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 80; i++) {
       const col = spectralPalette[Math.floor(Math.random() * spectralPalette.length)]
       stars.push({
         x: Math.random(),
@@ -150,20 +152,20 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
     }
     starsRef.current = stars
 
-    // 2. 10 Photorealistic Volumetric Clouds
+    // 2. Photorealistic Volumetric Clouds (Optimized for smooth 60-120 FPS compositing)
     const clouds: Array<{ x: number; y: number; scale: number; speed: number; opacity: number; puffs: Array<{ ox: number; oy: number; r: number; alphaMult: number }> }> = []
-    for (let i = 0; i < 13; i++) {
+    for (let i = 0; i < 8; i++) {
       const baseScale = Math.random() * 0.6 + 0.75
-      const puffCount = Math.floor(Math.random() * 4) + 4
+      const puffCount = Math.floor(Math.random() * 3) + 3
       const puffs: Array<{ ox: number; oy: number; r: number; alphaMult: number }> = []
 
-      puffs.push({ ox: 0, oy: 0, r: 48, alphaMult: 1.0 })
+      puffs.push({ ox: 0, oy: 0, r: 44, alphaMult: 1.0 })
 
       for (let j = 0; j < puffCount; j++) {
         puffs.push({
-          ox: (Math.random() - 0.5) * 90,
-          oy: (Math.random() - 0.45) * 32,
-          r: Math.random() * 30 + 20,
+          ox: (Math.random() - 0.5) * 80,
+          oy: (Math.random() - 0.45) * 28,
+          r: Math.random() * 26 + 18,
           alphaMult: Math.random() * 0.45 + 0.55,
         })
       }
@@ -344,14 +346,28 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
 
     let width = (canvas.width = window.innerWidth)
     let height = (canvas.height = window.innerHeight)
+    let cachedTotalScroll = Math.max(1, (document.documentElement.scrollHeight || 16000) - window.innerHeight)
+    let currentScrollY = window.scrollY || window.pageYOffset || 0
+
+    const updateScrollMetrics = () => {
+      const scrollH = document.documentElement.scrollHeight || 16000
+      cachedTotalScroll = Math.max(1, scrollH - window.innerHeight)
+    }
 
     const handleResize = () => {
       if (!canvas) return
       width = canvas.width = window.innerWidth
       height = canvas.height = window.innerHeight
+      updateScrollMetrics()
+    }
+
+    const handleScroll = () => {
+      currentScrollY = window.scrollY || window.pageYOffset || 0
     }
 
     window.addEventListener('resize', handleResize)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    updateScrollMetrics()
 
     let lastTime = performance.now()
     let time = 0
@@ -376,6 +392,12 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
       const mousePxY = mouseRef.current.y * height
       const mouseVelX = (mouseRef.current.x - mouseRef.current.prevX) * width
       const mouseVelY = (mouseRef.current.y - mouseRef.current.prevY) * height
+
+      // Auto-sample document scroll position without forced layout reflows
+      if (manualTimeOverride == null && scrollProgress === undefined) {
+        const docProgress = cachedTotalScroll > 0 ? Math.max(0, Math.min(1, currentScrollY / cachedTotalScroll)) : 0
+        progressRef.current = docProgress
+      }
 
       // Progress: 0.0 → 1.0 remapped to start at ~7:20 AM (skip dark pre-dawn)
       // Offset 0.14 = dawn sub-phase C (fog clearing, golden light, birds)
@@ -977,6 +999,7 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
       window.removeEventListener('resize', handleResize)
+      window.removeEventListener('scroll', handleScroll)
     }
   }, [])
 
@@ -992,6 +1015,9 @@ export const SkyCanvas3D: React.FC<SkyCanvas3DProps> = ({ scrollProgress, manual
         height: '100vh',
         pointerEvents: 'none',
         zIndex: -1,
+        transform: 'translateZ(0)',
+        contain: 'strict',
+        willChange: 'transform',
       }}
     />
   )
