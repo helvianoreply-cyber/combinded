@@ -48,8 +48,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   if (!isOpen || !plan) return null
 
   const originalInrAmount = getPlanInrPrice(plan.price)
-  const isLifetime = plan.tier === 'pro plus+' || plan.name.toLowerCase().includes('lifetime')
-  const isUnlimited = plan.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' || plan.name.toLowerCase().includes('unlimited')
 
   // Auto-detect coupon: either explicitly applied or currently typed valid coupon
   const activeCoupon = appliedCoupon || (couponInput.trim() ? validateCoupon(couponInput.trim()) : null)
@@ -119,26 +117,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         {/* Selected Plan Summary Banner */}
         <div className="payment-plan-summary">
           <div className="payment-plan-info">
-            <span className="payment-plan-tag">{isLifetime ? 'Lifetime Access' : 'Selected Plan'}</span>
+            <span className="payment-plan-tag">Selected Plan</span>
             <h3 className="payment-plan-name">{plan.name}</h3>
             <div className="payment-plan-perks">
-              {isLifetime ? (
-                <>
-                  <span>✓ Unlimited Duration</span>
-                  <span>•</span>
-                  <span>✓ BYOK AI Copilot</span>
-                  <span>•</span>
-                  <span>✓ Lifetime License</span>
-                </>
-              ) : (
-                <>
-                  <span>⏱️ {plan.included_minutes} mins</span>
-                  <span>•</span>
-                  <span>💡 {plan.included_responses} AI answers</span>
-                  <span>•</span>
-                  <span>💼 {plan.included_applications} Job Auto-Applies</span>
-                </>
-              )}
+              <span>⏱️ {plan.included_minutes} mins</span>
+              <span>•</span>
+              <span>💡 {plan.included_responses} AI answers</span>
+              <span>•</span>
+              <span>💼 {plan.included_applications} Job Auto-Applies</span>
             </div>
           </div>
           <div className="payment-plan-amounts">
@@ -180,7 +166,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               ) : (
                 <span className="payment-card-price">₹{originalInrAmount.toLocaleString('en-IN')}</span>
               )}
-              <span className="payment-card-period">{isLifetime ? 'one-time' : isUnlimited ? 'INR / month (30 Days)' : 'total INR'}</span>
+              <span className="payment-card-period">total INR</span>
             </div>
 
             <p className="payment-card-desc">
@@ -305,7 +291,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
             <div className="payment-card-price-row">
               <span className="payment-card-price">${plan.price}</span>
-              <span className="payment-card-period">{isLifetime ? 'one-time' : isUnlimited ? 'USD / month (30 Days)' : 'USD'}</span>
+              <span className="payment-card-period">USD</span>
             </div>
 
             <p className="payment-card-desc">

@@ -55,8 +55,6 @@ export default {
         const OFFICIAL_PLANS_BY_ID = {
           '4d569314-3b27-45c8-93ad-3d5c2eebffc0': { name: 'Standard Plan', priceUsd: 8, tier: 'usage' },
           'fdbc4259-cdb8-42b8-a0d5-02b8a7392812': { name: 'Pro+ Pro (Most Popular)', priceUsd: 15, tier: 'usage' },
-          'b1e06fa2-5819-48ce-8d07-28d8cf9c4901': { name: '1 Month Unlimited VIP', priceUsd: 21, tier: 'usage' },
-          '13969aad-7309-40ec-9b54-70b39d5b13f6': { name: 'Pro Plus+ Lifetime (BYOK)', priceUsd: 49, tier: 'pro plus+' },
         }
 
         if (isTopup) {
@@ -1278,19 +1276,11 @@ export default {
         if (!apiKey) {
           return json({ ok: false, message: 'Dodo Payments is not configured' }, 500, origin)
         }
-        const isUnlimited = 
-          body.isUnlimited === 'true' || 
-          body.isUnlimited === true || 
-          body.planId === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' ||
-          body.productId === 'pdt_0Nmfh6M8mQGJT0VvCHDzO' ||
-          body.dodo_product_id === 'pdt_0Nmfh6M8mQGJT0VvCHDzO' ||
-          (typeof body.planTitle === 'string' && body.planTitle.toLowerCase().includes('unlimited'))
-
         const productId = 
           body.productId || 
           body.dodo_product_id || 
           body.product_id || 
-          (isUnlimited ? (env.DODO_PRODUCT_ID_UNLIMITED || 'pdt_0Nmfh6M8mQGJT0VvCHDzO') : (env.DODO_PRODUCT_ID || 'pdt_0NnIQ5VyQfhSXYsFLcojZ'))
+          (env.DODO_PRODUCT_ID || 'pdt_0NnIQ5VyQfhSXYsFLcojZ')
         const planTier = typeof body.plan === 'string' ? body.plan : 'usage'
         const isTest = env.DODO_PAYMENTS_MODE === 'test'
         const dodoBase = isTest ? 'https://test.dodopayments.com' : 'https://live.dodopayments.com'
@@ -1786,7 +1776,17 @@ export default {
           })
           if (plansRes.ok) {
             const rows = await plansRes.json()
-            return json({ ok: true, plans: rows }, 200, origin)
+            const filtered = Array.isArray(rows)
+              ? rows.filter(
+                  (p) =>
+                    p.id !== 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' &&
+                    p.id !== '13969aad-7309-40ec-9b54-70b39d5b13f6' &&
+                    p.tier !== 'pro plus+' &&
+                    !(p.name && p.name.toLowerCase().includes('unlimited')) &&
+                    !(p.name && p.name.toLowerCase().includes('lifetime'))
+                )
+              : rows
+            return json({ ok: true, plans: filtered }, 200, origin)
           }
         } catch {}
       }
@@ -1796,9 +1796,7 @@ export default {
         plans: [
           { id: 'ee803f63-7ffc-4c93-bd79-2cb349c318b1', tier: 'basic', name: 'Basic Free Tier', price: 0, included_minutes: 5, included_responses: 5, dodo_product_id: null, included_applications: 5 },
           { id: '4d569314-3b27-45c8-93ad-3d5c2eebffc0', tier: 'usage', name: 'Standard Plan', price: 8, included_minutes: 300, included_responses: 500, dodo_product_id: 'pdt_0NnIPft32K3WxEEJbH04J', included_applications: 200 },
-          { id: 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812', tier: 'usage', name: 'Pro+ Pro (Most Popular)', price: 15, included_minutes: 1000, included_responses: 1500, dodo_product_id: 'pdt_0NnIQ5VyQfhSXYsFLcojZ', included_applications: 600 },
-          { id: 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901', tier: 'usage', name: '1 Month Unlimited VIP', price: 21, included_minutes: 999999, included_responses: 999999, dodo_product_id: 'pdt_0Nmfh6M8mQGJT0VvCHDzO', included_applications: 999999 },
-          { id: '13969aad-7309-40ec-9b54-70b39d5b13f6', tier: 'pro plus+', name: 'Pro Plus+ Lifetime (BYOK)', price: 49, included_minutes: 0, included_responses: 0, dodo_product_id: 'pdt_0NnIQqc0EzhEoVKHtBWTx', included_applications: 0 }
+          { id: 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812', tier: 'usage', name: 'Pro+ Pro (Most Popular)', price: 15, included_minutes: 1000, included_responses: 1500, dodo_product_id: 'pdt_0NnIQ5VyQfhSXYsFLcojZ', included_applications: 600 }
         ] 
       }, 200, origin)
     }
