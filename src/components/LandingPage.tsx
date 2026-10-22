@@ -607,7 +607,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [openFaq, setOpenFaq] = useState<Record<number, boolean>>({ 0: true })
   const [roiTeamSize, setRoiTeamSize] = useState<number>(6)
   const [roiHoursPerWeek, setRoiHoursPerWeek] = useState<number>(10)
-  const [nodeFilter, setNodeFilter] = useState<'all' | 'na' | 'eu' | 'apac'>('all')
 
   // 3D Morning to Night Sky Engine State (Starts at Early Morning Dawn!)
   const [scrollProgress, setScrollProgress] = useState(0)
@@ -685,10 +684,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const toggleFaq = (index: number) => {
     setOpenFaq(prev => ({ ...prev, [index]: !prev[index] }))
   }
-
-  const filteredNodes = nodeFilter === 'all' 
-    ? EDGE_NODES 
-    : EDGE_NODES.filter(n => n.region === nodeFilter)
 
   // Calculations for ROI
   const hoursSavedPerMonth = Math.round(roiTeamSize * roiHoursPerWeek * 1.5)
@@ -1562,83 +1557,61 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           )}
 
-          {/* Tab 3: Real-Time Live Nodes Table for Remote */}
+          {/* Tab 3: Real-Time Live P2P Telemetry for Remote */}
           {activeTelemetryTab === 'remote' && (
             <div className="telemetry-tab-pane">
-              <div className="node-filter-nav" style={{ marginBottom: '1.25rem', justifyContent: 'center' }}>
-                <button 
-                  className={`filter-btn ${nodeFilter === 'all' ? 'active' : ''}`} 
-                  onClick={() => setNodeFilter('all')}
-                >
-                  All Regions (8)
-                </button>
-                <button 
-                  className={`filter-btn ${nodeFilter === 'na' ? 'active' : ''}`} 
-                  onClick={() => setNodeFilter('na')}
-                >
-                  North America
-                </button>
-                <button 
-                  className={`filter-btn ${nodeFilter === 'eu' ? 'active' : ''}`} 
-                  onClick={() => setNodeFilter('eu')}
-                >
-                  Europe
-                </button>
-                <button 
-                  className={`filter-btn ${nodeFilter === 'apac' ? 'active' : ''}`} 
-                  onClick={() => setNodeFilter('apac')}
-                >
-                  Asia Pacific
-                </button>
-              </div>
+              <div className="remote-telemetry-board">
+                <div className="interview-telemetry-top" style={{ marginBottom: '1.25rem' }}>
+                  <div className="interview-telemetry-status">
+                    <span className="live-audio-dot pulse-blue"></span>
+                    <strong>Live P2P Connection: Direct WebRTC Web Host</strong>
+                    <span className="telemetry-chip blue">AES-256-GCM ENCRYPTED</span>
+                  </div>
+                  <div className="interview-latency-badge" style={{ background: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#93c5fd' }}>
+                    <span className="bolt-icon">⚡</span> Sub-15ms Glass-to-Glass • 60 FPS NVENC
+                  </div>
+                </div>
 
-              <div className="mesh-nodes-table-wrap">
-                <table className="mesh-nodes-table">
-                  <thead>
-                    <tr>
-                      <th>Region &amp; Node</th>
-                      <th>ICE Ping</th>
-                      <th>Packet Drop</th>
-                      <th>Load Capacity</th>
-                      <th>Routing Method</th>
-                      <th>Node Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredNodes.map(node => (
-                      <tr key={node.id}>
-                        <td>
-                          <div className="node-name-cell">
-                            <span className="node-flag">{node.flag}</span>
-                            <div>
-                              <strong>{node.city}</strong>
-                              <span className="node-sub">helvia-node-{node.id}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="ping-pill good">
-                            <span className="pulse-ping-dot" />
-                            {node.ping}
-                          </span>
-                        </td>
-                        <td><span className="loss-val">{node.loss}</span></td>
-                        <td>
-                          <div className="node-load-bar-wrap">
-                            <div className="node-load-fill" style={{ width: node.load }}></div>
-                            <span className="load-text">{node.load}</span>
-                          </div>
-                        </td>
-                        <td><span className="type-badge">{node.type}</span></td>
-                        <td>
-                          <span className="status-online-pill">
-                            <span className="live-dot" /> Online
-                          </span>
-                        </td>
-                      </tr>
+                <div className="remote-stats-showcase-grid">
+                  <div className="remote-stat-card">
+                    <div className="remote-stat-icon">⚡</div>
+                    <div className="remote-stat-val">12.4 ms</div>
+                    <div className="remote-stat-lbl">Average P2P Latency</div>
+                    <p className="remote-stat-sub">Direct peer-to-peer WebRTC bypasses server bottlenecks.</p>
+                  </div>
+                  <div className="remote-stat-card">
+                    <div className="remote-stat-icon">🖥️</div>
+                    <div className="remote-stat-val">60 FPS 4K</div>
+                    <div className="remote-stat-lbl">DirectX GPU Duplication</div>
+                    <p className="remote-stat-sub">Hardware DXGI Desktop Duplication API with sub-frame encoding.</p>
+                  </div>
+                  <div className="remote-stat-card">
+                    <div className="remote-stat-icon">🛡️</div>
+                    <div className="remote-stat-val">100% Stealth</div>
+                    <div className="remote-stat-lbl">Anti-Detect Display Affinity</div>
+                    <p className="remote-stat-sub">Excluded from screen captures via WDA_EXCLUDEFROMCAPTURE.</p>
+                  </div>
+                  <div className="remote-stat-card">
+                    <div className="remote-stat-icon">🌐</div>
+                    <div className="remote-stat-val">0.00% Loss</div>
+                    <div className="remote-stat-lbl">Lossless ICE Data Channels</div>
+                    <p className="remote-stat-sub">Zero middleman buffer bloat across 8 edge hubs worldwide.</p>
+                  </div>
+                </div>
+
+                {/* Regional Edge Latency Quick Pills */}
+                <div className="remote-regions-strip">
+                  <span className="regions-strip-title">🌍 Active Global Edge Hubs:</span>
+                  <div className="regions-pill-row">
+                    {EDGE_NODES.slice(0, 6).map((node) => (
+                      <div className="region-live-pill" key={node.id}>
+                        <span className="node-flag">{node.flag}</span>
+                        <span className="region-name">{node.city}</span>
+                        <span className="region-ping">{node.ping}</span>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -3697,62 +3670,46 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <table className="comparison-table">
             <thead>
               <tr>
-                <th>Feature Capability</th>
-                <th className="highlight-col">Helvia 3-in-1 Suite</th>
-                <th>Legacy Remote (AnyDesk)</th>
-                <th>Meeting Bots (Otter/Fireflies)</th>
-                <th>Job Bots (LazyApply)</th>
+                <th style={{ width: '32%' }}>Core Feature &amp; Capability</th>
+                <th className="highlight-col" style={{ width: '36%' }}>Helvia 3-in-1 Unified Suite ($8 – $15)</th>
+                <th style={{ width: '32%' }}>Legacy Disconnected Tools ($75 – $140/mo)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td><strong>Zero-Install 60 FPS Remote Desktop</strong></td>
-                <td className="highlight-col"><CheckIcon /> Built-in (WebRTC /m/ &amp; /d/)</td>
-                <td>❌ Requires heavy app</td>
-                <td>❌ None</td>
-                <td>❌ None</td>
+                <td className="highlight-col"><CheckIcon /> Built-in browser WebRTC (Sub-15ms, zero install)</td>
+                <td>❌ Requires heavy 300MB app install &amp; slow relays</td>
               </tr>
               <tr>
                 <td><strong>100% Invisible on Screenshares (Zoom/Teams/Meet)</strong></td>
-                <td className="highlight-col"><CheckIcon /> Yes (WDA_EXCLUDEFROMCAPTURE)</td>
-                <td>❌ Visible taskbar/banners</td>
-                <td>❌ Bot visibly joins call</td>
-                <td>❌ None</td>
+                <td className="highlight-col"><CheckIcon /> Yes (Native OS WDA_EXCLUDEFROMCAPTURE)</td>
+                <td>❌ Visible app window or external bot joins &amp; alerts call</td>
               </tr>
               <tr>
                 <td><strong>Real-Time "What to Speak" Whisper HUD</strong></td>
-                <td className="highlight-col"><CheckIcon /> Sub-200ms talking points</td>
-                <td>❌ None</td>
-                <td>⚠️ Post-call transcripts only</td>
-                <td>❌ None</td>
+                <td className="highlight-col"><CheckIcon /> Sub-18ms talking points &amp; STAR framework</td>
+                <td>⚠️ Post-call transcripts only (useless during the live call)</td>
               </tr>
               <tr>
                 <td><strong>AI Screen Analysis ("Ans 💡" Engine)</strong></td>
-                <td className="highlight-col"><CheckIcon /> Built-in 3-way routing</td>
-                <td>❌ None</td>
-                <td>❌ None</td>
-                <td>❌ None</td>
+                <td className="highlight-col"><CheckIcon /> Built-in 3-way instant screen question solver</td>
+                <td>❌ None (manual copy-pasting or screenshots to ChatGPT)</td>
               </tr>
               <tr>
                 <td><strong>Dynamic ATS Resume Tailoring per JD</strong></td>
-                <td className="highlight-col"><CheckIcon /> 98% ATS pass rate</td>
-                <td>❌ None</td>
-                <td>❌ None</td>
-                <td>⚠️ Blasts static resume</td>
+                <td className="highlight-col"><CheckIcon /> Dynamic keyword realignment (98% ATS pass rate)</td>
+                <td>⚠️ Blasts generic static PDFs that get auto-rejected</td>
               </tr>
               <tr>
                 <td><strong>Interactive AI Mock Interview Coach</strong></td>
-                <td className="highlight-col"><CheckIcon /> Built-in with rubrics &amp; score</td>
-                <td>❌ None</td>
-                <td>❌ None</td>
-                <td>❌ None</td>
+                <td className="highlight-col"><CheckIcon /> Built-in with instant rubrics &amp; scoring</td>
+                <td>❌ Expensive 1-on-1 human coaching ($150+/hr)</td>
               </tr>
               <tr>
-                <td><strong>Combined Monthly Price</strong></td>
-                <td className="highlight-col">💎 $8 – $15 (All 3 Included)</td>
-                <td>💸 $30 – $50 / mo</td>
-                <td>💸 $20 – $40 / mo</td>
-                <td>💸 $25 – $50 / mo</td>
+                <td><strong>Combined Monthly Investment</strong></td>
+                <td className="highlight-col">💎 $8 – $15 / pack (All 3 Platforms Included)</td>
+                <td>💸 $75 – $140 / mo across 3 separate subscriptions</td>
               </tr>
             </tbody>
           </table>
@@ -3874,7 +3831,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           
           <div className="plans-grid">
             {(plans && plans.length > 0 ? plans : SEED_PLANS)
-              .filter((p) => p.id !== '13969aad-7309-40ec-9b54-70b39d5b13f6' && p.tier !== 'pro plus+')
+              .filter(
+                (p) =>
+                  p.id !== '13969aad-7309-40ec-9b54-70b39d5b13f6' &&
+                  p.tier !== 'pro plus+' &&
+                  Number(p.price) > 0 &&
+                  p.tier !== 'basic'
+              )
               .map((p, idx) => {
               const isPopular = p.name.toLowerCase().includes('most popular') || p.name.toLowerCase().includes('pro+ pro')
               const isLifetime = p.tier === 'pro plus+'
