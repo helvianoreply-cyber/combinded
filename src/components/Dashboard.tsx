@@ -330,12 +330,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         )}
 
-        {/* Anti-Abuse Notice: Free Trial already claimed on this device */}
-        {currentPlan === 'basic' && userProfile && userProfile.seconds_remaining === 0 && userProfile.seconds_used === 0 && (
+        {/* Basic Plan Alert: when 0 tokens remaining */}
+        {currentPlan === 'basic' && userProfile && (Number(userProfile.seconds_remaining) || 0) === 0 && (Number(userProfile.responses_remaining) || 0) === 0 && (
           <div className="dashboard-alert warning" style={{ maxWidth: 840, margin: '0 auto 2rem auto', border: '1px solid rgba(245, 158, 11, 0.4)', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.9rem 1.25rem', borderRadius: 12 }}>
             <span>⚠️</span>
             <span>
-              <strong>Free Trial Notice:</strong> A free trial has already been claimed on this device. Select a plan below to activate your quotas.
+              <strong>Free Trial Notice:</strong> You are currently on the free basic tier with 0 active tokens. Select a plan below to activate remote minutes, AI answers, and job auto-applications.
             </span>
           </div>
         )}

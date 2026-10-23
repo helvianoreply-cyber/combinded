@@ -40,7 +40,7 @@ app.post('/api/create-order', async (req, res) => {
       return
     }
 
-    const amount = duration === '24h' ? 169 * 100 : 999 * 100
+    const amount = 1 * 100 // Test Mode: ₹1 (100 paise)
     const currency = 'INR'
     let receipt = String(req.body?.receipt ?? `rcpt_${Date.now()}`)
 

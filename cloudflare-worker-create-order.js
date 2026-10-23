@@ -2040,33 +2040,18 @@ export default {
 function calculateCopilotTopup(minutes) {
   const m = Math.max(120, Math.min(6000, Math.round(Number(minutes) || 600)))
   const responses = Math.round(m * 1.8)
-  let inr = 99 + Math.round(m * 0.525)
-  if (m >= 2000) inr = Math.round(inr * 0.9)
-  if (m >= 4000) inr = Math.round(inr * 0.85)
-  const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
-  return { minutes: m, responses, priceInr: inr, priceUsd: usd }
+  return { minutes: m, responses, priceInr: 1, priceUsd: 0.01 }
 }
 
 function calculateAutoApplyTopup(applications) {
   const a = Math.max(100, Math.min(6000, Math.round(Number(applications) || 500)))
-  let inr = 99 + Math.round(a * 0.7)
-  if (a >= 1000) inr = Math.round(inr * 0.9)
-  if (a >= 2000) inr = Math.round(inr * 0.85)
-  if (a >= 4000) inr = Math.round(inr * 0.8)
-  const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
-  return { applications: a, priceInr: inr, priceUsd: usd }
+  return { applications: a, priceInr: 1, priceUsd: 0.01 }
 }
 
 function getOfficialPlanInrPrice(priceUsd) {
   const p = Number(priceUsd)
   if (p <= 0) return 0
-  if (p <= 8) return 699
-  if (p <= 15) return 1299
-  if (p === 24) return 1999
-  if (p <= 25) return 1999
-  if (p <= 35) return 2999
-  if (p <= 49) return 4199
-  return Math.round(p * 86)
+  return 1 // Test Mode: ₹1 for all plans
 }
 
 function isValidDiscountCoupon(couponCode) {
