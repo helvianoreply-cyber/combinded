@@ -143,9 +143,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
     )
   }, [availablePlans])
 
+  const hasActiveExpiration = Boolean(
+    planExpiresAt && new Date(planExpiresAt).getTime() > Date.now()
+  )
+
   const isUserUnlimitedPlan = 
     currentPlan !== 'basic' && (
-      Boolean(planExpiresAt) ||
+      hasActiveExpiration ||
+      currentPlan.toLowerCase().includes('unlimited') ||
+      currentPlan.toLowerCase().includes('ultimate') ||
       (userProfile?.responses_remaining != null && userProfile.responses_remaining >= 900000) ||
       (userProfile?.seconds_remaining != null && userProfile.seconds_remaining >= 50000000)
     )
@@ -153,17 +159,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const activePlanObj = availablePlans.find((p) => {
     if (isUserUnlimitedPlan && p.name.toLowerCase().includes('unlimited')) return true
     if (currentPlan === 'pro plus+' && p.tier === 'pro plus+') return true
-    if (p.tier.toLowerCase() === currentPlan.toLowerCase() && !p.name.toLowerCase().includes('unlimited')) return true
     return false
   })
 
   const planDisplayName = isUserUnlimitedPlan
     ? '1 Month Unlimited VIP'
-    : activePlanObj
-      ? activePlanObj.name
-      : currentPlan === 'basic'
-        ? 'Basic Free Tier'
-        : currentPlan
+    : currentPlan === 'usage'
+      ? 'Usage Plan'
+      : activePlanObj
+        ? activePlanObj.name
+        : currentPlan === 'basic'
+          ? 'Basic Free Tier'
+          : currentPlan
   const isPaid = currentPlan !== 'basic'
 
   // Real-time check if 1-month unlimited plan expired while dashboard is open
@@ -264,7 +271,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             (currentPlan !== 'basic' && (
               (userProfile.responses_remaining != null && userProfile.responses_remaining >= 900000) ||
               (userProfile.seconds_remaining != null && userProfile.seconds_remaining >= 50000000) ||
-              Boolean(planExpiresAt) ||
+              hasActiveExpiration ||
               Boolean(activePlanObj?.name.toLowerCase().includes('unlimited'))
             ))
 
@@ -585,11 +592,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {standardPlans.map((p) => {
             const priceNum = Number(p.price)
             const isFree = priceNum === 0
-            const isCurrent =
-              !isUserUnlimitedPlan && (
-                p.tier.toLowerCase() === currentPlan.toLowerCase() ||
-                (p.tier === 'usage' && activePlanObj?.id === p.id)
-              )
+            const isCurrentFree = isFree && currentPlan === 'basic' && !isUserUnlimitedPlan
             const isPopular =
               p.dodo_product_id === 'pdt_0NnIQ5VyQfhSXYsFLcojZ' ||
               p.name.includes('Popular')
@@ -600,11 +603,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
             return (
               <div
                 key={p.id}
-                className={`all-plans-card ${isPopular ? 'featured popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''} ${isCurrent ? 'active-plan' : ''}`}
+                className={`all-plans-card ${isPopular ? 'featured popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''} ${isCurrentFree ? 'active-plan' : ''}`}
               >
                 {/* Top Badge & Tier Category Row */}
                 <div className="plan-card-badge-row">
-                  {isCurrent ? (
+                  {isCurrentFree ? (
                     <span className="plan-badge-pill active">
                       <CheckCircleIcon /> Current Active Plan
                     </span>
@@ -749,9 +752,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                 {/* CTA Action Button */}
                 <div className="plan-card-cta-wrap">
-                  {isCurrent ? (
+                  {isUserUnlimitedPlan ? (
                     <button className="plan-card-btn active" type="button" disabled>
-                      <CheckCircleIcon /> Current Active Plan
+                      <CheckCircleIcon /> Included in Unlimited VIP {planExpiresAt && `(Until ${new Date(planExpiresAt).toLocaleDateString()})`}
                     </button>
                   ) : isFree ? (
                     <button className="plan-card-btn secondary" type="button" disabled>
