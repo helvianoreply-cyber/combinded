@@ -300,9 +300,9 @@ function App() {
 
           const shouldFixLoginVerifier = userRow.login_verifier === true
 
-          if (needsStarterQuotas || shouldFixLoginVerifier) {
-            const starterSeconds = needsStarterQuotas ? 300 : (Number(userRow.seconds_remaining) || 0)
-            const starterResponses = needsStarterQuotas ? 5 : (Number(userRow.responses_remaining) || 0)
+          if (needsStarterQuotas) {
+            const starterSeconds = 300
+            const starterResponses = 5
             const starterApps = (Number(userRow.applications_remaining) || 0) > 0 ? Number(userRow.applications_remaining) : 10
             try {
               await sb
@@ -327,6 +327,23 @@ function App() {
               }
             } catch (e) {
               console.warn('Non-fatal quota update error:', e)
+            }
+          } else if (shouldFixLoginVerifier) {
+            try {
+              await sb
+                .from('users')
+                .update({
+                  login_verifier: false,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', userRow.id)
+
+              userRow = {
+                ...userRow,
+                login_verifier: false,
+              }
+            } catch (e) {
+              console.warn('Non-fatal login_verifier fix error:', e)
             }
           }
         }
@@ -592,6 +609,19 @@ function App() {
     }
   }, [navigate, location.pathname, syncUserWithDatabase])
 
+  const refreshProfile = useCallback(async () => {
+    if (userId || sessionEmail) {
+      const updated = await syncUserWithDatabase(userId || '', sessionEmail)
+      if (updated) {
+        setUserProfile(updated)
+        setPlan(updated.plan || 'basic')
+        if (updated.plan_expires_at) {
+          setPlanExpiresAt(updated.plan_expires_at)
+        }
+      }
+    }
+  }, [userId, sessionEmail, syncUserWithDatabase])
+
   const signInWithGoogle = useCallback(async () => {
     setAuthError(null)
     const sb = supabase
@@ -720,6 +750,14 @@ function App() {
       return
     }
 
+    const effectiveExpiry = planExpiresAt || userProfile?.plan_expires_at || null
+    const hasActiveExpiry = Boolean(effectiveExpiry && new Date(effectiveExpiry).getTime() > Date.now())
+    if (hasActiveExpiry) {
+      const expStr = new Date(effectiveExpiry!).toLocaleDateString()
+      setUpgradeError(`You currently have an active Unlimited VIP Plan (expires ${expStr}). You cannot purchase any another plan while your unlimited plan is active.`)
+      return
+    }
+
     setIsUpgrading(true)
     const scriptLoaded = await loadRazorpay()
     if (!scriptLoaded || !(window as unknown as { Razorpay?: unknown }).Razorpay) {
@@ -787,9 +825,11 @@ function App() {
         ...(orderId ? { order_id: orderId } : {}),
         handler: async (response: { razorpay_order_id?: string; razorpay_payment_id: string; razorpay_signature?: string }) => {
           try {
-            // 1. Try calling backend verify-payment
+            let verifiedProfile: DbUser | null = null
+
+            // 1. Backend verification with automatic quota crediting
             try {
-              await fetch(`${apiBase}/verify-payment`, {
+              const verifyRes = await fetch(`${apiBase}/verify-payment`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -805,74 +845,106 @@ function App() {
                   couponCode: couponCode || undefined,
                 }),
               })
-            } catch {
-              // Ignore backend verify error
+              if (verifyRes.ok) {
+                const data = await verifyRes.json()
+                if (data?.profile) {
+                  verifiedProfile = data.profile as DbUser
+                }
+              }
+            } catch (vErr) {
+              console.warn('Backend verify payment call error:', vErr)
             }
 
-            // 2. Direct Supabase Activation (guarantees account is upgraded immediately)
-            const sb = supabase
-            if (sb && userId) {
-              const isUnlimited = 
-                planId === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' || 
-                (isPlanObj && planInput.name.toLowerCase().includes('unlimited'))
+            // 2. Direct Supabase Activation Fallback (if backend did not return updated profile)
+            if (!verifiedProfile) {
+              const sb = supabase
+              if (sb && (userId || sessionEmail)) {
+                let targetUserRow: DbUser | null = null
+                if (userId) {
+                  const { data } = await sb.from('users').select('*').eq('id', userId).maybeSingle()
+                  if (data) targetUserRow = data as DbUser
+                }
+                if (!targetUserRow && sessionEmail) {
+                  const { data } = await sb.from('users').select('*').eq('email', sessionEmail.toLowerCase().trim()).maybeSingle()
+                  if (data) targetUserRow = data as DbUser
+                }
 
-              let incMinutes = 300
-              let incResponses = 500
-              let incApps = 200
+                if (targetUserRow) {
+                  const isUnlimited = 
+                    planId === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' || 
+                    (isPlanObj && planInput.name.toLowerCase().includes('unlimited'))
 
-              if (isUnlimited) {
-                incMinutes = 999999
-                incResponses = 999999
-                incApps = 999999
-              } else if (isPlanObj) {
-                if (planInput.included_minutes) incMinutes = Number(planInput.included_minutes)
-                if (planInput.included_responses) incResponses = Number(planInput.included_responses)
-                if (planInput.included_applications) incApps = Number(planInput.included_applications)
+                  let incMinutes = 300
+                  let incResponses = 500
+                  let incApps = 200
+
+                  if (isUnlimited) {
+                    incMinutes = 999999
+                    incResponses = 999999
+                    incApps = 999999
+                  } else if (isPlanObj) {
+                    if (planInput.included_minutes) incMinutes = Number(planInput.included_minutes)
+                    if (planInput.included_responses) incResponses = Number(planInput.included_responses)
+                    if (planInput.included_applications) incApps = Number(planInput.included_applications)
+                  }
+
+                  const expiresAt = isUnlimited 
+                    ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+                    : null
+
+                  const existingSec = Number(targetUserRow.seconds_remaining) || 0
+                  const existingResp = Number(targetUserRow.responses_remaining) || 0
+                  const existingApps = Number(targetUserRow.applications_remaining) || 0
+
+                  const updatePayload = {
+                    plan: 'usage',
+                    seconds_remaining: isUnlimited ? (999999 * 60) : (existingSec + (incMinutes * 60)),
+                    responses_remaining: isUnlimited ? 999999 : (existingResp + incResponses),
+                    applications_remaining: isUnlimited ? 999999 : (existingApps + incApps),
+                    verifier: true,
+                    login_verifier: false,
+                    plan_expires_at: expiresAt || targetUserRow.plan_expires_at || null,
+                    updated_at: new Date().toISOString(),
+                  }
+
+                  const { data: updated } = await sb.from('users').update(updatePayload).eq('id', targetUserRow.id).select('*').maybeSingle()
+                  if (updated) {
+                    verifiedProfile = updated as DbUser
+                  }
+                }
               }
+            }
 
-              const expiresAt = isUnlimited 
-                ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-                : null
-
-              const existingSec = Number(userProfile?.seconds_remaining) || 0
-              const existingResp = Number(userProfile?.responses_remaining) || 0
-              const existingApps = Number(userProfile?.applications_remaining) || 0
-
-              const updatePayload = {
-                plan: 'usage',
-                seconds_remaining: isUnlimited ? (999999 * 60) : (existingSec + (incMinutes * 60)),
-                responses_remaining: isUnlimited ? 999999 : (existingResp + incResponses),
-                applications_remaining: isUnlimited ? 999999 : (existingApps + incApps),
-                verifier: true,
-                login_verifier: false,
-                plan_expires_at: expiresAt || userProfile?.plan_expires_at || null,
-                updated_at: new Date().toISOString(),
-              }
-
-              await sb.from('users').update(updatePayload).eq('id', userId)
-
-              // Record payment in processed_payments
+            // Record payment in processed_payments
+            if (supabase && (userId || sessionEmail)) {
               try {
-                await sb.from('processed_payments').insert({
+                await supabase.from('processed_payments').insert({
                   payment_id: response.razorpay_payment_id,
                   gateway: 'razorpay',
-                  user_id: String(userId),
+                  user_id: String(verifiedProfile?.id || userId),
                   amount: 1,
                   created_at: new Date().toISOString(),
                 })
               } catch {
-                // Ignore duplicate insertion error
+                // Ignore duplicate
               }
             }
 
-            setPlan('usage')
-            setIsUpgrading(false)
-            if (userId && sessionEmail) {
+            if (verifiedProfile) {
+              setUserProfile(verifiedProfile)
+              setPlan(verifiedProfile.plan || 'usage')
+              if (verifiedProfile.plan_expires_at) {
+                setPlanExpiresAt(verifiedProfile.plan_expires_at)
+              }
+            } else if (userId && sessionEmail) {
               const updated = await syncUserWithDatabase(userId, sessionEmail)
               if (updated) {
                 setUserProfile(updated)
+                setPlan(updated.plan || 'usage')
               }
             }
+
+            setIsUpgrading(false)
             navigate('/dashboard?payment=success', { replace: true })
           } catch (err) {
             console.error('Payment verification failed', err)
@@ -901,7 +973,7 @@ function App() {
       setIsUpgrading(false)
       setUpgradeError('Something went wrong while creating payment')
     }
-  }, [displayName, loadRazorpay, navigate, sessionEmail, syncUserWithDatabase, userId, userProfile])
+  }, [displayName, loadRazorpay, navigate, sessionEmail, syncUserWithDatabase, userId, userProfile, planExpiresAt])
 
   const startTopup = useCallback(async (
     topupType: 'copilot' | 'autoapply',
@@ -910,6 +982,14 @@ function App() {
     setUpgradeError(null)
     if (!userId || !sessionEmail) {
       setUpgradeError('You must be signed in to purchase a top-up')
+      return
+    }
+
+    const effectiveExpiry = planExpiresAt || userProfile?.plan_expires_at || null
+    const hasActiveExpiry = Boolean(effectiveExpiry && new Date(effectiveExpiry).getTime() > Date.now())
+    if (hasActiveExpiry) {
+      const expStr = new Date(effectiveExpiry!).toLocaleDateString()
+      setUpgradeError(`You currently have an active Unlimited VIP Plan (expires ${expStr}). All quotas are already unlimited, so top-ups are not needed.`)
       return
     }
 
@@ -975,9 +1055,11 @@ function App() {
         ...(orderId ? { order_id: orderId } : {}),
         handler: async (response: { razorpay_order_id?: string; razorpay_payment_id: string; razorpay_signature?: string }) => {
           try {
-            // 1. Try calling backend verify-payment
+            let verifiedProfile: DbUser | null = null
+
+            // 1. Backend verification with automatic quota crediting
             try {
-              await fetch(`${apiBase}/verify-payment`, {
+              const verifyRes = await fetch(`${apiBase}/verify-payment`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -990,36 +1072,64 @@ function App() {
                   email: sessionEmail,
                 }),
               })
-            } catch {
-              // Ignore backend verify error
+              if (verifyRes.ok) {
+                const data = await verifyRes.json()
+                if (data?.profile) {
+                  verifiedProfile = data.profile as DbUser
+                }
+              }
+            } catch (vErr) {
+              console.warn('Backend verify topup error:', vErr)
             }
 
-            // 2. Direct Supabase Activation for Top-Up Quota
-            const sb = supabase
-            if (sb && userId) {
-              const existingSec = Number(userProfile?.seconds_remaining) || 0
-              const existingResp = Number(userProfile?.responses_remaining) || 0
-              const existingApps = Number(userProfile?.applications_remaining) || 0
+            // 2. Direct Supabase Activation Fallback (if backend did not return updated profile)
+            if (!verifiedProfile) {
+              const sb = supabase
+              if (sb && (userId || sessionEmail)) {
+                let targetUserRow: DbUser | null = null
+                if (userId) {
+                  const { data } = await sb.from('users').select('*').eq('id', userId).maybeSingle()
+                  if (data) targetUserRow = data as DbUser
+                }
+                if (!targetUserRow && sessionEmail) {
+                  const { data } = await sb.from('users').select('*').eq('email', sessionEmail.toLowerCase().trim()).maybeSingle()
+                  if (data) targetUserRow = data as DbUser
+                }
 
-              const addSec = topupType === 'copilot' ? (units * 60) : 0
-              const addResp = topupType === 'copilot' ? Math.round(units * 1.8) : 0
-              const addApps = topupType === 'autoapply' ? units : 0
+                if (targetUserRow) {
+                  const existingSec = Number(targetUserRow.seconds_remaining) || 0
+                  const existingResp = Number(targetUserRow.responses_remaining) || 0
+                  const existingApps = Number(targetUserRow.applications_remaining) || 0
 
-              await sb.from('users').update({
-                plan: userProfile?.plan && userProfile.plan !== 'basic' ? userProfile.plan : 'usage',
-                seconds_remaining: existingSec + addSec,
-                responses_remaining: existingResp + addResp,
-                applications_remaining: existingApps + addApps,
-                verifier: true,
-                login_verifier: false,
-                updated_at: new Date().toISOString(),
-              }).eq('id', userId)
+                  const addSec = topupType === 'copilot' ? (units * 60) : 0
+                  const addResp = topupType === 'copilot' ? Math.round(units * 1.8) : 0
+                  const addApps = topupType === 'autoapply' ? units : 0
 
+                  const updatePayload = {
+                    plan: targetUserRow.plan && targetUserRow.plan !== 'basic' ? targetUserRow.plan : 'usage',
+                    seconds_remaining: existingSec + addSec,
+                    responses_remaining: existingResp + addResp,
+                    applications_remaining: existingApps + addApps,
+                    verifier: true,
+                    login_verifier: false,
+                    updated_at: new Date().toISOString(),
+                  }
+
+                  const { data: updated } = await sb.from('users').update(updatePayload).eq('id', targetUserRow.id).select('*').maybeSingle()
+                  if (updated) {
+                    verifiedProfile = updated as DbUser
+                  }
+                }
+              }
+            }
+
+            // Record payment in processed_payments
+            if (supabase && (userId || sessionEmail)) {
               try {
-                await sb.from('processed_payments').insert({
+                await supabase.from('processed_payments').insert({
                   payment_id: response.razorpay_payment_id,
                   gateway: 'razorpay',
-                  user_id: String(userId),
+                  user_id: String(verifiedProfile?.id || userId),
                   amount: 1,
                   created_at: new Date().toISOString(),
                 })
@@ -1028,13 +1138,21 @@ function App() {
               }
             }
 
-            setIsUpgrading(false)
-            if (userId && sessionEmail) {
+            if (verifiedProfile) {
+              setUserProfile(verifiedProfile)
+              setPlan(verifiedProfile.plan || 'usage')
+              if (verifiedProfile.plan_expires_at) {
+                setPlanExpiresAt(verifiedProfile.plan_expires_at)
+              }
+            } else if (userId && sessionEmail) {
               const updated = await syncUserWithDatabase(userId, sessionEmail)
               if (updated) {
                 setUserProfile(updated)
+                setPlan(updated.plan || 'usage')
               }
             }
+
+            setIsUpgrading(false)
             navigate('/dashboard?payment=success', { replace: true })
           } catch (err) {
             console.error('Verify payment failed:', err)
@@ -1065,12 +1183,20 @@ function App() {
       setIsUpgrading(false)
       setUpgradeError('Something went wrong while initiating top-up payment')
     }
-  }, [displayName, loadRazorpay, navigate, sessionEmail, syncUserWithDatabase, userId, userProfile])
+  }, [displayName, loadRazorpay, navigate, sessionEmail, syncUserWithDatabase, userId, userProfile, planExpiresAt])
 
   const startDodoUpgrade = useCallback(async (productId?: string, couponCode?: string, planObj?: DbPlan) => {
     setUpgradeError(null)
     if (!userId || !sessionEmail) {
       setUpgradeError('You must be signed in to upgrade')
+      return
+    }
+
+    const effectiveExpiry = planExpiresAt || userProfile?.plan_expires_at || null
+    const hasActiveExpiry = Boolean(effectiveExpiry && new Date(effectiveExpiry).getTime() > Date.now())
+    if (hasActiveExpiry) {
+      const expStr = new Date(effectiveExpiry!).toLocaleDateString()
+      setUpgradeError(`You currently have an active Unlimited VIP Plan (expires ${expStr}). You cannot purchase any another plan while your unlimited plan is active.`)
       return
     }
 
@@ -1133,7 +1259,7 @@ function App() {
       setIsUpgrading(false)
       setUpgradeError('Something went wrong while connecting to Dodo Payments')
     }
-  }, [displayName, sessionEmail, userId])
+  }, [displayName, sessionEmail, userId, userProfile, planExpiresAt])
 
   return (
     <div className="app">
@@ -1337,6 +1463,7 @@ function App() {
                 startDodoUpgrade={startDodoUpgrade}
                 isUpgrading={isUpgrading}
                 upgradeError={upgradeError}
+                onRefreshProfile={refreshProfile}
               />
             ) : isAuthLoading ? (
               <div className="dashboard-loading" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
@@ -1370,6 +1497,7 @@ function App() {
                 startDodoUpgrade={startDodoUpgrade}
                 isUpgrading={isUpgrading}
                 upgradeError={upgradeError}
+                onRefreshProfile={refreshProfile}
               />
             )
           } />

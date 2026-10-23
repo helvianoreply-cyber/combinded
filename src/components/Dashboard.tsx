@@ -18,6 +18,7 @@ interface DashboardProps {
   startDodoUpgrade?: (productId?: string, couponCode?: string, planObj?: DbPlan) => void
   isUpgrading: boolean
   upgradeError: string | null
+  onRefreshProfile?: () => void
 }
 
 // Icon Components
@@ -73,6 +74,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   startDodoUpgrade,
   isUpgrading,
   upgradeError,
+  onRefreshProfile,
 }) => {
   const [currentPlan, setCurrentPlan] = useState(userProfile?.plan || plan || 'basic')
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null)
@@ -81,16 +83,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setCurrentPlan(userProfile?.plan || plan || 'basic')
   }, [userProfile, plan])
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-sky-theme', 'morning')
-
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('payment') === 'success') {
-      setPaymentSuccess('🎉 Payment Successful! Your upgraded plan and quotas are now active.')
-      window.history.replaceState({}, document.title, window.location.pathname)
-    }
-  }, [])
-
   const apiBase = useMemo(() => {
     const configured = import.meta.env.VITE_API_BASE_URL
     if (configured && typeof configured === 'string' && configured.trim()) {
@@ -98,6 +90,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
     return 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
   }, [])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-sky-theme', 'morning')
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('payment') === 'success') {
+      setPaymentSuccess('🎉 Payment Successful! Your upgraded plan and quotas are now active.')
+      window.history.replaceState({}, document.title, window.location.pathname)
+
+      if (onRefreshProfile) {
+        onRefreshProfile()
+      }
+      const email = (sessionEmail || '').trim().toLowerCase()
+      if (email) {
+        fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}&fresh=true`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((json) => {
+            if (json?.profile?.plan) {
+              setCurrentPlan(json.profile.plan.toLowerCase())
+            }
+          })
+          .catch(() => {})
+      }
+    }
+  }, [apiBase, onRefreshProfile, sessionEmail])
 
   // Auto-sync latest profile if not already provided via props
   useEffect(() => {
@@ -143,17 +160,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
     )
   }, [availablePlans])
 
+  const effectiveExpiry = planExpiresAt || userProfile?.plan_expires_at || null
+
   const hasActiveExpiration = Boolean(
-    planExpiresAt && new Date(planExpiresAt).getTime() > Date.now()
+    effectiveExpiry && new Date(effectiveExpiry).getTime() > Date.now()
   )
 
   const isUserUnlimitedPlan = 
-    currentPlan !== 'basic' && (
-      hasActiveExpiration ||
-      currentPlan.toLowerCase().includes('unlimited') ||
-      currentPlan.toLowerCase().includes('ultimate') ||
-      (userProfile?.responses_remaining != null && userProfile.responses_remaining >= 900000) ||
-      (userProfile?.seconds_remaining != null && userProfile.seconds_remaining >= 50000000)
+    hasActiveExpiration || (
+      currentPlan !== 'basic' && (
+        currentPlan.toLowerCase().includes('unlimited') ||
+        currentPlan.toLowerCase().includes('ultimate') ||
+        (userProfile?.responses_remaining != null && userProfile.responses_remaining >= 900000) ||
+        (userProfile?.seconds_remaining != null && userProfile.seconds_remaining >= 50000000)
+      )
     )
 
   const activePlanObj = availablePlans.find((p) => {
@@ -171,17 +191,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
         : currentPlan === 'basic'
           ? 'Basic Free Tier'
           : currentPlan
-  const isPaid = currentPlan !== 'basic'
+  const isPaid = currentPlan !== 'basic' || hasActiveExpiration
 
   // Real-time check if 1-month unlimited plan expired while dashboard is open
   useEffect(() => {
-    if (!planExpiresAt || currentPlan === 'basic') return
+    if (!effectiveExpiry || currentPlan === 'basic') return
 
     const checkExpiration = () => {
-      if (new Date(planExpiresAt).getTime() <= Date.now()) {
+      if (new Date(effectiveExpiry).getTime() <= Date.now()) {
         setCurrentPlan('basic')
         if (sessionEmail) {
-          fetch(`${apiBase}/get-profile?email=${encodeURIComponent(sessionEmail)}`).catch(() => {})
+          fetch(`${apiBase}/get-profile?email=${encodeURIComponent(sessionEmail)}&fresh=true`).catch(() => {})
         }
       }
     }
@@ -189,7 +209,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     checkExpiration()
     const interval = setInterval(checkExpiration, 60000)
     return () => clearInterval(interval)
-  }, [planExpiresAt, currentPlan, sessionEmail, apiBase])
+  }, [effectiveExpiry, currentPlan, sessionEmail, apiBase])
 
   const firstName = displayName?.split(' ')[0] || displayName || sessionEmail?.split('@')[0] || 'User'
 
@@ -197,16 +217,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
 
   const openPaymentModal = (p: DbPlan) => {
+    if (isUserUnlimitedPlan) {
+      alert(`You currently have an active Unlimited VIP Plan${effectiveExpiry ? ` (valid until ${new Date(effectiveExpiry).toLocaleDateString()})` : ''}. You cannot purchase any another plan or top-up while your unlimited plan is active.`)
+      return
+    }
     setSelectedPlanForPayment(p)
     setIsPaymentModalOpen(true)
   }
 
   const handleRazorpayUpgrade = (p: DbPlan, couponCode?: string, customAmountInr?: number) => {
+    if (isUserUnlimitedPlan) {
+      alert(`You currently have an active Unlimited VIP Plan${effectiveExpiry ? ` (valid until ${new Date(effectiveExpiry).toLocaleDateString()})` : ''}. You cannot purchase any another plan or top-up while your unlimited plan is active.`)
+      return
+    }
     setIsPaymentModalOpen(false)
     startUpgrade(p, couponCode, customAmountInr)
   }
 
   const handleDodoUpgrade = (p: DbPlan, couponCode?: string) => {
+    if (isUserUnlimitedPlan) {
+      alert(`You currently have an active Unlimited VIP Plan${effectiveExpiry ? ` (valid until ${new Date(effectiveExpiry).toLocaleDateString()})` : ''}. You cannot purchase any another plan or top-up while your unlimited plan is active.`)
+      return
+    }
     setIsPaymentModalOpen(false)
     if (startDodoUpgrade) {
       startDodoUpgrade(p.dodo_product_id || undefined, couponCode, p)
@@ -234,13 +266,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <span>{sessionEmail}</span>
               </span>
             )}
-            {planExpiresAt && currentPlan !== 'basic' && (
+            {effectiveExpiry && hasActiveExpiration && (
               <span className="user-email-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: '1px solid rgba(245, 158, 11, 0.4)', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', fontWeight: 600 }}>
                 <ClockIcon />
                 <span>
-                  Expires {new Date(planExpiresAt).toLocaleDateString()}{' '}
+                  Expires {new Date(effectiveExpiry).toLocaleDateString()}{' '}
                   {(() => {
-                    const days = Math.max(0, Math.ceil((new Date(planExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                    const days = Math.max(0, Math.ceil((new Date(effectiveExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
                     return `(${days} days left)`
                   })()}
                 </span>
@@ -514,7 +546,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className="unlimited-cta-container">
                       {isCurrentUnlimited ? (
                         <button className="unlimited-current-badge-btn" type="button" disabled>
-                          <CheckCircleIcon /> Current Active Plan {planExpiresAt && `(Expires ${new Date(planExpiresAt).toLocaleDateString()})`}
+                          <CheckCircleIcon /> Current Active Plan {effectiveExpiry && `(Expires ${new Date(effectiveExpiry).toLocaleDateString()})`}
                         </button>
                       ) : (
                         <div className="unlimited-buttons-grid">
@@ -754,7 +786,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="plan-card-cta-wrap">
                   {isUserUnlimitedPlan ? (
                     <button className="plan-card-btn active" type="button" disabled>
-                      <CheckCircleIcon /> Included in Unlimited VIP {planExpiresAt && `(Until ${new Date(planExpiresAt).toLocaleDateString()})`}
+                      <CheckCircleIcon /> Included in Unlimited VIP {effectiveExpiry && `(Until ${new Date(effectiveExpiry).toLocaleDateString()})`}
                     </button>
                   ) : isFree ? (
                     <button className="plan-card-btn secondary" type="button" disabled>
@@ -793,9 +825,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Dynamic On-Demand Top-Up Station */}
         <InteractiveTopupStation 
           onTopup={(type, units) => {
+            if (isUserUnlimitedPlan) {
+              alert(`You currently have an active Unlimited VIP Plan${effectiveExpiry ? ` valid until ${new Date(effectiveExpiry).toLocaleDateString()}` : ''}. All quotas are already unlimited, so top-ups are not needed.`)
+              return
+            }
             if (startTopup) startTopup(type, units)
           }}
           isProcessing={isUpgrading}
+          isDisabled={isUserUnlimitedPlan}
+          disabledReason={effectiveExpiry ? `Included in Unlimited VIP (Until ${new Date(effectiveExpiry).toLocaleDateString()})` : 'Included in Unlimited VIP'}
         />
 
         {/* Honest Review & Token Rewards Session Card (Single card at bottom) */}

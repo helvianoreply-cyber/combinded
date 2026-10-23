@@ -4,11 +4,15 @@ import { calculateCopilotTopup, calculateAutoApplyTopup } from '../lib/database.
 interface InteractiveTopupStationProps {
   onTopup: (type: 'copilot' | 'autoapply', units: number) => void
   isProcessing?: boolean
+  isDisabled?: boolean
+  disabledReason?: string
 }
 
 export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = ({
   onTopup,
   isProcessing = false,
+  isDisabled = false,
+  disabledReason = 'Included in Unlimited VIP',
 }) => {
   const [copilotMins, setCopilotMins] = useState<number>(600)
   const [applyCount, setApplyCount] = useState<number>(500)
@@ -32,10 +36,18 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
         <p className="topup-station-subtitle">
           Only pay for what you actually use. Choose your exact meeting minutes or job applications—pricing calculates in real-time and stacks onto your existing balance.
         </p>
-        <div className="topup-offer-notice">
-          <span className="notice-icon">🏷️</span>
-          <span><strong>2X Boosted Quotas:</strong> Meeting minutes, AI vision answers, and job auto-applies are doubled for the same price. Top-ups are billed at standard fixed rates (no coupons).</span>
-        </div>
+
+        {isDisabled ? (
+          <div className="topup-offer-notice" style={{ background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.4)', color: '#a5b4fc' }}>
+            <span className="notice-icon">👑</span>
+            <span><strong>Active Unlimited VIP Plan:</strong> {disabledReason}. All meeting time, AI answers, and job auto-applies are already unlimited and do not require top-ups.</span>
+          </div>
+        ) : (
+          <div className="topup-offer-notice">
+            <span className="notice-icon">🏷️</span>
+            <span><strong>2X Boosted Quotas:</strong> Meeting minutes, AI vision answers, and job auto-applies are doubled for the same price. Top-ups are billed at standard fixed rates (no coupons).</span>
+          </div>
+        )}
       </div>
 
       <div className="topup-cards-grid">
@@ -89,6 +101,7 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
               step={30}
               value={copilotMins}
               onChange={(e) => setCopilotMins(Number(e.target.value))}
+              disabled={isDisabled || isProcessing}
               className="topup-range-slider copilot-slider"
             />
           </div>
@@ -102,7 +115,8 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
                   key={mins}
                   type="button"
                   className={`topup-chip ${copilotMins === mins ? 'selected' : ''}`}
-                  onClick={() => setCopilotMins(mins)}
+                  onClick={() => !isDisabled && setCopilotMins(mins)}
+                  disabled={isDisabled || isProcessing}
                 >
                   {mins >= 60 ? `${(mins / 60).toFixed(mins % 60 === 0 ? 0 : 1)}h` : `${mins}m`}
                 </button>
@@ -129,15 +143,20 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
           {/* CTA Action */}
           <button
             type="button"
-            className="topup-cta-btn copilot-btn"
-            onClick={() => onTopup('copilot', copilotMins)}
-            disabled={isProcessing}
+            className={`topup-cta-btn copilot-btn ${isDisabled ? 'disabled' : ''}`}
+            onClick={() => {
+              if (isDisabled) return
+              onTopup('copilot', copilotMins)
+            }}
+            disabled={isProcessing || isDisabled}
           >
-            {isProcessing ? 'Processing…' : `Top-Up ${copilotMins} Mins (₹${copilotQuote.priceInr})`}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
+            {isDisabled ? (disabledReason || 'Included in Unlimited VIP') : isProcessing ? 'Processing…' : `Top-Up ${copilotMins} Mins (₹${copilotQuote.priceInr})`}
+            {!isDisabled && (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            )}
           </button>
         </div>
 
@@ -185,6 +204,7 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
               step={50}
               value={applyCount}
               onChange={(e) => setApplyCount(Number(e.target.value))}
+              disabled={isDisabled || isProcessing}
               className="topup-range-slider autoapply-slider"
             />
           </div>
@@ -198,7 +218,8 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
                   key={cnt}
                   type="button"
                   className={`topup-chip ${applyCount === cnt ? 'selected' : ''}`}
-                  onClick={() => setApplyCount(cnt)}
+                  onClick={() => !isDisabled && setApplyCount(cnt)}
+                  disabled={isDisabled || isProcessing}
                 >
                   {cnt} Jobs
                 </button>
@@ -225,15 +246,20 @@ export const InteractiveTopupStation: React.FC<InteractiveTopupStationProps> = (
           {/* CTA Action */}
           <button
             type="button"
-            className="topup-cta-btn autoapply-btn"
-            onClick={() => onTopup('autoapply', applyCount)}
-            disabled={isProcessing}
+            className={`topup-cta-btn autoapply-btn ${isDisabled ? 'disabled' : ''}`}
+            onClick={() => {
+              if (isDisabled) return
+              onTopup('autoapply', applyCount)
+            }}
+            disabled={isProcessing || isDisabled}
           >
-            {isProcessing ? 'Processing…' : `Top-Up ${applyCount} Jobs (₹${applyQuote.priceInr})`}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
+            {isDisabled ? (disabledReason || 'Included in Unlimited VIP') : isProcessing ? 'Processing…' : `Top-Up ${applyCount} Jobs (₹${applyQuote.priceInr})`}
+            {!isDisabled && (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            )}
           </button>
         </div>
       </div>

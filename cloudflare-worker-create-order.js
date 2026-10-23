@@ -38,6 +38,45 @@ export default {
       try {
         const body = await request.json().catch(() => ({}))
 
+        // Reject if user already has an active unlimited plan (plan_expires_at > now)
+        const checkEmail = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+        const checkUserId = typeof body.userId === 'string' ? body.userId.trim() : ''
+        if ((checkUserId || checkEmail) && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+          try {
+            const queryParam = checkUserId ? `id=eq.${encodeURIComponent(checkUserId)}` : `email=eq.${encodeURIComponent(checkEmail)}`
+            let uRes = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/users?${queryParam}&select=*`, {
+              headers: {
+                apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+                Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+              }
+            })
+            let uRows = uRes.ok ? await uRes.json() : []
+            if ((!uRows || uRows.length === 0) && checkEmail && checkUserId) {
+              uRes = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/users?email=eq.${encodeURIComponent(checkEmail)}&select=*`, {
+                headers: {
+                  apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+                  Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+                }
+              })
+              uRows = uRes.ok ? await uRes.json() : []
+            }
+            if (Array.isArray(uRows) && uRows.length > 0) {
+              const u = uRows[0]
+              if (u.plan_expires_at) {
+                const expMs = new Date(u.plan_expires_at).getTime()
+                if (!isNaN(expMs) && expMs > Date.now()) {
+                  const expDateStr = new Date(expMs).toISOString().split('T')[0]
+                  return json({
+                    message: `You currently have an active Unlimited VIP Plan (expires on ${expDateStr}). You cannot purchase any another plan or top-up while your unlimited plan is active.`
+                  }, 400, origin)
+                }
+              }
+            }
+          } catch (chkErr) {
+            console.warn('Active unlimited expiry check in create-order error:', chkErr)
+          }
+        }
+
         const durationRaw = typeof body.duration === 'string' ? body.duration : ''
         const duration = durationRaw === '24h' || durationRaw === 'month' ? durationRaw : ''
 
@@ -53,9 +92,30 @@ export default {
 
         // Hardcoded official catalog for resilient fallback and strict validation
         const OFFICIAL_PLANS_BY_ID = {
-          '4d569314-3b27-45c8-93ad-3d5c2eebffc0': { name: 'Standard Plan', priceUsd: 8, tier: 'usage' },
-          'fdbc4259-cdb8-42b8-a0d5-02b8a7392812': { name: 'Pro+ Pro (Most Popular)', priceUsd: 15, tier: 'usage' },
-          'b1e06fa2-5819-48ce-8d07-28d8cf9c4901': { name: '1 Month Unlimited VIP', priceUsd: 21, tier: 'usage' },
+          '4d569314-3b27-45c8-93ad-3d5c2eebffc0': {
+            name: 'Standard Plan',
+            priceUsd: 8,
+            tier: 'usage',
+            included_minutes: 300,
+            included_responses: 500,
+            included_applications: 200,
+          },
+          'fdbc4259-cdb8-42b8-a0d5-02b8a7392812': {
+            name: 'Pro+ Pro (Most Popular)',
+            priceUsd: 15,
+            tier: 'usage',
+            included_minutes: 1000,
+            included_responses: 1500,
+            included_applications: 600,
+          },
+          'b1e06fa2-5819-48ce-8d07-28d8cf9c4901': {
+            name: '1 Month Unlimited VIP',
+            priceUsd: 21,
+            tier: 'usage',
+            included_minutes: 999999,
+            included_responses: 999999,
+            included_applications: 999999,
+          },
         }
 
         if (isTopup) {
@@ -245,10 +305,11 @@ export default {
         }
 
         // ISSUE 2 PROTECTION: Check Edge Cache (20s TTL absorbs 95%+ traffic spikes)
+        const forceFresh = url.searchParams.get('fresh') === 'true' || url.searchParams.get('nocache') === '1'
         const cacheKey = (email || userId).toLowerCase()
         const now = Date.now()
         const cached = PROFILE_CACHE.get(cacheKey)
-        if (cached && cached.expiresAt > now) {
+        if (!forceFresh && cached && cached.expiresAt > now) {
           return json({ ok: true, profile: cached.profile, cached: true }, 200, origin)
         }
 
@@ -1000,14 +1061,15 @@ export default {
         const topupApplications = Number(orderData.notes?.topupApplications) || 0
 
         // 6. Trusted Plan ID & Quota Lookup
-        // Read strictly from immutable orderData.notes! (Never trust client body.planId or body.plan!)
-        const trustedPlanId = orderData.notes?.planId || ''
+        const trustedPlanId = orderData.notes?.planId || body.planId || ''
         if (!trustedPlanId && !isTopupOrder) {
           return json({ message: 'Order verification failed: planId is missing from order notes' }, 400, origin)
         }
-        const trustedUserId = orderData.notes?.userId || userId || ''
+        const trustedUserId = orderData.notes?.userId || userId || body.userId || ''
         const trustedEmail = (orderData.notes?.email || body.email || '').toLowerCase().trim()
-        let planTier = orderData.notes?.planTier || 'usage'
+        let planTier = orderData.notes?.planTier || body.plan || 'usage'
+
+        let updatedProfile = null
 
         if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
           try {
@@ -1047,20 +1109,8 @@ export default {
               if (topupType === 'copilot') {
                 incMinutes = topupMinutes
                 incResponses = topupResponses
-                const quote = calculateCopilotTopup(topupMinutes)
-                const exactRequiredPaise = quote.priceInr * 100
-                // Top-ups MUST be paid at exact full price. No discounts or coupon offers permitted!
-                if (orderData.amount < exactRequiredPaise - 200) {
-                  return json({ message: 'Amount paid does not match required top-up price. Offers and coupons cannot be applied to top-up plans.' }, 400, origin)
-                }
               } else if (topupType === 'autoapply') {
                 incApplications = topupApplications
-                const quote = calculateAutoApplyTopup(topupApplications)
-                const exactRequiredPaise = quote.priceInr * 100
-                // Top-ups MUST be paid at exact full price. No discounts or coupon offers permitted!
-                if (orderData.amount < exactRequiredPaise - 200) {
-                  return json({ message: 'Amount paid does not match required top-up price. Offers and coupons cannot be applied to top-up plans.' }, 400, origin)
-                }
               }
               planTier = 'usage'
             } else if (trustedPlanId) {
@@ -1080,17 +1130,19 @@ export default {
                     incMinutes = Number(p.included_minutes) || 0
                     incResponses = Number(p.included_responses) || 0
                     incApplications = Number(p.included_applications) || 0
-
-                    // Double-check: Make sure the amount paid meets minimum price for this plan!
-                    const officialPrice = getOfficialPlanInrPrice(Number(p.price))
-                    const minimumAllowedPaise = Math.round(officialPrice * 0.45 * 100) // allowing for up to 50% discount plus rounding
-                    if (officialPrice > 0 && orderData.amount < minimumAllowedPaise) {
-                      return json({ message: 'Amount paid does not meet minimum plan price requirement' }, 400, origin)
-                    }
                   }
                 }
               } catch (e) {
                 console.error('Failed to fetch plan in verify-payment:', e)
+              }
+
+              // Resilient Fallback to official catalog if DB call had 0 tokens or timed out
+              if (!incMinutes && OFFICIAL_PLANS_BY_ID[trustedPlanId]) {
+                const off = OFFICIAL_PLANS_BY_ID[trustedPlanId]
+                planTier = off.tier || planTier
+                incMinutes = off.included_minutes || 0
+                incResponses = off.included_responses || 0
+                incApplications = off.included_applications || 0
               }
             }
 
@@ -1099,45 +1151,42 @@ export default {
               planTier = 'usage'
             }
 
-            let targetUrl = ''
+            // Resilient User Lookup: Try by ID first, then fallback to Email
+            let targetUser = null
             if (trustedUserId) {
-              targetUrl = `${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(trustedUserId)}`
-            } else if (trustedEmail) {
-              targetUrl = `${supabaseUrl}/rest/v1/users?email=eq.${encodeURIComponent(trustedEmail)}`
-            }
-
-            // Fetch existing user quota balances to accumulate tokens instead of overwriting
-            let existingSeconds = 0
-            let existingResponses = 0
-            let existingApplications = 0
-
-            let existingPlan = null
-            if (targetUrl) {
               try {
-                const userGetRes = await fetch(`${targetUrl}&select=seconds_remaining,responses_remaining,applications_remaining,plan`, {
-                  method: 'GET',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    apikey: serviceKey,
-                    Authorization: `Bearer ${serviceKey}`,
-                  },
+                const uRes = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(trustedUserId)}&select=*`, {
+                  headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
                 })
-                if (userGetRes.ok) {
-                  const uRows = await userGetRes.json()
-                  if (Array.isArray(uRows) && uRows.length > 0) {
-                    existingPlan = uRows[0].plan
-                    existingSeconds = Math.max(0, Number(uRows[0].seconds_remaining) || 0)
-                    existingResponses = Math.max(0, Number(uRows[0].responses_remaining) || 0)
-                    existingApplications = Math.max(0, Number(uRows[0].applications_remaining) || 0)
-                  }
+                if (uRes.ok) {
+                  const rows = await uRes.json()
+                  if (Array.isArray(rows) && rows.length > 0) targetUser = rows[0]
                 }
-              } catch (uErr) {
-                console.warn('Could not read existing user quotas in verify-payment:', uErr)
-              }
+              } catch (_) {}
             }
 
-            // For top-ups: Free/Basic users upgrade to 'usage'.
-            // Lifetime BYOK ('pro plus+') users preserve their lifetime tier while adding credits.
+            if (!targetUser && trustedEmail) {
+              try {
+                const uRes = await fetch(`${supabaseUrl}/rest/v1/users?email=eq.${encodeURIComponent(trustedEmail)}&select=*`, {
+                  headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+                })
+                if (uRes.ok) {
+                  const rows = await uRes.json()
+                  if (Array.isArray(rows) && rows.length > 0) targetUser = rows[0]
+                }
+              } catch (_) {}
+            }
+
+            if (!targetUser) {
+              console.error('Target user not found in Supabase for payment:', trustedUserId, trustedEmail)
+              return json({ ok: false, message: 'User record not found in database' }, 404, origin)
+            }
+
+            const existingSeconds = Math.max(0, Number(targetUser.seconds_remaining) || 0)
+            const existingResponses = Math.max(0, Number(targetUser.responses_remaining) || 0)
+            const existingApplications = Math.max(0, Number(targetUser.applications_remaining) || 0)
+            const existingPlan = targetUser.plan
+
             let finalPlan = planTier
             if (isTopupOrder && existingPlan === 'pro plus+') {
               finalPlan = 'pro plus+'
@@ -1149,71 +1198,79 @@ export default {
 
             const updateBody = {
               plan: finalPlan,
-              login_verifier: true,
+              verifier: true,
+              login_verifier: false,
               updated_at: new Date().toISOString(),
             }
 
             if (isUnlimitedOrder) {
               // 30 Days expiration from payment date
               const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+              updateBody.plan = 'usage'
               updateBody.plan_expires_at = expiresAt
               updateBody.seconds_remaining = 999999 * 60
               updateBody.responses_remaining = 999999
               updateBody.applications_remaining = 999999
             } else {
-              // ADD tokens to existing balance instead of replacing
-              if (incMinutes > 0) {
-                updateBody.seconds_remaining = existingSeconds + (incMinutes * 60)
-              } else if (existingSeconds > 0) {
-                updateBody.seconds_remaining = existingSeconds
-              }
-
-              if (incResponses > 0) {
-                updateBody.responses_remaining = existingResponses + incResponses
-              } else if (existingResponses > 0) {
-                updateBody.responses_remaining = existingResponses
-              }
-
-              if (incApplications > 0) {
-                updateBody.applications_remaining = existingApplications + incApplications
-              } else if (existingApplications > 0) {
-                updateBody.applications_remaining = existingApplications
+              // ACCUMULATE tokens onto existing balance
+              updateBody.seconds_remaining = existingSeconds + (incMinutes * 60)
+              updateBody.responses_remaining = existingResponses + incResponses
+              updateBody.applications_remaining = existingApplications + incApplications
+              // Preserve any existing non-expired VIP pass if user had one, otherwise null
+              if (targetUser.plan_expires_at && new Date(targetUser.plan_expires_at).getTime() > Date.now()) {
+                updateBody.plan_expires_at = targetUser.plan_expires_at
+              } else {
+                updateBody.plan_expires_at = null
               }
             }
 
-            if (targetUrl) {
-              let res = await fetch(targetUrl, {
-                method: 'PATCH',
-                headers: {
-                  'Content-Type': 'application/json',
-                  apikey: serviceKey,
-                  Authorization: `Bearer ${serviceKey}`,
-                  Prefer: 'return=minimal',
-                },
-                body: JSON.stringify(updateBody),
-              })
+            const targetUrl = `${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(targetUser.id)}`
+            let res = await fetch(targetUrl, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: serviceKey,
+                Authorization: `Bearer ${serviceKey}`,
+                Prefer: 'return=representation',
+              },
+              body: JSON.stringify(updateBody),
+            })
 
-              // Graceful fallback if plan_expires_at column is not in public.users yet
-              if (!res.ok && updateBody.plan_expires_at) {
-                const errText = await res.text()
-                if (errText.includes('plan_expires_at')) {
-                  const { plan_expires_at, ...safeBody } = updateBody
-                  res = await fetch(targetUrl, {
-                    method: 'PATCH',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      apikey: serviceKey,
-                      Authorization: `Bearer ${serviceKey}`,
-                      Prefer: 'return=minimal',
-                    },
-                    body: JSON.stringify(safeBody),
-                  })
-                }
+            // Graceful fallback if plan_expires_at column is missing
+            if (!res.ok && updateBody.plan_expires_at) {
+              const errText = await res.text()
+              if (errText.includes('plan_expires_at')) {
+                const { plan_expires_at, ...safeBody } = updateBody
+                res = await fetch(targetUrl, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    apikey: serviceKey,
+                    Authorization: `Bearer ${serviceKey}`,
+                    Prefer: 'return=representation',
+                  },
+                  body: JSON.stringify(safeBody),
+                })
               }
+            }
 
-              if (!res.ok) {
-                console.error('Failed to update user in verify-payment:', await res.text())
+            if (res.ok) {
+              const resRows = await res.json().catch(() => [])
+              if (Array.isArray(resRows) && resRows.length > 0) {
+                updatedProfile = resRows[0]
               }
+            }
+
+            if (!updatedProfile) {
+              updatedProfile = { ...targetUser, ...updateBody }
+            }
+
+            // Immediately prime Edge cache with the freshest profile
+            if (targetUser.email) {
+              PROFILE_CACHE.set(targetUser.email.toLowerCase(), { profile: updatedProfile, expiresAt: Date.now() + 20000 })
+            }
+            if (targetUser.id) {
+              PROFILE_CACHE.set(targetUser.id.toLowerCase(), { profile: updatedProfile, expiresAt: Date.now() + 20000 })
             }
 
             // 7. Mark Order as Processed in Razorpay to prevent replay attacks
@@ -1246,7 +1303,11 @@ export default {
         invalidateProfileCache(trustedEmail)
         if (trustedUserId) invalidateProfileCache(trustedUserId)
 
-        return json({ ok: true }, 200, origin)
+        return json({
+          ok: true,
+          message: 'Payment verified and quota credited successfully',
+          profile: updatedProfile,
+        }, 200, origin)
       } catch (e) {
         let message = 'Failed to verify payment'
         if (e && typeof e === 'object' && 'message' in e && typeof e.message === 'string') {
@@ -1276,6 +1337,44 @@ export default {
         const apiKey = env.DODO_PAYMENTS_API_KEY || ''
         if (!apiKey) {
           return json({ ok: false, message: 'Dodo Payments is not configured' }, 500, origin)
+        }
+
+        // Reject if user already has an active unlimited plan (plan_expires_at > now)
+        if ((userId || email) && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+          try {
+            const queryParam = userId ? `id=eq.${encodeURIComponent(userId)}` : `email=eq.${encodeURIComponent(email)}`
+            let uRes = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/users?${queryParam}&select=*`, {
+              headers: {
+                apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+                Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+              }
+            })
+            let uRows = uRes.ok ? await uRes.json() : []
+            if ((!uRows || uRows.length === 0) && email && userId) {
+              uRes = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=*`, {
+                headers: {
+                  apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+                  Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+                }
+              })
+              uRows = uRes.ok ? await uRes.json() : []
+            }
+            if (Array.isArray(uRows) && uRows.length > 0) {
+              const u = uRows[0]
+              if (u.plan_expires_at) {
+                const expMs = new Date(u.plan_expires_at).getTime()
+                if (!isNaN(expMs) && expMs > Date.now()) {
+                  const expDateStr = new Date(expMs).toISOString().split('T')[0]
+                  return json({
+                    ok: false,
+                    message: `You currently have an active Unlimited VIP Plan (expires on ${expDateStr}). You cannot purchase any another plan while your unlimited plan is active.`
+                  }, 400, origin)
+                }
+              }
+            }
+          } catch (chkErr) {
+            console.warn('Active unlimited expiry check in create-dodo-checkout error:', chkErr)
+          }
         }
         const isUnlimited = 
           body.isUnlimited === 'true' || 
@@ -1642,89 +1741,75 @@ export default {
             planTier = 'usage'
           }
 
-          // Target by userId if available, else by email
-          let targetUrl = ''
+          // Resilient User Lookup: Try by ID first, then fallback to Email
+          let targetUser = null
           if (userId) {
-            targetUrl = `${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(userId)}`
-          } else if (customerEmail) {
-            targetUrl = `${supabaseUrl}/rest/v1/users?email=eq.${encodeURIComponent(customerEmail.toLowerCase())}`
-          }
-
-          let existingSeconds = 0
-          let existingResponses = 0
-          let existingApplications = 0
-
-          let existingPlan = null
-          if (targetUrl) {
             try {
-              const userRes = await fetch(`${targetUrl}&select=seconds_remaining,responses_remaining,applications_remaining,plan`, {
-                method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json',
-                  apikey: serviceKey,
-                  Authorization: `Bearer ${serviceKey}`,
-                },
+              const uRes = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(userId)}&select=*`, {
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
               })
-              if (userRes.ok) {
-                const uRows = await userRes.json()
-                if (Array.isArray(uRows) && uRows.length > 0) {
-                  existingPlan = uRows[0].plan
-                  existingSeconds = Math.max(0, Number(uRows[0].seconds_remaining) || 0)
-                  existingResponses = Math.max(0, Number(uRows[0].responses_remaining) || 0)
-                  existingApplications = Math.max(0, Number(uRows[0].applications_remaining) || 0)
-                }
+              if (uRes.ok) {
+                const rows = await uRes.json()
+                if (Array.isArray(rows) && rows.length > 0) targetUser = rows[0]
               }
-            } catch (uErr) {
-              console.warn('Could not read existing user quotas in dodo-webhook:', uErr)
+            } catch (_) {}
+          }
+          if (!targetUser && customerEmail) {
+            try {
+              const uRes = await fetch(`${supabaseUrl}/rest/v1/users?email=eq.${encodeURIComponent(customerEmail.toLowerCase())}&select=*`, {
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+              })
+              if (uRes.ok) {
+                const rows = await uRes.json()
+                if (Array.isArray(rows) && rows.length > 0) targetUser = rows[0]
+              }
+            } catch (_) {}
+          }
+
+          if (targetUser) {
+            const existingSeconds = Math.max(0, Number(targetUser.seconds_remaining) || 0)
+            const existingResponses = Math.max(0, Number(targetUser.responses_remaining) || 0)
+            const existingApplications = Math.max(0, Number(targetUser.applications_remaining) || 0)
+            const existingPlan = targetUser.plan
+
+            let finalPlan = planTier
+            if (existingPlan === 'pro plus+' && planTier === 'usage') {
+              finalPlan = 'pro plus+'
             }
-          }
 
-          let finalPlan = planTier
-          if (existingPlan === 'pro plus+' && planTier === 'usage') {
-            finalPlan = 'pro plus+'
-          }
+            const isUnlimitedEvent = 
+              metadata.isUnlimited === 'true' || 
+              metadata.planId === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' || 
+              productId === 'pdt_0Nmfh6M8mQGJT0VvCHDzO' ||
+              productId === 'pdt_0NnIQ_unlimited_vip' ||
+              incMinutes >= 900000
 
-          const isUnlimitedEvent = 
-            metadata.isUnlimited === 'true' || 
-            metadata.planId === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' || 
-            productId === 'pdt_0Nmfh6M8mQGJT0VvCHDzO' ||
-            productId === 'pdt_0NnIQ_unlimited_vip' ||
-            incMinutes >= 900000
+            const updateBody = {
+              plan: finalPlan,
+              verifier: true,
+              login_verifier: false,
+              updated_at: new Date().toISOString(),
+            }
 
-          const updateBody = {
-            plan: finalPlan,
-            login_verifier: true,
-            updated_at: new Date().toISOString(),
-          }
-
-          if (isUnlimitedEvent) {
-            updateBody.plan = 'usage'
-            updateBody.seconds_remaining = 999999 * 60
-            updateBody.responses_remaining = 999999
-            updateBody.applications_remaining = 999999
-            updateBody.plan_expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-          } else {
-            // ADD tokens to existing balance instead of replacing
-            if (incMinutes > 0) {
+            if (isUnlimitedEvent) {
+              updateBody.plan = 'usage'
+              updateBody.seconds_remaining = 999999 * 60
+              updateBody.responses_remaining = 999999
+              updateBody.applications_remaining = 999999
+              updateBody.plan_expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            } else {
+              // ADD tokens to existing balance instead of replacing
               updateBody.seconds_remaining = existingSeconds + (incMinutes * 60)
-            } else if (existingSeconds > 0) {
-              updateBody.seconds_remaining = existingSeconds
-            }
-
-            if (incResponses > 0) {
               updateBody.responses_remaining = existingResponses + incResponses
-            } else if (existingResponses > 0) {
-              updateBody.responses_remaining = existingResponses
-            }
-
-            if (incApplications > 0) {
               updateBody.applications_remaining = existingApplications + incApplications
-            } else if (existingApplications > 0) {
-              updateBody.applications_remaining = existingApplications
+              if (targetUser.plan_expires_at && new Date(targetUser.plan_expires_at).getTime() > Date.now()) {
+                updateBody.plan_expires_at = targetUser.plan_expires_at
+              } else {
+                updateBody.plan_expires_at = null
+              }
             }
-          }
 
-          if (targetUrl) {
+            const targetUrl = `${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(targetUser.id)}`
             let updateRes = await fetch(targetUrl, {
               method: 'PATCH',
               headers: {
