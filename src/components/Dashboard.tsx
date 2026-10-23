@@ -19,7 +19,7 @@ interface DashboardProps {
   startDodoUpgrade?: (productId?: string, couponCode?: string, planObj?: DbPlan) => void
   isUpgrading: boolean
   upgradeError: string | null
-  onRefreshProfile?: () => void
+  onRefreshProfile?: (overrideProfile?: DbUser) => void
 }
 
 // Icon Components
@@ -77,11 +77,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
   upgradeError,
   onRefreshProfile,
 }) => {
-  const [liveProfile, setLiveProfile] = useState<DbUser | null>(userProfile || null)
-  const [liveExpiresAt, setLiveExpiresAt] = useState<string | null>(
-    planExpiresAt || userProfile?.plan_expires_at || null
-  )
-  const [currentPlan, setCurrentPlan] = useState<string>(userProfile?.plan || plan || 'basic')
+  const [liveProfile, setLiveProfile] = useState<DbUser | null>(() => {
+    if (userProfile) return userProfile
+    try {
+      const s = localStorage.getItem('helvia_user_profile')
+      return s ? JSON.parse(s) : null
+    } catch {
+      return null
+    }
+  })
+  const [liveExpiresAt, setLiveExpiresAt] = useState<string | null>(() => {
+    if (planExpiresAt) return planExpiresAt
+    if (userProfile?.plan_expires_at) return userProfile.plan_expires_at
+    try {
+      const s = localStorage.getItem('helvia_user_profile')
+      if (s) {
+        const u = JSON.parse(s)
+        return u.plan_expires_at || null
+      }
+    } catch {}
+    return null
+  })
+  const [currentPlan, setCurrentPlan] = useState<string>(() => {
+    if (userProfile?.plan) return userProfile.plan
+    if (plan) return plan
+    try {
+      const s = localStorage.getItem('helvia_user_profile')
+      if (s) {
+        const u = JSON.parse(s)
+        return u.plan || 'basic'
+      }
+    } catch {}
+    return 'basic'
+  })
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null)
 
   useEffect(() => {
@@ -113,8 +141,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const fetchLatestProfile = useCallback(
     async (isManual = false) => {
-      const email = (sessionEmail || userProfile?.email || liveProfile?.email || '').trim().toLowerCase()
-      const uid = userProfile?.id || liveProfile?.id || ''
+      let email = (sessionEmail || userProfile?.email || liveProfile?.email || '').trim().toLowerCase()
+      let uid = userProfile?.id || liveProfile?.id || ''
+      if (!email) {
+        try {
+          email = (localStorage.getItem('helvia_user_email') || '').trim().toLowerCase()
+        } catch {}
+      }
+      if (!uid) {
+        try {
+          uid = (localStorage.getItem('helvia_user_id') || '').trim()
+        } catch {}
+      }
       if (!email && !uid) return
 
       if (isManual) {
@@ -137,8 +175,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           }
         }
 
-        // 2. Worker query with service role key (guarantees fresh data and bypasses RLS/cache)
-        if (!uData || isManual) {
+        // 2. Worker query with service role key (guarantees fresh data, VIP expiry resolution, and bypasses RLS)
+        if (!uData || !uData.plan_expires_at || isManual) {
           const res = await fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}&userId=${encodeURIComponent(uid)}&fresh=true`)
           if (res.ok) {
             const json = (await res.json()) as { ok?: boolean; profile?: DbUser }
@@ -153,6 +191,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           setCurrentPlan(uData.plan || 'basic')
           if (uData.plan_expires_at) {
             setLiveExpiresAt(uData.plan_expires_at)
+          }
+          try {
+            localStorage.setItem('helvia_user_profile', JSON.stringify(uData))
+            if (uData.email) localStorage.setItem('helvia_user_email', uData.email)
+            if (uData.id) localStorage.setItem('helvia_user_id', uData.id)
+          } catch {}
+          if (onRefreshProfile) {
+            onRefreshProfile(uData)
           }
           if (isManual) {
             setRefreshBalancesFeedback('✓ Live Balances & Plan Synced!')
@@ -171,7 +217,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         }
       }
     },
-    [apiBase, sessionEmail, userProfile?.id, userProfile?.email, liveProfile?.id, liveProfile?.email]
+    [apiBase, sessionEmail, userProfile?.id, userProfile?.email, liveProfile?.id, liveProfile?.email, onRefreshProfile]
   )
 
   // Auto-fetch fresh profile immediately on mount

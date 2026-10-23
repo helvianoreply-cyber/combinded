@@ -143,13 +143,56 @@ function WhatsAppRedirectPage() {
 }
 
 function App() {
-  const [userId, setUserId] = useState<string | null>(null)
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null)
-  const [displayName, setDisplayName] = useState<string | null>(null)
-  const [userProfile, setUserProfile] = useState<DbUser | null>(null)
+  const [userId, setUserId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('helvia_user_id') || null
+    } catch {
+      return null
+    }
+  })
+  const [sessionEmail, setSessionEmail] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('helvia_user_email') || null
+    } catch {
+      return null
+    }
+  })
+  const [displayName, setDisplayName] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('helvia_display_name') || null
+    } catch {
+      return null
+    }
+  })
+  const [userProfile, setUserProfile] = useState<DbUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('helvia_user_profile')
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  })
   const [plans, setPlans] = useState<DbPlan[]>(SEED_PLANS)
-  const [plan, setPlan] = useState<string>('basic')
-  const [planExpiresAt, setPlanExpiresAt] = useState<string | null>(null)
+  const [plan, setPlan] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('helvia_user_profile')
+      if (saved) {
+        const u = JSON.parse(saved)
+        return u.plan || 'basic'
+      }
+    } catch {}
+    return 'basic'
+  })
+  const [planExpiresAt, setPlanExpiresAt] = useState<string | null>(() => {
+    try {
+      const saved = localStorage.getItem('helvia_user_profile')
+      if (saved) {
+        const u = JSON.parse(saved)
+        return u.plan_expires_at || null
+      }
+    } catch {}
+    return null
+  })
   const [isUpgrading, setIsUpgrading] = useState(false)
   const [upgradeError, setUpgradeError] = useState<string | null>(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
@@ -159,7 +202,7 @@ function App() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const isSignedIn = Boolean(userId)
+  const isSignedIn = Boolean(userId || sessionEmail)
 
   // Fetch plans from Supabase public.plans (with fallback to SEED_PLANS)
   useEffect(() => {
@@ -503,11 +546,16 @@ function App() {
         const error = result.error
 
         if (error) {
-          setAuthError(error.message ?? 'Failed to load session')
-          setUserId(null)
-          setSessionEmail(null)
-          setDisplayName(null)
-          setUserProfile(null)
+          console.warn('Session check notice:', error.message)
+          // If error occurs, do NOT aggressively wipe local storage if cached session exists
+          const cachedEmail = localStorage.getItem('helvia_user_email')
+          const cachedId = localStorage.getItem('helvia_user_id')
+          if (!cachedEmail && !cachedId) {
+            setUserId(null)
+            setSessionEmail(null)
+            setDisplayName(null)
+            setUserProfile(null)
+          }
           setIsAuthLoading(false)
           return
         }
@@ -522,7 +570,7 @@ function App() {
             }
           | null
 
-        if (session) {
+        if (session && session.user) {
           const email = session.user.email ?? null
           const name =
             (session.user.user_metadata?.full_name as string | undefined) ??
@@ -541,12 +589,39 @@ function App() {
             if (userRow.plan_expires_at) {
               setPlanExpiresAt(userRow.plan_expires_at)
             }
+            try {
+              if (userRow.id) localStorage.setItem('helvia_user_id', userRow.id)
+              if (email) localStorage.setItem('helvia_user_email', email)
+              if (name) localStorage.setItem('helvia_display_name', name)
+              localStorage.setItem('helvia_user_profile', JSON.stringify(userRow))
+            } catch (_) {}
           }
 
           // Move existing or newly signed-in user to dashboard if on root
           const currentPath = window.location.pathname || location.pathname
           if (currentPath === '/' || currentPath === '') {
             navigate('/dashboard', { replace: true })
+          }
+        } else {
+          // If Supabase session is null, verify and sync using cached credentials from localStorage
+          const cachedEmail = localStorage.getItem('helvia_user_email')
+          const cachedId = localStorage.getItem('helvia_user_id')
+          if (cachedEmail || cachedId) {
+            if (cachedId) setUserId(cachedId)
+            if (cachedEmail) setSessionEmail(cachedEmail)
+            const userRow = await syncUserWithDatabase(cachedId || '', cachedEmail)
+            if (userRow) {
+              setUserProfile(userRow)
+              setPlan(userRow.plan || 'basic')
+              if (userRow.plan_expires_at) {
+                setPlanExpiresAt(userRow.plan_expires_at)
+              }
+              try {
+                if (userRow.id) localStorage.setItem('helvia_user_id', userRow.id)
+                if (cachedEmail) localStorage.setItem('helvia_user_email', cachedEmail)
+                localStorage.setItem('helvia_user_profile', JSON.stringify(userRow))
+              } catch (_) {}
+            }
           }
         }
 
@@ -562,18 +637,20 @@ function App() {
     const {
       data: { subscription },
     } = sb.auth.onAuthStateChange(async (event, session) => {
-      const email = session?.user?.email ?? null
-      const name =
-        (session?.user?.user_metadata?.full_name as string | undefined) ??
-        (session?.user?.user_metadata?.name as string | undefined) ??
-        null
-      const id = session?.user?.id ?? null
-      
-      setUserId(id)
-      setSessionEmail(email)
-      setDisplayName(name)
+      // ONLY update state when there is a real session or explicit signed out event.
+      // Never wipe state to null on INITIAL_SESSION when session is pending.
+      if (session?.user) {
+        const email = session.user.email ?? null
+        const name =
+          (session.user.user_metadata?.full_name as string | undefined) ??
+          (session.user.user_metadata?.name as string | undefined) ??
+          null
+        const id = session.user.id
+        
+        setUserId(id)
+        setSessionEmail(email)
+        setDisplayName(name)
 
-      if (session && id) {
         const userRow = await syncUserWithDatabase(id, email)
         if (userRow) {
           setUserProfile(userRow)
@@ -581,10 +658,16 @@ function App() {
           if (userRow.plan_expires_at) {
             setPlanExpiresAt(userRow.plan_expires_at)
           }
+          try {
+            if (userRow.id) localStorage.setItem('helvia_user_id', userRow.id)
+            if (email) localStorage.setItem('helvia_user_email', email)
+            if (name) localStorage.setItem('helvia_display_name', name)
+            localStorage.setItem('helvia_user_profile', JSON.stringify(userRow))
+          } catch (_) {}
         }
         
-        // Auto-navigate to dashboard on any authentication event
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+        // Auto-navigate to dashboard on sign-in event
+        if (event === 'SIGNED_IN') {
           let postAuthRedirect = ''
           try {
             postAuthRedirect = window.sessionStorage.getItem('postAuthRedirect') || ''
@@ -600,36 +683,64 @@ function App() {
             }
             navigate(postAuthRedirect, { replace: true })
           } else {
-            const currentPath = window.location.pathname || location.pathname
+            const currentPath = window.location.pathname
             if (currentPath === '/' || currentPath === '') {
               navigate('/dashboard', { replace: true })
             }
           }
         }
-      } else {
+      } else if (event === 'SIGNED_OUT') {
+        setUserId(null)
+        setSessionEmail(null)
+        setDisplayName(null)
         setPlan('basic')
         setPlanExpiresAt(null)
         setUserProfile(null)
-        if (event === 'SIGNED_OUT') {
-           navigate('/')
-        }
+        try {
+          localStorage.removeItem('helvia_user_id')
+          localStorage.removeItem('helvia_user_email')
+          localStorage.removeItem('helvia_display_name')
+          localStorage.removeItem('helvia_user_profile')
+        } catch (_) {}
+        navigate('/')
       }
     })
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [navigate, location.pathname, syncUserWithDatabase])
+  }, [navigate, syncUserWithDatabase])
 
-  const refreshProfile = useCallback(async () => {
-    if (userId || sessionEmail) {
-      const updated = await syncUserWithDatabase(userId || '', sessionEmail)
+  const refreshProfile = useCallback(async (overrideProfile?: DbUser) => {
+    if (overrideProfile) {
+      setUserProfile(overrideProfile)
+      setPlan(overrideProfile.plan || 'basic')
+      if (overrideProfile.plan_expires_at) {
+        setPlanExpiresAt(overrideProfile.plan_expires_at)
+      }
+      try {
+        if (overrideProfile.id) localStorage.setItem('helvia_user_id', overrideProfile.id)
+        if (overrideProfile.email) localStorage.setItem('helvia_user_email', overrideProfile.email)
+        localStorage.setItem('helvia_user_profile', JSON.stringify(overrideProfile))
+      } catch (_) {}
+      return
+    }
+
+    const activeId = userId || localStorage.getItem('helvia_user_id')
+    const activeEmail = sessionEmail || localStorage.getItem('helvia_user_email')
+    if (activeId || activeEmail) {
+      const updated = await syncUserWithDatabase(activeId || '', activeEmail)
       if (updated) {
         setUserProfile(updated)
         setPlan(updated.plan || 'basic')
         if (updated.plan_expires_at) {
           setPlanExpiresAt(updated.plan_expires_at)
         }
+        try {
+          if (updated.id) localStorage.setItem('helvia_user_id', updated.id)
+          if (activeEmail || updated.email) localStorage.setItem('helvia_user_email', activeEmail || updated.email || '')
+          localStorage.setItem('helvia_user_profile', JSON.stringify(updated))
+        } catch (_) {}
       }
     }
   }, [userId, sessionEmail, syncUserWithDatabase])
@@ -698,6 +809,10 @@ function App() {
         }
         keysToRemove.forEach((k) => localStorage.removeItem(k))
         localStorage.removeItem('helvia_trial_claimed_v1')
+        localStorage.removeItem('helvia_user_id')
+        localStorage.removeItem('helvia_user_email')
+        localStorage.removeItem('helvia_display_name')
+        localStorage.removeItem('helvia_user_profile')
         sessionStorage.clear()
       }
     } catch {
@@ -1462,7 +1577,11 @@ function App() {
             }
           />
           <Route path="/dashboard" element={
-            isSignedIn ? (
+            isAuthLoading && !sessionEmail && !userId ? (
+              <div className="dashboard-loading" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+                <p className="muted">Opening Dashboard…</p>
+              </div>
+            ) : isSignedIn || sessionEmail ? (
               <Dashboard 
                 displayName={displayName}
                 sessionEmail={sessionEmail}
@@ -1477,40 +1596,8 @@ function App() {
                 upgradeError={upgradeError}
                 onRefreshProfile={refreshProfile}
               />
-            ) : isAuthLoading ? (
-              <div className="dashboard-loading" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-                <p className="muted">Opening Dashboard…</p>
-              </div>
             ) : (
-              <Dashboard 
-                displayName={displayName || 'Pro User'}
-                sessionEmail={sessionEmail || 'guest@helvia.ai'}
-                userProfile={userProfile || {
-                  id: 'guest',
-                  email: 'guest@helvia.ai',
-                  plan: 'basic',
-                  verifier: false,
-                  login_verifier: true,
-                  session_verifier: false,
-                  seconds_remaining: 0,
-                  seconds_used: 0,
-                  responses_remaining: 0,
-                  responses_used: 0,
-                  applications_remaining: 0,
-                  applications_applied: 0,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                }}
-                plans={plans}
-                plan={plan}
-                planExpiresAt={planExpiresAt}
-                startUpgrade={startUpgrade}
-                startTopup={startTopup}
-                startDodoUpgrade={startDodoUpgrade}
-                isUpgrading={isUpgrading}
-                upgradeError={upgradeError}
-                onRefreshProfile={refreshProfile}
-              />
+              <Navigate to="/" replace />
             )
           } />
           <Route path="/privacypolicy" element={<PrivacyPolicyPage />} />
