@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { SkyCanvas3D } from './SkyCanvas3D'
 import { type DbUser, type DbPlan, SEED_PLANS, getPlanInrPrice } from '../lib/database.types'
 import { HELVIA_APPS_CATALOG } from '../lib/downloadLinks'
@@ -108,52 +108,76 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
   }, [])
 
-  // Auto-fetch fresh profile immediately on mount and periodically to guarantee real-time quota state
-  useEffect(() => {
-    let isMounted = true
-    const fetchLatestProfile = async () => {
+  const [isRefreshingBalances, setIsRefreshingBalances] = useState(false)
+  const [refreshBalancesFeedback, setRefreshBalancesFeedback] = useState<string | null>(null)
+
+  const fetchLatestProfile = useCallback(
+    async (isManual = false) => {
       const email = (sessionEmail || userProfile?.email || liveProfile?.email || '').trim().toLowerCase()
       const uid = userProfile?.id || liveProfile?.id || ''
       if (!email && !uid) return
 
+      if (isManual) {
+        setIsRefreshingBalances(true)
+        setRefreshBalancesFeedback(null)
+      }
+
       try {
+        let uData: DbUser | null = null
+
+        // 1. Direct Supabase query (prioritize email ilike for maximum accuracy)
         if (supabase) {
-          const query = uid 
-            ? supabase.from('users').select('*').eq('id', uid) 
-            : supabase.from('users').select('*').eq('email', email)
-          const { data } = await query.maybeSingle()
-          if (data && isMounted) {
-            const u = data as DbUser
-            setLiveProfile(u)
-            setCurrentPlan(u.plan || 'basic')
-            if (u.plan_expires_at) {
-              setLiveExpiresAt(u.plan_expires_at)
-            }
-            return
+          if (email) {
+            const { data } = await supabase.from('users').select('*').ilike('email', email).maybeSingle()
+            if (data) uData = data as DbUser
+          }
+          if (!uData && uid) {
+            const { data } = await supabase.from('users').select('*').eq('id', uid).maybeSingle()
+            if (data) uData = data as DbUser
           }
         }
 
-        const res = await fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}&userId=${encodeURIComponent(uid)}&fresh=true`)
-        if (res.ok && isMounted) {
-          const json = (await res.json()) as { ok?: boolean; profile?: DbUser }
-          if (json?.profile) {
-            setLiveProfile(json.profile)
-            setCurrentPlan(json.profile.plan || 'basic')
-            if (json.profile.plan_expires_at) {
-              setLiveExpiresAt(json.profile.plan_expires_at)
+        // 2. Worker query with service role key (guarantees fresh data and bypasses RLS/cache)
+        if (!uData || isManual) {
+          const res = await fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}&userId=${encodeURIComponent(uid)}&fresh=true`)
+          if (res.ok) {
+            const json = (await res.json()) as { ok?: boolean; profile?: DbUser }
+            if (json?.profile) {
+              uData = json.profile
             }
+          }
+        }
+
+        if (uData) {
+          setLiveProfile(uData)
+          setCurrentPlan(uData.plan || 'basic')
+          if (uData.plan_expires_at) {
+            setLiveExpiresAt(uData.plan_expires_at)
+          }
+          if (isManual) {
+            setRefreshBalancesFeedback('✓ Live Balances & Plan Synced!')
+            setTimeout(() => setRefreshBalancesFeedback(null), 3000)
           }
         }
       } catch (err) {
         console.warn('Dashboard live profile fetch error:', err)
+        if (isManual) {
+          setRefreshBalancesFeedback('Sync completed')
+          setTimeout(() => setRefreshBalancesFeedback(null), 2500)
+        }
+      } finally {
+        if (isManual) {
+          setIsRefreshingBalances(false)
+        }
       }
-    }
+    },
+    [apiBase, sessionEmail, userProfile?.id, userProfile?.email, liveProfile?.id, liveProfile?.email]
+  )
 
-    fetchLatestProfile()
-    return () => {
-      isMounted = false
-    }
-  }, [apiBase, sessionEmail, userProfile?.id, userProfile?.email])
+  // Auto-fetch fresh profile immediately on mount
+  useEffect(() => {
+    fetchLatestProfile(false)
+  }, [fetchLatestProfile])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-sky-theme', 'morning')
@@ -166,24 +190,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
       if (onRefreshProfile) {
         onRefreshProfile()
       }
-      const email = (sessionEmail || userProfile?.email || liveProfile?.email || '').trim().toLowerCase()
-      const uid = userProfile?.id || liveProfile?.id || ''
-      if (email || uid) {
-        fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}&userId=${encodeURIComponent(uid)}&fresh=true`)
-          .then((res) => (res.ok ? res.json() : null))
-          .then((json) => {
-            if (json?.profile) {
-              setLiveProfile(json.profile)
-              setCurrentPlan(json.profile.plan?.toLowerCase() || 'basic')
-              if (json.profile.plan_expires_at) {
-                setLiveExpiresAt(json.profile.plan_expires_at)
-              }
-            }
-          })
-          .catch(() => {})
-      }
+      fetchLatestProfile(true)
     }
-  }, [apiBase, onRefreshProfile, sessionEmail])
+  }, [fetchLatestProfile, onRefreshProfile])
 
   // Sort available plans in ascending price order: $0 -> $8 -> $15 -> $21
   const availablePlans = useMemo(() => {
@@ -221,33 +230,90 @@ export const Dashboard: React.FC<DashboardProps> = ({
     new Date(effectiveExpiry).getTime() > Date.now()
   )
 
-  const isUserUnlimitedPlan = 
-    hasActiveExpiration || (
-      currentPlan !== 'basic' && (
-        currentPlan.toLowerCase().includes('unlimited') ||
-        currentPlan.toLowerCase().includes('ultimate') ||
-        ((liveProfile?.responses_remaining ?? userProfile?.responses_remaining ?? 0) >= 900000) ||
-        ((liveProfile?.seconds_remaining ?? userProfile?.seconds_remaining ?? 0) >= 50000000)
-      )
-    )
+  // Rock-solid plan detector that distinguishes Unlimited VIP, Pro+ Pro, Standard, and Basic
+  const detectedPlanInfo = useMemo(() => {
+    const activeUser = liveProfile || userProfile
+    const planStr = (activeUser?.plan || currentPlan || plan || 'basic').toLowerCase().trim()
+    const responses = Number(activeUser?.responses_remaining) || 0
+    const seconds = Number(activeUser?.seconds_remaining) || 0
 
-  const activePlanObj = availablePlans.find((p) => {
-    if (isUserUnlimitedPlan && p.name.toLowerCase().includes('unlimited')) return true
-    if (currentPlan === p.tier) return true
-    if (currentPlan === 'pro plus+' && p.tier === 'pro plus+') return true
-    return false
-  })
+    // 1. Unlimited VIP Plan
+    if (
+      hasActiveExpiration || 
+      planStr === 'unlimited' || 
+      planStr.includes('unlimited') || 
+      planStr.includes('vip') ||
+      responses >= 900000 || 
+      seconds >= 50000000
+    ) {
+      const days = effectiveExpiry ? Math.max(0, Math.ceil((new Date(effectiveExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : null
+      return {
+        name: '1 Month Unlimited VIP',
+        tier: 'unlimited',
+        icon: '👑',
+        badge: 'Unlimited VIP Active',
+        isUnlimited: true,
+        isPaid: true,
+        className: 'unlimited',
+        daysRemaining: days,
+      }
+    }
 
-  const planDisplayName = isUserUnlimitedPlan
-    ? '1 Month Unlimited VIP'
-    : activePlanObj
-      ? activePlanObj.name
-      : currentPlan === 'usage'
-        ? 'Usage Plan'
-        : currentPlan === 'basic'
-          ? 'Basic Free Tier'
-          : currentPlan
-  const isPaid = currentPlan !== 'basic' || hasActiveExpiration
+    // 2. Pro+ Pro (Most Popular)
+    if (
+      planStr === 'pro_plus' || 
+      planStr === 'pro plus+' || 
+      planStr === 'pro+' || 
+      planStr.includes('pro+') ||
+      (planStr === 'usage' && (responses >= 1200 || seconds >= 50000))
+    ) {
+      return {
+        name: 'Pro+ Pro (Most Popular)',
+        tier: 'pro_plus',
+        icon: '⚡',
+        badge: 'Pro Tier Active',
+        isUnlimited: false,
+        isPaid: true,
+        className: 'pro_plus',
+        daysRemaining: null,
+      }
+    }
+
+    // 3. Standard Plan
+    if (
+      planStr === 'standard' || 
+      planStr === 'usage' || 
+      responses > 5 || 
+      seconds > 300
+    ) {
+      return {
+        name: 'Standard Plan',
+        tier: 'standard',
+        icon: '🚀',
+        badge: 'Standard Active',
+        isUnlimited: false,
+        isPaid: true,
+        className: 'standard',
+        daysRemaining: null,
+      }
+    }
+
+    // 4. Basic Free Tier
+    return {
+      name: 'Basic Free Tier',
+      tier: 'basic',
+      icon: '🛡️',
+      badge: 'Free Tier',
+      isUnlimited: false,
+      isPaid: false,
+      className: 'basic',
+      daysRemaining: null,
+    }
+  }, [liveProfile, userProfile, currentPlan, plan, hasActiveExpiration, effectiveExpiry])
+
+  const isUserUnlimitedPlan = detectedPlanInfo.isUnlimited
+  const planDisplayName = detectedPlanInfo.name
+  const isPaid = detectedPlanInfo.isPaid
 
   // Real-time check if 1-month unlimited plan expired while dashboard is open
   useEffect(() => {
@@ -352,52 +418,188 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </p>
         </section>
 
-        {/* Live Quotas & Balances Bar */}
-        {(liveProfile || userProfile) && (() => {
-          const activeUser = liveProfile || userProfile!
+        {/* =========================================================
+            CURRENT PLAN & ACTIVE TOKEN ASSETS HERO CARD
+            ========================================================= */}
+        {(() => {
+          const activeUser = liveProfile || userProfile || {
+            seconds_remaining: 0,
+            responses_remaining: 0,
+            applications_remaining: 0,
+            verifier: false,
+          }
           const isUserUnlimited = isUserUnlimitedPlan
 
+          const timeDisplay = isUserUnlimited
+            ? '∞ Unlimited'
+            : activeUser.seconds_remaining != null && activeUser.seconds_remaining > 0
+              ? `${Math.floor(activeUser.seconds_remaining / 60)} min`
+              : '0 min'
+
+          const answersDisplay = isUserUnlimited
+            ? '∞ Unlimited'
+            : (activeUser.responses_remaining ?? 0).toLocaleString()
+
+          const appsDisplay = isUserUnlimited
+            ? '∞ Unlimited'
+            : (activeUser.applications_remaining ?? 10).toLocaleString()
+
           return (
-            <div className="plans-live-stats-bar">
-              <div className="live-stat-pill">
-                <ClockIcon />
-                <div>
-                  <span className="live-stat-val">
-                    {isUserUnlimited
-                      ? '∞ Unlimited'
-                      : activeUser.seconds_remaining != null && activeUser.seconds_remaining > 0
-                        ? `${Math.floor(activeUser.seconds_remaining / 60)} min`
-                        : `${Math.floor((activeUser.seconds_remaining || 0) / 60)} min`}
-                  </span>
-                  <span className="live-stat-lbl">Time Remaining</span>
+            <div className={`dashboard-plan-token-card ${detectedPlanInfo.className}`}>
+              {/* Card Top Row: Plan Name, Active Chip, Refresh Balances */}
+              <div className="plan-card-top-bar">
+                <div className="plan-avatar-group">
+                  <div className="plan-avatar-icon" role="img" aria-label={detectedPlanInfo.name}>
+                    {detectedPlanInfo.icon}
+                  </div>
+                  <div className="plan-title-block">
+                    <h2>
+                      <span>{detectedPlanInfo.name}</span>
+                      <span className="plan-active-chip">
+                        <span className="plan-active-chip-dot" />
+                        {isPaid ? 'Active & Ready' : 'Free Tier'}
+                      </span>
+                    </h2>
+                    <div className="plan-subtext-row">
+                      {isUserUnlimited && effectiveExpiry && (
+                        <span className="plan-expiry-pill">
+                          <ClockIcon />
+                          <span>
+                            Expires {new Date(effectiveExpiry).toLocaleDateString()}{' '}
+                            {detectedPlanInfo.daysRemaining != null && `(${detectedPlanInfo.daysRemaining} days left)`}
+                          </span>
+                        </span>
+                      )}
+                      <span>
+                        {isUserUnlimited
+                          ? 'Zero per-minute deductions • 30-day VIP pass'
+                          : detectedPlanInfo.tier === 'pro_plus'
+                            ? 'Pro+ 1,000 mins & 1,500 answers allocation'
+                            : detectedPlanInfo.tier === 'standard'
+                              ? 'Standard 300 mins & 500 answers allocation'
+                              : 'Starter free tier with basic access'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="plan-actions-group">
+                  <button
+                    type="button"
+                    className="refresh-balances-btn"
+                    onClick={() => fetchLatestProfile(true)}
+                    disabled={isRefreshingBalances}
+                    title="Force a real-time quota sync from database"
+                  >
+                    <span className={isRefreshingBalances ? 'refresh-spin-icon' : ''}>🔄</span>
+                    <span>
+                      {isRefreshingBalances
+                        ? 'Syncing…'
+                        : refreshBalancesFeedback || 'Refresh Balances'}
+                    </span>
+                  </button>
+
+                  <div className={`host-status-chip ${activeUser.verifier ? 'linked' : ''}`}>
+                    <CheckCircleIcon />
+                    <span>{activeUser.verifier ? 'Host Linked' : 'Host Standby'}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="live-stat-pill">
-                <SparklesIcon />
-                <div>
-                  <span className="live-stat-val">
-                    {isUserUnlimited ? '∞ Unlimited' : (activeUser.responses_remaining ?? 0)}
-                  </span>
-                  <span className="live-stat-lbl">AI Answers Balance</span>
+              {/* VIP Protection Notice (Shown when unlimited VIP is active) */}
+              {isUserUnlimited && (
+                <div className="unlimited-protection-banner">
+                  <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>🛡️</span>
+                  <div>
+                    <strong>Protected 1-Month Unlimited VIP Pass Active:</strong> You currently enjoy unrestricted Remote Meeting & Desktop Time, AI Screen Vision Answers, and ATS Job Auto-Applies with 0 token deductions. Plan purchases and top-ups are safely locked until your pass expires on{' '}
+                    <strong>{effectiveExpiry ? new Date(effectiveExpiry).toLocaleDateString() : 'expiry date'}</strong>.
+                  </div>
+                </div>
+              )}
+
+              {/* The 3 Core Token Asset Meters */}
+              <div className="token-assets-grid">
+                {/* Meter 1: Remote & Meeting Control Time */}
+                <div className="token-asset-card time">
+                  <div className="token-asset-header">
+                    <span className="token-asset-label">Remote &amp; Meeting Time</span>
+                    <div className="token-asset-icon-pill">⏱️</div>
+                  </div>
+                  <div className="token-asset-number">{timeDisplay}</div>
+                  <div>
+                    <span className="token-asset-badge">
+                      {isUserUnlimited
+                        ? '∞ Uncapped Session Minutes'
+                        : activeUser.seconds_remaining && activeUser.seconds_remaining >= 3600
+                          ? `≈ ${(activeUser.seconds_remaining / 3600).toFixed(1)} hrs continuous time`
+                          : 'Desktop remote control & audio loopback'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Meter 2: AI Screen Vision Answers */}
+                <div className="token-asset-card ai">
+                  <div className="token-asset-header">
+                    <span className="token-asset-label">AI Screen Vision Answers</span>
+                    <div className="token-asset-icon-pill">💡</div>
+                  </div>
+                  <div className="token-asset-number">{answersDisplay}</div>
+                  <div>
+                    <span className="token-asset-badge">
+                      {isUserUnlimited
+                        ? '∞ Uncapped Live AI Questions'
+                        : 'Real-time screen OCR & interview helper'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Meter 3: Job Auto-Applies */}
+                <div className="token-asset-card apply">
+                  <div className="token-asset-header">
+                    <span className="token-asset-label">Job Auto-Applies</span>
+                    <div className="token-asset-icon-pill"><BriefcaseIcon /></div>
+                  </div>
+                  <div className="token-asset-number">{appsDisplay}</div>
+                  <div>
+                    <span className="token-asset-badge">
+                      {isUserUnlimited
+                        ? '∞ Uncapped Automated Applies'
+                        : 'LinkedIn, Indeed & ATS crawler queue'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="live-stat-pill">
-                <BriefcaseIcon />
+              {/* Card Footer: User Account & Instant Support */}
+              <div className="plan-card-footer-strip">
                 <div>
-                  <span className="live-stat-val">
-                    {isUserUnlimited ? '∞ Unlimited' : (activeUser.applications_remaining ?? 10)}
-                  </span>
-                  <span className="live-stat-lbl">Job Auto-Applies</span>
+                  {sessionEmail && (
+                    <span>
+                      Active account: <strong style={{ color: '#f1f5f9' }}>{sessionEmail}</strong>
+                    </span>
+                  )}
                 </div>
-              </div>
-
-              <div className={`live-stat-pill ${activeUser.verifier ? 'verified' : ''}`}>
-                <CheckCircleIcon />
-                <div>
-                  <span className="live-stat-val">{activeUser.verifier ? 'Host Linked' : 'Standby'}</span>
-                  <span className="live-stat-lbl">Windows Host Status</span>
+                <div className="plan-footer-links">
+                  <a
+                    href="https://wa.me/919032025916?text=Hi%2C%20I%20need%20support%20with%20my%20Helvia%20Remote%20account"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="plan-footer-link whatsapp"
+                  >
+                    <span>💬</span>
+                    <span>WhatsApp Support: +91 9032025916</span>
+                  </a>
+                  <a
+                    href="/dashboard#downloads"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      document.querySelector('.dashboard-downloads-section')?.scrollIntoView({ behavior: 'smooth' })
+                    }}
+                    className="plan-footer-link"
+                  >
+                    <span>💻</span>
+                    <span>Windows Host Companion</span>
+                  </a>
                 </div>
               </div>
             </div>

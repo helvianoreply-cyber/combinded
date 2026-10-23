@@ -195,17 +195,17 @@ function App() {
     let userRow: DbUser | null = null
 
     try {
-      // 1. Try finding by ID
-      const { data: byId } = await sb.from('users').select('*').eq('id', id).maybeSingle()
-      if (byId) {
-        userRow = byId as DbUser
+      // 1. Try finding by Email first (case-insensitive - canonical identity)
+      const { data: byEmail } = await sb.from('users').select('*').ilike('email', normalizedEmail).maybeSingle()
+      if (byEmail) {
+        userRow = byEmail as DbUser
       }
 
-      // 2. Try finding by Email if not found by ID
-      if (!userRow) {
-        const { data: byEmail } = await sb.from('users').select('*').eq('email', normalizedEmail).maybeSingle()
-        if (byEmail) {
-          userRow = byEmail as DbUser
+      // 2. Try finding by ID if not found by Email
+      if (!userRow && id) {
+        const { data: byId } = await sb.from('users').select('*').eq('id', id).maybeSingle()
+        if (byId) {
+          userRow = byId as DbUser
         }
       }
 
@@ -350,70 +350,33 @@ function App() {
         return userRow
       }
 
-      // 4. Only if user does NOT exist: insert new record with starter trial tokens
-      const starterSeconds = 300 // 5 minutes free trial
-      const starterResponses = 5 // 5 free AI answers
-      const starterApps = 10     // 10 applications
-
-      const newRecord: Partial<DbUser> = {
-        id,
-        email: normalizedEmail,
-        plan: 'basic',
-        verifier: false,
-        login_verifier: false,
-        session_verifier: false,
-        responses_remaining: starterResponses,
-        responses_used: 0,
-        seconds_remaining: starterSeconds,
-        seconds_used: 0,
-        applications_remaining: starterApps,
-        applications_applied: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-
-      try {
-        const { data: created, error: insertErr } = await sb
-          .from('users')
-          .upsert(newRecord, { onConflict: 'email' })
-          .select('*')
-          .maybeSingle()
-
-        if (created) {
-          userRow = created as DbUser
-        } else if (insertErr) {
-          // If conflict occurred, fetch existing user row
-          const { data: existing } = await sb.from('users').select('*').eq('email', normalizedEmail).maybeSingle()
-          if (existing) {
-            userRow = existing as DbUser
-          }
-        }
-      } catch (e) {
-        const { data: existing } = await sb.from('users').select('*').eq('email', normalizedEmail).maybeSingle()
-        if (existing) {
-          userRow = existing as DbUser
-        }
-      }
-
-      // 5. Worker fallback if direct query didn't return
+      // 4. Worker fallback with Service Role Key (vital if direct anon query choked)
       if (!userRow) {
-        const apiBase =
-          import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
-        const deviceId = getOrCreateDeviceId()
-        const res = await fetch(
-          `${apiBase}/get-profile?email=${encodeURIComponent(normalizedEmail)}&userId=${encodeURIComponent(id)}&deviceId=${encodeURIComponent(deviceId)}`
-        )
-        if (res.ok) {
-          const json = (await res.json()) as { ok?: boolean; profile?: DbUser }
-          if (json?.profile) {
-            userRow = json.profile
+        try {
+          const apiBase =
+            import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+          const deviceId = getOrCreateDeviceId()
+          const res = await fetch(
+            `${apiBase}/get-profile?email=${encodeURIComponent(normalizedEmail)}&userId=${encodeURIComponent(id)}&deviceId=${encodeURIComponent(deviceId)}&fresh=true`
+          )
+          if (res.ok) {
+            const json = (await res.json()) as { ok?: boolean; profile?: DbUser }
+            if (json?.profile) {
+              userRow = json.profile
+            }
           }
+        } catch (workerErr) {
+          console.warn('Worker get-profile fallback error:', workerErr)
         }
       }
 
-      // 6. Guarantee a non-null userRow so login NEVER hangs
+      // 5. Only if user does NOT exist anywhere in database: insert new record with starter trial tokens
       if (!userRow) {
-        userRow = {
+        const starterSeconds = 300 // 5 minutes free trial
+        const starterResponses = 5 // 5 free AI answers
+        const starterApps = 10     // 10 applications
+
+        const newRecord: Partial<DbUser> = {
           id,
           email: normalizedEmail,
           plan: 'basic',
@@ -426,6 +389,49 @@ function App() {
           seconds_used: 0,
           applications_remaining: starterApps,
           applications_applied: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+
+        try {
+          // Double-check by email ilike before insert to never overwrite
+          const { data: existing } = await sb.from('users').select('*').ilike('email', normalizedEmail).maybeSingle()
+          if (existing) {
+            userRow = existing as DbUser
+          } else {
+            const { data: created } = await sb
+              .from('users')
+              .insert(newRecord)
+              .select('*')
+              .maybeSingle()
+
+            if (created) {
+              userRow = created as DbUser
+            }
+          }
+        } catch (e) {
+          const { data: existing } = await sb.from('users').select('*').ilike('email', normalizedEmail).maybeSingle()
+          if (existing) {
+            userRow = existing as DbUser
+          }
+        }
+
+        // 6. Guarantee a non-null userRow so login NEVER hangs
+        if (!userRow) {
+          userRow = {
+            id,
+            email: normalizedEmail,
+            plan: 'basic',
+            verifier: false,
+            login_verifier: false,
+            session_verifier: false,
+            responses_remaining: starterResponses,
+            responses_used: 0,
+            seconds_remaining: starterSeconds,
+            seconds_used: 0,
+            applications_remaining: starterApps,
+            applications_applied: 0,
+          }
         }
       }
 

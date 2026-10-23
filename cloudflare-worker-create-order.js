@@ -323,32 +323,47 @@ export default {
         const supabaseBase = env.SUPABASE_URL.replace(/\/+$/, '')
         const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
 
-        let query = ''
+        let profile = null
+
+        // 1. Try finding by email (case-insensitive with ilike)
         if (email) {
-          query = `email=eq.${encodeURIComponent(email)}`
-        } else {
-          query = `id=eq.${encodeURIComponent(userId)}`
+          try {
+            const profileRes = await fetch(`${supabaseBase}/rest/v1/users?email=ilike.${encodeURIComponent(email)}&select=*`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: serviceKey,
+                Authorization: `Bearer ${serviceKey}`,
+              },
+            })
+            if (profileRes.ok) {
+              const rows = await profileRes.json()
+              if (Array.isArray(rows) && rows.length > 0) {
+                profile = rows[0]
+              }
+            }
+          } catch (_) {}
         }
 
-        const profileRes = await fetch(`${supabaseBase}/rest/v1/users?${query}&select=*`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: serviceKey,
-            Authorization: `Bearer ${serviceKey}`,
-          },
-        })
-
-        if (!profileRes.ok) {
-          // ISSUE 2 PROTECTION: If Supabase connection pool choked during spike, serve cached profile
-          if (cached && cached.profile) {
-            return json({ ok: true, profile: cached.profile, stale: true }, 200, origin)
-          }
-          return json({ ok: false, message: 'Database query failed' }, profileRes.status, origin)
+        // 2. If not found by email and userId provided, try by id
+        if (!profile && userId) {
+          try {
+            const profileRes = await fetch(`${supabaseBase}/rest/v1/users?id=eq.${encodeURIComponent(userId)}&select=*`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: serviceKey,
+                Authorization: `Bearer ${serviceKey}`,
+              },
+            })
+            if (profileRes.ok) {
+              const rows = await profileRes.json()
+              if (Array.isArray(rows) && rows.length > 0) {
+                profile = rows[0]
+              }
+            }
+          } catch (_) {}
         }
-
-        const rows = await profileRes.json()
-        const profile = Array.isArray(rows) && rows.length > 0 ? rows[0] : null
 
         if (profile) {
           let isExpired = false
@@ -412,6 +427,22 @@ export default {
           } else if (expiryIso) {
             profile.plan_expires_at = expiryIso
           }
+
+          // Compute friendly detected plan metadata
+          let detectedPlan = 'Basic Free Tier'
+          let detectedTier = 'basic'
+          if (!isExpired && (profile.plan_expires_at || Number(profile.responses_remaining) >= 900000 || Number(profile.seconds_remaining) >= 50000000)) {
+            detectedPlan = '1 Month Unlimited VIP'
+            detectedTier = 'unlimited'
+          } else if (profile.plan === 'pro_plus' || profile.plan === 'pro plus+' || (profile.plan === 'usage' && Number(profile.responses_remaining) >= 1200)) {
+            detectedPlan = 'Pro+ Pro (Most Popular)'
+            detectedTier = 'pro_plus'
+          } else if (profile.plan === 'standard' || profile.plan === 'usage' || Number(profile.responses_remaining) > 5) {
+            detectedPlan = 'Standard Plan'
+            detectedTier = 'standard'
+          }
+          profile.detected_plan = detectedPlan
+          profile.detected_tier = detectedTier
 
           // Save in Edge Memory Cache for 20 seconds to eliminate redundant Supabase round-trips
           PROFILE_CACHE.set(cacheKey, { profile, expiresAt: now + 20000 })
@@ -1188,8 +1219,12 @@ export default {
             const existingPlan = targetUser.plan
 
             let finalPlan = planTier
-            if (isTopupOrder && existingPlan === 'pro plus+') {
-              finalPlan = 'pro plus+'
+            if (trustedPlanId === 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812' || incMinutes === 1000) {
+              finalPlan = 'pro_plus'
+            } else if (trustedPlanId === '4d569314-3b27-45c8-93ad-3d5c2eebffc0' || incMinutes === 300) {
+              finalPlan = 'standard'
+            } else if (isTopupOrder) {
+              finalPlan = existingPlan && existingPlan !== 'basic' ? existingPlan : 'usage'
             }
 
             const isUnlimitedOrder = 
