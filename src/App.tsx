@@ -532,6 +532,9 @@ function App() {
           if (userRow) {
             setUserProfile(userRow)
             setPlan(userRow.plan || 'basic')
+            if (userRow.plan_expires_at) {
+              setPlanExpiresAt(userRow.plan_expires_at)
+            }
           }
 
           // Move existing or newly signed-in user to dashboard if on root
@@ -569,6 +572,9 @@ function App() {
         if (userRow) {
           setUserProfile(userRow)
           setPlan(userRow.plan || 'basic')
+          if (userRow.plan_expires_at) {
+            setPlanExpiresAt(userRow.plan_expires_at)
+          }
         }
         
         // Auto-navigate to dashboard on any authentication event

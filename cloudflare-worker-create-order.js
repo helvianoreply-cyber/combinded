@@ -4,6 +4,34 @@ const PROFILE_CACHE = new Map() // key: email/userId -> { profile, expiresAt }
 // Anti-Abuse IP Guard: Tracks free tier registrations per IP (Max 2 free accounts per IP per 24 hours)
 const IP_FREE_REGISTRATIONS = new Map() // key: client IP -> [timestamps]
 
+// Hardcoded official catalog for resilient fallback and strict validation
+const OFFICIAL_PLANS_BY_ID = {
+  '4d569314-3b27-45c8-93ad-3d5c2eebffc0': {
+    name: 'Standard Plan',
+    priceUsd: 8,
+    tier: 'usage',
+    included_minutes: 300,
+    included_responses: 500,
+    included_applications: 200,
+  },
+  'fdbc4259-cdb8-42b8-a0d5-02b8a7392812': {
+    name: 'Pro+ Pro (Most Popular)',
+    priceUsd: 15,
+    tier: 'usage',
+    included_minutes: 1000,
+    included_responses: 1500,
+    included_applications: 600,
+  },
+  'b1e06fa2-5819-48ce-8d07-28d8cf9c4901': {
+    name: '1 Month Unlimited VIP',
+    priceUsd: 21,
+    tier: 'usage',
+    included_minutes: 999999,
+    included_responses: 999999,
+    included_applications: 999999,
+  },
+}
+
 function invalidateProfileCache(emailOrUserId) {
   if (!emailOrUserId) return
   const key = String(emailOrUserId).trim().toLowerCase()
@@ -89,34 +117,6 @@ export default {
         let topupMinutes = 0
         let topupResponses = 0
         let topupApplications = 0
-
-        // Hardcoded official catalog for resilient fallback and strict validation
-        const OFFICIAL_PLANS_BY_ID = {
-          '4d569314-3b27-45c8-93ad-3d5c2eebffc0': {
-            name: 'Standard Plan',
-            priceUsd: 8,
-            tier: 'usage',
-            included_minutes: 300,
-            included_responses: 500,
-            included_applications: 200,
-          },
-          'fdbc4259-cdb8-42b8-a0d5-02b8a7392812': {
-            name: 'Pro+ Pro (Most Popular)',
-            priceUsd: 15,
-            tier: 'usage',
-            included_minutes: 1000,
-            included_responses: 1500,
-            included_applications: 600,
-          },
-          'b1e06fa2-5819-48ce-8d07-28d8cf9c4901': {
-            name: '1 Month Unlimited VIP',
-            priceUsd: 21,
-            tier: 'usage',
-            included_minutes: 999999,
-            included_responses: 999999,
-            included_applications: 999999,
-          },
-        }
 
         if (isTopup) {
           targetPlanId = 'topup'
@@ -1195,6 +1195,17 @@ export default {
             const isUnlimitedOrder = 
               trustedPlanId === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' || 
               (planTier === 'usage' && incMinutes >= 900000)
+
+            // If user currently has an active unlimited VIP plan, prevent buying or clobbering with standard packs
+            if (targetUser.plan_expires_at && new Date(targetUser.plan_expires_at).getTime() > Date.now()) {
+              if (!isUnlimitedOrder) {
+                return json({
+                  ok: true,
+                  message: 'User currently has an active Unlimited VIP Plan. All quotas are already unlimited.',
+                  profile: targetUser,
+                }, 200, origin)
+              }
+            }
 
             const updateBody = {
               plan: finalPlan,

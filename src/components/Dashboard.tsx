@@ -5,6 +5,7 @@ import { HELVIA_APPS_CATALOG } from '../lib/downloadLinks'
 import { PaymentModal } from './PaymentModal'
 import { InteractiveTopupStation } from './InteractiveTopupStation'
 import { ReviewSessionCard } from './ReviewSessionCard'
+import { supabase } from '../lib/supabaseClient'
 
 interface DashboardProps {
   displayName: string | null
@@ -76,12 +77,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
   upgradeError,
   onRefreshProfile,
 }) => {
-  const [currentPlan, setCurrentPlan] = useState(userProfile?.plan || plan || 'basic')
+  const [liveProfile, setLiveProfile] = useState<DbUser | null>(userProfile || null)
+  const [liveExpiresAt, setLiveExpiresAt] = useState<string | null>(
+    planExpiresAt || userProfile?.plan_expires_at || null
+  )
+  const [currentPlan, setCurrentPlan] = useState<string>(userProfile?.plan || plan || 'basic')
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null)
 
   useEffect(() => {
-    setCurrentPlan(userProfile?.plan || plan || 'basic')
+    if (userProfile) {
+      setLiveProfile(userProfile)
+      setCurrentPlan(userProfile.plan || plan || 'basic')
+      if (userProfile.plan_expires_at) {
+        setLiveExpiresAt(userProfile.plan_expires_at)
+      }
+    }
   }, [userProfile, plan])
+
+  useEffect(() => {
+    if (planExpiresAt) {
+      setLiveExpiresAt(planExpiresAt)
+    }
+  }, [planExpiresAt])
 
   const apiBase = useMemo(() => {
     const configured = import.meta.env.VITE_API_BASE_URL
@@ -90,6 +107,53 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
     return 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
   }, [])
+
+  // Auto-fetch fresh profile immediately on mount and periodically to guarantee real-time quota state
+  useEffect(() => {
+    let isMounted = true
+    const fetchLatestProfile = async () => {
+      const email = (sessionEmail || userProfile?.email || liveProfile?.email || '').trim().toLowerCase()
+      const uid = userProfile?.id || liveProfile?.id || ''
+      if (!email && !uid) return
+
+      try {
+        if (supabase) {
+          const query = uid 
+            ? supabase.from('users').select('*').eq('id', uid) 
+            : supabase.from('users').select('*').eq('email', email)
+          const { data } = await query.maybeSingle()
+          if (data && isMounted) {
+            const u = data as DbUser
+            setLiveProfile(u)
+            setCurrentPlan(u.plan || 'basic')
+            if (u.plan_expires_at) {
+              setLiveExpiresAt(u.plan_expires_at)
+            }
+            return
+          }
+        }
+
+        const res = await fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}&userId=${encodeURIComponent(uid)}&fresh=true`)
+        if (res.ok && isMounted) {
+          const json = (await res.json()) as { ok?: boolean; profile?: DbUser }
+          if (json?.profile) {
+            setLiveProfile(json.profile)
+            setCurrentPlan(json.profile.plan || 'basic')
+            if (json.profile.plan_expires_at) {
+              setLiveExpiresAt(json.profile.plan_expires_at)
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Dashboard live profile fetch error:', err)
+      }
+    }
+
+    fetchLatestProfile()
+    return () => {
+      isMounted = false
+    }
+  }, [apiBase, sessionEmail, userProfile?.id, userProfile?.email])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-sky-theme', 'morning')
@@ -102,41 +166,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
       if (onRefreshProfile) {
         onRefreshProfile()
       }
-      const email = (sessionEmail || '').trim().toLowerCase()
-      if (email) {
-        fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}&fresh=true`)
+      const email = (sessionEmail || userProfile?.email || liveProfile?.email || '').trim().toLowerCase()
+      const uid = userProfile?.id || liveProfile?.id || ''
+      if (email || uid) {
+        fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}&userId=${encodeURIComponent(uid)}&fresh=true`)
           .then((res) => (res.ok ? res.json() : null))
           .then((json) => {
-            if (json?.profile?.plan) {
-              setCurrentPlan(json.profile.plan.toLowerCase())
+            if (json?.profile) {
+              setLiveProfile(json.profile)
+              setCurrentPlan(json.profile.plan?.toLowerCase() || 'basic')
+              if (json.profile.plan_expires_at) {
+                setLiveExpiresAt(json.profile.plan_expires_at)
+              }
             }
           })
           .catch(() => {})
       }
     }
   }, [apiBase, onRefreshProfile, sessionEmail])
-
-  // Auto-sync latest profile if not already provided via props
-  useEffect(() => {
-    if (userProfile?.plan) return
-
-    const fetchLatestProfile = async () => {
-      const email = (sessionEmail || '').trim().toLowerCase()
-      if (!email) return
-      try {
-        const res = await fetch(`${apiBase}/get-profile?email=${encodeURIComponent(email)}`)
-        if (res.ok) {
-          const json = (await res.json()) as { ok?: boolean; profile?: DbUser }
-          if (json?.profile?.plan) {
-            setCurrentPlan(json.profile.plan.toLowerCase())
-          }
-        }
-      } catch (err) {
-        console.error('Failed to sync profile on dashboard:', err)
-      }
-    }
-    fetchLatestProfile()
-  }, [apiBase, sessionEmail, userProfile])
 
   // Sort available plans in ascending price order: $0 -> $8 -> $15 -> $21
   const availablePlans = useMemo(() => {
@@ -160,10 +207,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
     )
   }, [availablePlans])
 
-  const effectiveExpiry = planExpiresAt || userProfile?.plan_expires_at || null
+  const effectiveExpiry = 
+    liveExpiresAt || 
+    liveProfile?.plan_expires_at || 
+    planExpiresAt || 
+    userProfile?.plan_expires_at || 
+    null
 
+  // User requirement: "if expiry date is not null make it not to buy the plan"
   const hasActiveExpiration = Boolean(
-    effectiveExpiry && new Date(effectiveExpiry).getTime() > Date.now()
+    effectiveExpiry && 
+    effectiveExpiry !== 'null' && 
+    new Date(effectiveExpiry).getTime() > Date.now()
   )
 
   const isUserUnlimitedPlan = 
@@ -171,23 +226,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
       currentPlan !== 'basic' && (
         currentPlan.toLowerCase().includes('unlimited') ||
         currentPlan.toLowerCase().includes('ultimate') ||
-        (userProfile?.responses_remaining != null && userProfile.responses_remaining >= 900000) ||
-        (userProfile?.seconds_remaining != null && userProfile.seconds_remaining >= 50000000)
+        ((liveProfile?.responses_remaining ?? userProfile?.responses_remaining ?? 0) >= 900000) ||
+        ((liveProfile?.seconds_remaining ?? userProfile?.seconds_remaining ?? 0) >= 50000000)
       )
     )
 
   const activePlanObj = availablePlans.find((p) => {
     if (isUserUnlimitedPlan && p.name.toLowerCase().includes('unlimited')) return true
+    if (currentPlan === p.tier) return true
     if (currentPlan === 'pro plus+' && p.tier === 'pro plus+') return true
     return false
   })
 
   const planDisplayName = isUserUnlimitedPlan
     ? '1 Month Unlimited VIP'
-    : currentPlan === 'usage'
-      ? 'Usage Plan'
-      : activePlanObj
-        ? activePlanObj.name
+    : activePlanObj
+      ? activePlanObj.name
+      : currentPlan === 'usage'
+        ? 'Usage Plan'
         : currentPlan === 'basic'
           ? 'Basic Free Tier'
           : currentPlan
@@ -297,15 +353,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </section>
 
         {/* Live Quotas & Balances Bar */}
-        {userProfile && (() => {
-          const isUserUnlimited = 
-            currentPlan === 'pro plus+' ||
-            (currentPlan !== 'basic' && (
-              (userProfile.responses_remaining != null && userProfile.responses_remaining >= 900000) ||
-              (userProfile.seconds_remaining != null && userProfile.seconds_remaining >= 50000000) ||
-              hasActiveExpiration ||
-              Boolean(activePlanObj?.name.toLowerCase().includes('unlimited'))
-            ))
+        {(liveProfile || userProfile) && (() => {
+          const activeUser = liveProfile || userProfile!
+          const isUserUnlimited = isUserUnlimitedPlan
 
           return (
             <div className="plans-live-stats-bar">
@@ -315,9 +365,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <span className="live-stat-val">
                     {isUserUnlimited
                       ? '∞ Unlimited'
-                      : userProfile.seconds_remaining != null && userProfile.seconds_remaining > 0
-                        ? `${Math.floor(userProfile.seconds_remaining / 60)} min`
-                        : `${Math.floor((userProfile.seconds_remaining || 0) / 60)} min`}
+                      : activeUser.seconds_remaining != null && activeUser.seconds_remaining > 0
+                        ? `${Math.floor(activeUser.seconds_remaining / 60)} min`
+                        : `${Math.floor((activeUser.seconds_remaining || 0) / 60)} min`}
                   </span>
                   <span className="live-stat-lbl">Time Remaining</span>
                 </div>
@@ -327,7 +377,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <SparklesIcon />
                 <div>
                   <span className="live-stat-val">
-                    {isUserUnlimited ? '∞ Unlimited' : (userProfile.responses_remaining ?? 0)}
+                    {isUserUnlimited ? '∞ Unlimited' : (activeUser.responses_remaining ?? 0)}
                   </span>
                   <span className="live-stat-lbl">AI Answers Balance</span>
                 </div>
@@ -337,16 +387,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <BriefcaseIcon />
                 <div>
                   <span className="live-stat-val">
-                    {isUserUnlimited ? '∞ Unlimited' : (userProfile.applications_remaining ?? 10)}
+                    {isUserUnlimited ? '∞ Unlimited' : (activeUser.applications_remaining ?? 10)}
                   </span>
                   <span className="live-stat-lbl">Job Auto-Applies</span>
                 </div>
               </div>
 
-              <div className={`live-stat-pill ${userProfile.verifier ? 'verified' : ''}`}>
+              <div className={`live-stat-pill ${activeUser.verifier ? 'verified' : ''}`}>
                 <CheckCircleIcon />
                 <div>
-                  <span className="live-stat-val">{userProfile.verifier ? 'Host Linked' : 'Standby'}</span>
+                  <span className="live-stat-val">{activeUser.verifier ? 'Host Linked' : 'Standby'}</span>
                   <span className="live-stat-lbl">Windows Host Status</span>
                 </div>
               </div>
