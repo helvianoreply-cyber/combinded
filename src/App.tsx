@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supabaseClient'
-import { type DbUser, type DbPlan, SEED_PLANS } from './lib/database.types'
+import { type DbUser, type DbPlan, SEED_PLANS, getPlanInrPrice, calculateCopilotTopup, calculateAutoApplyTopup } from './lib/database.types'
 import { getOrCreateDeviceId } from './lib/deviceTrialLock'
 import { HELVIA_DOWNLOAD_LINKS } from './lib/downloadLinks'
 import { LandingPage } from './components/LandingPage'
@@ -904,6 +904,8 @@ function App() {
       const priceUsd = isPlanObj ? Number(planInput.price) : (planInput === '24h' ? 2 : 15)
       const duration = typeof planInput === 'string' ? planInput : undefined
 
+      const expectedInr = getPlanInrPrice(priceUsd)
+
       const orderPayload: Record<string, unknown> = {
         receipt: `helvia_${Date.now()}`,
         planId,
@@ -913,11 +915,10 @@ function App() {
         userId,
         email: sessionEmail,
         couponCode: couponCode || undefined,
-        amountInr: 1, // 1 Rupee Test Mode
       }
 
       let orderId = ''
-      let orderAmount = 100 // 100 paise = ₹1 (Test Mode)
+      let orderAmount = expectedInr * 100
       let orderCurrency = 'INR'
       let keyId = 'rzp_live_SF5P93aBJVjkFB'
 
@@ -934,11 +935,11 @@ function App() {
           const data = await response.json()
           if (data?.orderId) orderId = data.orderId
           if (data?.keyId) keyId = data.keyId
-          orderAmount = 100 // Always 1 Rupee (100 paise) in test mode
+          if (data?.amount) orderAmount = data.amount
           if (data?.currency) orderCurrency = data.currency
         }
       } catch (e) {
-        console.warn('Backend order call failed, continuing with direct test checkout:', e)
+        console.warn('Backend order call failed, continuing with direct checkout:', e)
       }
 
       const planTitle = isPlanObj ? planInput.name : 'Helvia Remote Pro'
@@ -948,7 +949,7 @@ function App() {
         amount: orderAmount,
         currency: orderCurrency,
         name: 'Helvia Remote Control',
-        description: `Upgrade to ${planTitle} (Test Mode - ₹1)`,
+        description: `Upgrade to ${planTitle}${couponCode ? ` (Coupon: ${couponCode})` : ''}`,
         ...(orderId ? { order_id: orderId } : {}),
         handler: async (response: { razorpay_order_id?: string; razorpay_payment_id: string; razorpay_signature?: string }) => {
           try {
@@ -1049,7 +1050,7 @@ function App() {
                   payment_id: response.razorpay_payment_id,
                   gateway: 'razorpay',
                   user_id: String(verifiedProfile?.id || userId),
-                  amount: 1,
+                  amount: orderAmount ? (orderAmount / 100) : expectedInr,
                   created_at: new Date().toISOString(),
                 })
               } catch {
@@ -1133,6 +1134,9 @@ function App() {
       const apiBase =
         import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
 
+      const quote = topupType === 'copilot' ? calculateCopilotTopup(units) : calculateAutoApplyTopup(units)
+      const expectedInr = quote.priceInr
+
       const orderPayload: Record<string, unknown> = {
         receipt: `topup_${Date.now()}`,
         isTopup: true,
@@ -1141,11 +1145,10 @@ function App() {
         applications: topupType === 'autoapply' ? units : undefined,
         userId,
         email: sessionEmail,
-        amountInr: 1, // 1 Rupee Test Mode
       }
 
       let orderId = ''
-      let orderAmount = 100 // 100 paise = ₹1 (Test Mode)
+      let orderAmount = expectedInr * 100
       let orderCurrency = 'INR'
       let keyId = 'rzp_live_SF5P93aBJVjkFB'
 
@@ -1162,16 +1165,16 @@ function App() {
           const data = await response.json()
           if (data?.orderId) orderId = data.orderId
           if (data?.keyId) keyId = data.keyId
-          orderAmount = 100 // Force ₹1 test mode
+          if (data?.amount) orderAmount = data.amount
           if (data?.currency) orderCurrency = data.currency
         }
       } catch (e) {
-        console.warn('Backend topup order call failed, continuing with direct test checkout:', e)
+        console.warn('Backend topup order call failed, continuing with direct checkout:', e)
       }
 
       const topupTitle = topupType === 'copilot'
-        ? `${units} Mins AI Meeting Copilot Top-Up (Test Mode - ₹1)`
-        : `${units} Jobs Auto-Apply Top-Up (Test Mode - ₹1)`
+        ? `${units} Mins AI Meeting Copilot Top-Up`
+        : `${units} Jobs Auto-Apply Top-Up`
 
       const options = {
         key: keyId,
@@ -1257,7 +1260,7 @@ function App() {
                   payment_id: response.razorpay_payment_id,
                   gateway: 'razorpay',
                   user_id: String(verifiedProfile?.id || userId),
-                  amount: 1,
+                  amount: orderAmount ? (orderAmount / 100) : expectedInr,
                   created_at: new Date().toISOString(),
                 })
               } catch {
