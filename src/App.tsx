@@ -213,10 +213,34 @@ function App() {
       try {
         const { data, error } = await sb.from('plans').select('*').order('price', { ascending: true })
         if (!error && Array.isArray(data) && data.length > 0) {
-          const filtered = data.filter((p: any) => p.id !== '13969aad-7309-40ec-9b54-70b39d5b13f6' && p.tier !== 'pro plus+')
+          // Strictly allow ONLY the 4 official plans: Basic, Standard ($8), Pro+ Pro ($15), 1 Month Unlimited VIP ($21)
+          const filtered = data.filter((p: any) => {
+            const n = String(p.name || '').toLowerCase()
+            return (
+              p.tier === 'basic' ||
+              n.includes('basic') ||
+              n.includes('standard') ||
+              n.includes('pro+') ||
+              n.includes('unlimited') ||
+              p.id === 'ee803f63-7ffc-4c93-bd79-2cb349c318b1' ||
+              p.id === '4d569314-3b27-45c8-93ad-3d5c2eebffc0' ||
+              p.id === 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812' ||
+              p.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901'
+            )
+          })
           const normalized = filtered.map((plan: any) => {
-            if (Number(plan.price) === 0 || plan.tier === 'basic') {
-              return { ...plan, included_minutes: 0, included_responses: 0, included_applications: 0 }
+            const n = String(plan.name || '').toLowerCase()
+            if (Number(plan.price) === 0 || plan.tier === 'basic' || n.includes('basic')) {
+              return { ...plan, price: 0, included_minutes: 5, included_responses: 5, included_applications: 5 }
+            }
+            if (plan.id === '4d569314-3b27-45c8-93ad-3d5c2eebffc0' || n.includes('standard')) {
+              return { ...plan, price: 8, included_minutes: 300, included_responses: 500, included_applications: 200 }
+            }
+            if (plan.id === 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812' || n.includes('pro+')) {
+              return { ...plan, price: 15, included_minutes: 1000, included_responses: 1500, included_applications: 600 }
+            }
+            if (plan.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901' || n.includes('unlimited')) {
+              return { ...plan, price: 21, included_minutes: 999999, included_responses: 999999, included_applications: 999999 }
             }
             return plan
           })
@@ -869,7 +893,7 @@ function App() {
   const startUpgrade = useCallback(async (
     planInput: DbPlan | '24h' | 'month',
     couponCode?: string,
-    _customAmountInr?: number
+    customAmountInr?: number
   ) => {
     setUpgradeError(null)
     if (!userId || !sessionEmail) {
@@ -904,7 +928,7 @@ function App() {
       const priceUsd = isPlanObj ? Number(planInput.price) : (planInput === '24h' ? 2 : 15)
       const duration = typeof planInput === 'string' ? planInput : undefined
 
-      const expectedInr = getPlanInrPrice(priceUsd)
+      const expectedInr = customAmountInr || (isPlanObj ? getPlanInrPrice(priceUsd, planInput.name) : (duration === '24h' ? 169 : 1999))
 
       const orderPayload: Record<string, unknown> = {
         receipt: `helvia_${Date.now()}`,
@@ -915,6 +939,7 @@ function App() {
         userId,
         email: sessionEmail,
         couponCode: couponCode || undefined,
+        customAmountInr: customAmountInr || undefined,
       }
 
       let orderId = ''
@@ -1140,11 +1165,13 @@ function App() {
       const orderPayload: Record<string, unknown> = {
         receipt: `topup_${Date.now()}`,
         isTopup: true,
+        type: 'topup',
         topupType,
         minutes: topupType === 'copilot' ? units : undefined,
         applications: topupType === 'autoapply' ? units : undefined,
         userId,
         email: sessionEmail,
+        amountInr: expectedInr,
       }
 
       let orderId = ''

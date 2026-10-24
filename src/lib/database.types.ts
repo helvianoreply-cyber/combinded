@@ -82,17 +82,29 @@ export const SEED_PLANS: DbPlan[] = [
 
 /**
  * Standard INR pricing mapping for Razorpay
+ * Official Prices:
+ * - Basic Free Tier: ₹0
+ * - Standard Plan ($8): ₹699
+ * - Pro+ Pro ($15): ₹1,299
+ * - 1 Month Unlimited VIP ($21 / $24): ₹1,999
  */
-export function getPlanInrPrice(priceUsd: number): number {
+export function getPlanInrPrice(priceUsd: number, planNameOrId?: string): number {
   const p = Number(priceUsd)
+  const name = String(planNameOrId || '').toLowerCase()
+  if (name.includes('unlimited') || name.includes('vip') || planNameOrId === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901') {
+    return 1999
+  }
+  if (name.includes('pro+') || name.includes('pro plus') || planNameOrId === 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812') {
+    return 1299
+  }
+  if (name.includes('standard') || planNameOrId === '4d569314-3b27-45c8-93ad-3d5c2eebffc0') {
+    return 699
+  }
   if (p <= 0) return 0
   if (p <= 8) return 699
   if (p <= 15) return 1299
-  if (p === 21 || p === 24) return 1999
-  if (p <= 25) return 1999
-  if (p <= 35) return 2999
-  if (p <= 49) return 4199
-  return Math.round(p * 86)
+  if (p <= 24) return 1999
+  return 1999
 }
 
 export interface TopupCopilotQuote {
@@ -109,27 +121,27 @@ export interface TopupAutoApplyQuote {
 }
 
 /**
- * Dynamic Top-up for AI Meeting Copilot Time & Answers (Doubled Quota Value)
+ * Dynamic Top-up for AI Meeting Copilot Time & Answers
  */
 export function calculateCopilotTopup(minutes: number): TopupCopilotQuote {
-  const m = Math.max(120, Math.min(6000, Math.round(minutes)))
-  const responses = Math.round(m * 1.8)
-  let inr = 99 + Math.round(m * 0.525)
-  if (m >= 2000) inr = Math.round(inr * 0.9)
-  if (m >= 4000) inr = Math.round(inr * 0.85)
+  const m = Math.max(60, Math.min(5000, Math.round(minutes)))
+  const responses = Math.round(m * 1.6)
+  let inr = 99 + Math.round(m * 1.05)
+  if (m >= 1000) inr = Math.round(inr * 0.9)
+  if (m >= 2000) inr = Math.round(inr * 0.85)
   const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
   return { minutes: m, responses, priceInr: inr, priceUsd: usd }
 }
 
 /**
- * Dynamic Top-up for AI Jobs Auto Apply (Applications - Doubled Quota Value)
+ * Dynamic Top-up for AI Jobs Auto Apply (Applications)
  */
 export function calculateAutoApplyTopup(applications: number): TopupAutoApplyQuote {
-  const a = Math.max(100, Math.min(6000, Math.round(applications)))
-  let inr = 99 + Math.round(a * 0.7)
-  if (a >= 1000) inr = Math.round(inr * 0.9)
-  if (a >= 2000) inr = Math.round(inr * 0.85)
-  if (a >= 4000) inr = Math.round(inr * 0.8)
+  const a = Math.max(50, Math.min(5000, Math.round(applications)))
+  let inr = 99 + Math.round(a * 1.4)
+  if (a >= 500) inr = Math.round(inr * 0.9)
+  if (a >= 1000) inr = Math.round(inr * 0.85)
+  if (a >= 2000) inr = Math.round(inr * 0.8)
   const usd = Math.max(2, Math.round((inr / 84) * 10) / 10)
   return { applications: a, priceInr: inr, priceUsd: usd }
 }

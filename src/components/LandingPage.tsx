@@ -2488,11 +2488,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           
           <div className="plans-grid">
             {(plans && plans.length > 0 ? plans : SEED_PLANS)
-              .filter(
-                (p) =>
-                  p.id !== '13969aad-7309-40ec-9b54-70b39d5b13f6' &&
-                  p.tier !== 'pro plus+'
-              )
+              .filter((p) => {
+                const n = String(p.name || '').toLowerCase()
+                return (
+                  p.tier === 'basic' ||
+                  n.includes('basic') ||
+                  n.includes('standard') ||
+                  n.includes('pro+') ||
+                  n.includes('unlimited') ||
+                  p.id === 'ee803f63-7ffc-4c93-bd79-2cb349c318b1' ||
+                  p.id === '4d569314-3b27-45c8-93ad-3d5c2eebffc0' ||
+                  p.id === 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812' ||
+                  p.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901'
+                )
+              })
+              .sort((a, b) => Number(a.price) - Number(b.price))
               .map((p, idx) => {
               const isPopular = p.name.toLowerCase().includes('most popular') || p.name.toLowerCase().includes('pro+ pro')
               const isLifetime = p.tier === 'pro plus+'
