@@ -891,37 +891,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* NEW: Official Video Tutorials & Interactive App Demos */}
       <VideoTutorialsSection />
 
-      {/* NEW: Quantitative Benchmark Comparison & Performance Matrix */}
+      {/* Benchmark Comparison & Performance Matrix: Simple & Understandable */}
       <section className="benchmark-section reveal" id="benchmarks">
         <div className="section-header-center">
-          <p className="eyebrow">VERIFIED PERFORMANCE DATA</p>
-          <h2>Hardware-Level Benchmark Comparison</h2>
-          <p className="muted">Laboratory measured across Windows 11 host with RTX 4080, meeting screenshare testbeds, and ATS parsers.</p>
+          <p className="eyebrow">HEAD-TO-HEAD COMPARISON</p>
+          <h2>How Helvia Compares to Traditional Tools</h2>
+          <p className="muted">See why job seekers and remote professionals choose Helvia over old-school, complicated software.</p>
           
           <div className="benchmark-tabs-nav">
             <button 
               className={`benchmark-tab-btn ${activeBenchmarkTab === 'stealth' ? 'active' : ''}`}
               onClick={() => setActiveBenchmarkTab('stealth')}
             >
-              🛡️ Interview Capture Privacy
+              🛡️ Screen Privacy &amp; Invisibility
             </button>
             <button 
               className={`benchmark-tab-btn ${activeBenchmarkTab === 'resumeMatch' ? 'active' : ''}`}
               onClick={() => setActiveBenchmarkTab('resumeMatch')}
             >
-              📄 Resume ATS Match (Auto Apply)
+              📄 Job Application Success
             </button>
             <button 
               className={`benchmark-tab-btn ${activeBenchmarkTab === 'latency' ? 'active' : ''}`}
               onClick={() => setActiveBenchmarkTab('latency')}
             >
-              ⏱️ Remote P2P Latency
+              ⏱️ Remote Connection Speed
             </button>
             <button 
               className={`benchmark-tab-btn ${activeBenchmarkTab === 'cpu' ? 'active' : ''}`}
               onClick={() => setActiveBenchmarkTab('cpu')}
             >
-              ⚡ Host CPU Overhead
+              ⚡ Computer Speed &amp; Battery
             </button>
           </div>
         </div>
@@ -929,12 +929,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="benchmark-chart-card reveal-scale">
           <div className="benchmark-card-header">
             <h4>
-              {activeBenchmarkTab === 'stealth' && 'Hardware Display Capture Exclusion & Privacy (Higher is Better)'}
-              {activeBenchmarkTab === 'resumeMatch' && 'Auto Apply Resume ATS Alignment & Pass Rate (Higher is Better)'}
-              {activeBenchmarkTab === 'latency' && 'Remote Desktop Glass-to-Glass Response Time (Lower is Better)'}
-              {activeBenchmarkTab === 'cpu' && 'Host CPU Overhead at 4K 60 FPS (Lower is Better)'}
+              {activeBenchmarkTab === 'stealth' && 'Screen Privacy (Is the app hidden while sharing your screen?)'}
+              {activeBenchmarkTab === 'resumeMatch' && 'Job Application Quality (Does your resume pass automated company filters?)'}
+              {activeBenchmarkTab === 'latency' && 'Remote Desktop Speed (How fast and responsive do clicks and typing feel?)'}
+              {activeBenchmarkTab === 'cpu' && 'Computer Performance (How light is it on your computer and battery?)'}
             </h4>
-            <span className="benchmark-source-tag">Source: Verified Laboratory Multi-App Profiler</span>
+            <span className="benchmark-source-tag">Real-World Everyday Testing</span>
           </div>
 
           <div className="benchmark-bars-list">
@@ -961,11 +961,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="benchmark-verdict-banner">
             <span className="verdict-icon">⚡</span>
             <p>
-              <strong>The Architectural Difference: </strong>
-              {activeBenchmarkTab === 'stealth' && 'Helvia Executive Copilot executes via native OS display affinity (WDA_EXCLUDEFROMCAPTURE), completely suppressing HUD capture on Zoom, Teams, and Google Meet without visible bots or recording notifications.'}
-              {activeBenchmarkTab === 'resumeMatch' && 'Helvia Auto Apply dynamically extracts mandatory semantic keywords and realigns your experience bullet points per job description, yielding a 98.4% ATS match rate compared to generic static resume blasts.'}
-              {activeBenchmarkTab === 'latency' && 'Helvia Remote connects directly into the Windows display pipeline and injects physical mouse and keyboard inputs without running virtual display emulators or bulky tray clients.'}
-              {activeBenchmarkTab === 'cpu' && 'Hardware NVENC/QuickSync encoding offloads 98% of streaming overhead to the GPU, keeping host CPU usage under 1.8% at 4K 60 FPS.'}
+              <strong>Why Helvia is Different: </strong>
+              {activeBenchmarkTab === 'stealth' && 'Helvia is designed to stay 100% invisible during screen shares on Zoom, Teams, and Google Meet with zero awkward bots joining your call.'}
+              {activeBenchmarkTab === 'resumeMatch' && 'Helvia does not just spam the same unchanged resume—it automatically tailors your skills to match each job description, getting you real interviews.'}
+              {activeBenchmarkTab === 'latency' && 'Helvia connects directly from your phone browser to your PC with virtually zero delay, so you can work smoothly without installing bulky software.'}
+              {activeBenchmarkTab === 'cpu' && 'Helvia runs quietly in the background without hogging your computer memory, slowing down other apps, or draining your laptop battery.'}
             </p>
           </div>
         </div>
@@ -1119,49 +1119,49 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="section-header-center" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
             <div className="badge-tag" style={{ background: '#f3e8ff', color: '#7e22ce', border: '1px solid #e9d5ff', display: 'inline-flex', marginBottom: '1rem', fontWeight: 800 }}>
               <GhostIcon />
-              <span>APP 02 • EXECUTIVE MEETING INTELLIGENCE</span>
+              <span>APP 02 • LIVE INTERVIEW &amp; MEETING ASSISTANT</span>
             </div>
             <h2 style={{ fontSize: 'clamp(2rem, 3.4vw, 2.6rem)', fontWeight: 850, color: '#ffffff', letterSpacing: '-0.02em', marginBottom: '0.85rem', textShadow: '0 4px 20px rgba(0, 0, 0, 0.35)' }}>
-              Sub-18ms In-Meeting Executive Intelligence
+              Never Freeze in an Interview Again
             </h2>
             <p className="muted" style={{ maxWidth: 840, margin: '0 auto', fontSize: '1.02rem', color: 'rgba(255, 255, 255, 0.88)', lineHeight: 1.6, textShadow: '0 2px 8px rgba(0, 0, 0, 0.25)' }}>
-              Real-time conversational audio ingestion and structured first-person STAR talking points — 100% invisible on Zoom, Microsoft Teams, and Google Meet.
+              Helvia listens to questions as your interviewer speaks and quietly displays the best talking points on your screen—completely hidden from everyone else.
             </p>
           </div>
 
-          {/* 4 Core Architectural Features in Split-Screen Style */}
+          {/* 4 Core Features in Split-Screen Style */}
           <div className="feature-deep-container" style={{ marginTop: '1.5rem' }}>
             <div className="feature-deep-text reveal-left">
               <div className="feature-points-list">
                 <div className="feature-point-item stagger-1">
                   <div className="point-icon purple"><EyeOffIcon /></div>
                   <div>
-                    <h3>Hardware Screenshare Invisibility Shield</h3>
-                    <p>Uses native OS hardware display affinity to render the Copilot HUD 100% invisible to Zoom, Microsoft Teams, Google Meet, and screen recorders during live desktop shares.</p>
+                    <h3>100% Invisible to Everyone Else</h3>
+                    <p>Even if you share your entire screen during an interview on Zoom, Teams, or Google Meet, Helvia stays completely invisible. Only you can see it.</p>
                   </div>
                 </div>
 
                 <div className="feature-point-item stagger-2">
                   <div className="point-icon purple"><MicIcon /></div>
                   <div>
-                    <h3>Sub-18ms Direct Soundcard Audio Ingest</h3>
-                    <p>Direct audio loopback captures conversational speech in real-time as the interviewer speaks, eliminating audio lag without relaying sound to slow cloud servers.</p>
+                    <h3>Instant Smart Answers in Real Time</h3>
+                    <p>As soon as the interviewer finishes asking a question, smart talking points appear on your screen in less than a second so you never stumble.</p>
                   </div>
                 </div>
 
                 <div className="feature-point-item stagger-3">
                   <div className="point-icon purple"><SparklesIcon /></div>
                   <div>
-                    <h3>Structured Executive Talking Points (STAR Bullets)</h3>
-                    <p>Automatically condenses complex technical questions into articulate first-person talking points formatted in STAR (Situation, Task, Action, Result) methodology.</p>
+                    <h3>No Embarrassing Meeting Bots</h3>
+                    <p>Other AI tools send an obvious "AI bot" into your meeting that recruiters immediately notice. Helvia works silently on your computer with zero bots.</p>
                   </div>
                 </div>
 
                 <div className="feature-point-item stagger-4">
                   <div className="point-icon purple"><ShieldIcon /></div>
                   <div>
-                    <h3>Zero Audio Echo &amp; Silent Whisper HUD</h3>
-                    <p>Silent visual heads-up display ensures zero microphone feedback, acoustic echo, or telltale bot attendees entering your conference room.</p>
+                    <h3>Structured &amp; Natural Talking Points</h3>
+                    <p>Gives you clear bullet points (Problem, Action, Result) so you can speak naturally with confidence rather than sounding like you are reading a script.</p>
                   </div>
                 </div>
               </div>
@@ -1173,18 +1173,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span className="dot-mini red" />
                   <span className="dot-mini yellow" />
                   <span className="dot-mini green" />
-                  <span className="top-title">Visual Architecture • Stealth Screen Shield</span>
+                  <span className="top-title">Live Preview • What Happens on Your Screen</span>
                 </div>
 
                 <div className="card-body-visual">
                   <div className="stealth-comparison-box">
                     {/* Audio & AI Ingest mini pipeline */}
                     <div className="stealth-pipeline-mini">
-                      <span>🎙️ Soundcard Audio Loopback</span>
+                      <span>🎙️ Interviewer Asks Question</span>
                       <span>➜</span>
-                      <span>⚡ Local AI Engine (&lt;18ms)</span>
+                      <span>⚡ Helvia Analyzes Instantly</span>
                       <span>➜</span>
-                      <span>💡 Live Talking Points</span>
+                      <span>💡 Suggested Talking Points</span>
                     </div>
 
                     {/* The Visual Proof: Side by Side */}
@@ -1196,43 +1196,43 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         </div>
                         <div className="stealth-preview-area">
                           <div className="stealth-hud-ghost-bubble">
-                            <strong>💡 Suggested Answer:</strong>
+                            <strong>💡 Suggested Talking Points:</strong>
                             <br />
-                            • 1. Root Cause: Cache miss on spikes
+                            • 1. Situation: Sudden shift in project deadline
                             <br />
-                            • 2. Fix: Implemented Redis cluster
+                            • 2. Action: Re-prioritized top 3 priorities with team
                             <br />
-                            • 3. Impact: 90% DB load reduction
+                            • 3. Result: Delivered 2 days early with zero bugs
                           </div>
                         </div>
                         <p className="stealth-card-footer">
-                          ✓ Private HUD floating on screen with live talking points.
+                          ✓ Private notes floating on screen with live talking points.
                         </p>
                       </div>
 
                       {/* Card 2: What THEY See */}
                       <div className="stealth-screen-card meeting-sees">
                         <div className="stealth-card-label">
-                          <span>🙈</span> What THEY See
+                          <span>🙈</span> What THE RECRUITER Sees
                         </div>
                         <div className="stealth-preview-area">
                           <div className="stealth-clean-preview">
                             <span className="shield-stamp">🛡️ 100% INVISIBLE</span>
-                            <span>Clean Desktop &amp; Slides only</span>
+                            <span>Clean Desktop &amp; Presentation slides only</span>
                           </div>
                         </div>
                         <p className="stealth-card-footer">
-                          ✓ Attendees on Zoom, Teams &amp; Meet see zero popups.
+                          ✓ Attendees on Zoom, Teams &amp; Meet see zero popups or AI windows.
                         </p>
                       </div>
                     </div>
                   </div>
 
                   <div className="status-pill-grid">
-                    <span className="status-item-pill">✓ Hardware Screen Shield</span>
-                    <span className="status-item-pill">✓ Sub-18ms Local Audio</span>
+                    <span className="status-item-pill">✓ Completely Hidden on Screenshare</span>
+                    <span className="status-item-pill">✓ Works with Zoom, Teams &amp; Meet</span>
                     <span className="status-item-pill">✓ Zero Meeting Bots</span>
-                    <span className="status-item-pill">✓ STAR Talking Points</span>
+                    <span className="status-item-pill">✓ Speaks Naturally</span>
                   </div>
                 </div>
               </div>
@@ -1393,12 +1393,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* NEW: 5 Professional Real-World Workflow Scenarios */}
+      {/* 5 Real-World Everyday Workflow Scenarios */}
       <section className="scenarios-section reveal" id="scenarios">
         <div className="section-header-center">
-          <p className="eyebrow">FIELD TESTED WORKFLOWS</p>
-          <h2>Engineered for High-Stakes Production Scenarios</h2>
-          <p className="muted">See how software engineers, sysadmins, and power users deploy Helvia under critical pressure.</p>
+          <p className="eyebrow">REAL-WORLD EXAMPLES</p>
+          <h2>See How Real People Use Helvia Every Day</h2>
+          <p className="muted">Whether controlling your PC on the go, acing tough job interviews, or automating your applications—see how easy it is.</p>
         </div>
 
         <div className="scenarios-container">
@@ -1432,18 +1432,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <p>{WORKFLOW_SCENARIOS[activeScenario].context}</p>
                 </div>
                 <div className="narrative-block">
-                  <strong>The Helvia Action:</strong>
+                  <strong>How Helvia Helps:</strong>
                   <p>{WORKFLOW_SCENARIOS[activeScenario].solution}</p>
                 </div>
 
                 <div className="scenario-code-box">
-                  <div className="code-box-header">Live Shell / Execution Trace</div>
+                  <div className="code-box-header">Live Example • What Happens</div>
                   <pre><code>{WORKFLOW_SCENARIOS[activeScenario].codeSnippet}</code></pre>
                 </div>
               </div>
 
               <div className="scenario-metrics-col">
-                <span className="metrics-col-title">Measured Impact</span>
+                <span className="metrics-col-title">The Results</span>
                 {WORKFLOW_SCENARIOS[activeScenario].metrics.map((m, mIdx) => (
                   <div className="scenario-metric-item" key={mIdx}>
                     <span className="scenario-metric-label">{m.label}</span>
