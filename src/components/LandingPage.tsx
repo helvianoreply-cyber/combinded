@@ -93,21 +93,6 @@ const HeartIcon = () => (
   </svg>
 )
 
-const CpuIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-    <rect x="9" y="9" width="6" height="6"></rect>
-    <line x1="9" y1="1" x2="9" y2="4"></line>
-    <line x1="15" y1="1" x2="15" y2="4"></line>
-    <line x1="9" y1="20" x2="9" y2="23"></line>
-    <line x1="15" y1="20" x2="15" y2="23"></line>
-    <line x1="20" y1="9" x2="23" y2="9"></line>
-    <line x1="20" y1="14" x2="23" y2="14"></line>
-    <line x1="1" y1="9" x2="4" y2="9"></line>
-    <line x1="1" y1="14" x2="4" y2="14"></line>
-  </svg>
-)
-
 const EyeOffIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
@@ -375,7 +360,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   }, [isSignedIn, navigate])
 
-  const [activeAiTab, setActiveAiTab] = useState<'remote' | 'copilot' | 'autoapply'>('remote')
   const [selectedAppFilter, setSelectedAppFilter] = useState<'all' | 'remote' | 'copilot' | 'autoapply'>('all')
 
 
@@ -904,137 +888,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* Enterprise Platform Capabilities — Dark Formal Design */}
-      <section className="enterprise-capabilities-section reveal" id="features">
-        <div className="enterprise-cap-container">
-          <div className="section-header text-center" style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
-            <div className="badge-tag" style={{ background: 'rgba(37, 99, 235, 0.08)', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.2)', display: 'inline-flex', marginBottom: '1rem' }}>
-              <span>THREE PLATFORMS • ONE SUBSCRIPTION • ZERO OVERHEAD</span>
-            </div>
-            <h2 style={{ fontSize: 'clamp(2rem, 3.8vw, 2.75rem)', fontWeight: 850, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: '1rem' }}>
-              What You Get With Helvia
-            </h2>
-            <p style={{ maxWidth: 780, margin: '0 auto', fontSize: '1.08rem', color: '#475569', lineHeight: 1.7 }}>
-              Three enterprise-grade tools that work independently or together. No bloat, no vendor lock-in, no per-seat licensing traps.
-            </p>
-          </div>
-
-          <div className="enterprise-cap-grid">
-            {/* Platform 1: Helvia Remote */}
-            <div className="enterprise-cap-card">
-              <div className="cap-card-header">
-                <div className="cap-icon-wrap blue">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                    <line x1="8" y1="21" x2="16" y2="21"></line>
-                    <line x1="12" y1="17" x2="12" y2="21"></line>
-                  </svg>
-                </div>
-                <span className="cap-platform-tag blue">HELVIA REMOTE</span>
-              </div>
-              <h3 className="cap-card-title">Control Any Workstation From Anywhere</h3>
-              <p className="cap-card-desc">
-                60 FPS hardware-accelerated remote desktop with sub-15ms latency. No client install needed — works directly from any browser or mobile device over encrypted P2P WebRTC.
-              </p>
-              <ul className="cap-card-metrics">
-                <li>
-                  <span className="cap-metric-value">&lt; 15ms</span>
-                  <span className="cap-metric-label">Glass-to-Glass Latency</span>
-                </li>
-                <li>
-                  <span className="cap-metric-value">60 FPS</span>
-                  <span className="cap-metric-label">Hardware GPU Streaming</span>
-                </li>
-                <li>
-                  <span className="cap-metric-value">0 MB</span>
-                  <span className="cap-metric-label">Client-Side Install</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Platform 2: Helvia Interview & Copilot */}
-            <div className="enterprise-cap-card">
-              <div className="cap-card-header">
-                <div className="cap-icon-wrap purple">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                    <line x1="12" y1="19" x2="12" y2="23"></line>
-                    <line x1="8" y1="23" x2="16" y2="23"></line>
-                  </svg>
-                </div>
-                <span className="cap-platform-tag purple">HELVIA INTERVIEW</span>
-              </div>
-              <h3 className="cap-card-title">Invisible Meeting Intelligence</h3>
-              <p className="cap-card-desc">
-                Real-time executive speech advisory and meeting copilot that captures live audio and generates structured talking points — completely invisible to screenshare via hardware display exclusion.
-              </p>
-              <ul className="cap-card-metrics">
-                <li>
-                  <span className="cap-metric-value">&lt; 18ms</span>
-                  <span className="cap-metric-label">Audio Transcription</span>
-                </li>
-                <li>
-                  <span className="cap-metric-value">100%</span>
-                  <span className="cap-metric-label">Screenshare Invisible</span>
-                </li>
-                <li>
-                  <span className="cap-metric-value">Ring-0</span>
-                  <span className="cap-metric-label">Hardware Display Hook</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Platform 3: Helvia Auto Apply */}
-            <div className="enterprise-cap-card">
-              <div className="cap-card-header">
-                <div className="cap-icon-wrap gold">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                  </svg>
-                </div>
-                <span className="cap-platform-tag gold">HELVIA AUTO APPLY</span>
-              </div>
-              <h3 className="cap-card-title">Autonomous Career Progression</h3>
-              <p className="cap-card-desc">
-                AI agent that auto-applies to matching roles with dynamically tailored resumes optimized for ATS scoring, paired with structured competency mock interview training.
-              </p>
-              <ul className="cap-card-metrics">
-                <li>
-                  <span className="cap-metric-value">98%</span>
-                  <span className="cap-metric-label">ATS Match Rate</span>
-                </li>
-                <li>
-                  <span className="cap-metric-value">Multi-Board</span>
-                  <span className="cap-metric-label">Autonomous Submissions</span>
-                </li>
-                <li>
-                  <span className="cap-metric-value">AI Coach</span>
-                  <span className="cap-metric-label">Mock Interview Scoring</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Unified Account Banner */}
-          <div className="enterprise-unified-strip">
-            <div className="unified-strip-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-            </div>
-            <div className="unified-strip-text">
-              <strong>One Account. One Invoice. Zero Telemetry.</strong>
-              <span>Single Google OAuth login pools remote minutes, advisory responses, and application quotas across all three platforms with no third-party tracking.</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* NEW: Official Video Tutorials & Interactive App Demos */}
       <VideoTutorialsSection />
 
@@ -1118,281 +971,145 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* Feature Deep Dive 3: AI Intelligence Across All 3 Apps */}
-      <section className="feature-deep-section reveal" id="ai-copilot">
+      {/* Understandable Benefits Section: Everything You Need, Explained Simply */}
+      <section className="simple-benefits-section reveal" id="why-helvia">
         <div className="section-header-center">
-          <p className="eyebrow">INTELLIGENT AI ENGINES ACROSS ALL THREE PLATFORMS</p>
-          <h2>Intelligent AI Powering All 3 Apps</h2>
+          <div className="eyebrow-pill-badge" style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#60a5fa' }}>
+            <span className="badge-glow-dot" />
+            <span>BUILT FOR REAL-WORLD PRODUCTIVITY</span>
+          </div>
+          <h2>Everything You Need, Explained Simply</h2>
           <p className="muted">
-            See how Helvia's fast, private on-device AI delivers instant, production-ready assistance across Remote Control, Live Meetings, and Job Search.
+            No complicated technical jargon or hidden setups. Here is exactly how Helvia helps you work faster, interview with confidence, and automate your career.
           </p>
+        </div>
 
-          <div className="ai-tabs-nav">
-            <button 
-              type="button"
-              className={`ai-tab-btn ${activeAiTab === 'remote' ? 'active' : ''}`}
-              onClick={() => setActiveAiTab('remote')}
-            >
-              <CpuIcon /> 1. Remote Desktop ("Ans 💡" Screen Engine)
-            </button>
-            <button 
-              type="button"
-              className={`ai-tab-btn ${activeAiTab === 'copilot' ? 'active' : ''}`}
-              onClick={() => setActiveAiTab('copilot')}
-            >
-              <GhostIcon /> 2. Meeting Copilot (Live AI Whisperer)
-            </button>
-            <button 
-              type="button"
-              className={`ai-tab-btn ${activeAiTab === 'autoapply' ? 'active' : ''}`}
-              onClick={() => setActiveAiTab('autoapply')}
-            >
-              <FileTextIcon /> 3. Talent Mobility (Resume &amp; Interview AI)
-            </button>
+        <div className="benefits-cards-grid">
+          {/* Card 1: Helvia Remote */}
+          <div className="benefit-card reveal stagger-1">
+            <div className="benefit-card-top">
+              <div className="benefit-icon-box blue">
+                <MonitorIcon />
+              </div>
+              <span className="benefit-pill blue">1. Remote Desktop</span>
+            </div>
+            <h3>Work From Anywhere, On Any Device</h3>
+            <p className="benefit-lead">
+              Access your Windows desktop from your mobile phone, tablet, or secondary laptop in seconds—with zero complicated network setup.
+            </p>
+            <ul className="benefit-points">
+              <li>
+                <div className="benefit-check blue"><CheckIcon /></div>
+                <div>
+                  <strong>Instant Mobile Control:</strong> Turn your phone screen into a smooth trackpad with full keyboard, tap-to-click, and gesture support.
+                </div>
+              </li>
+              <li>
+                <div className="benefit-check blue"><CheckIcon /></div>
+                <div>
+                  <strong>Sub-15ms 60 FPS Streaming:</strong> Silky smooth video that feels exactly like sitting right in front of your workstation.
+                </div>
+              </li>
+              <li>
+                <div className="benefit-check blue"><CheckIcon /></div>
+                <div>
+                  <strong>Scan QR to Connect:</strong> Open your mobile camera, scan your PC screen's QR code, and you are immediately connected. No port forwarding.
+                </div>
+              </li>
+            </ul>
+            <div className="benefit-card-footer">
+              <span className="benefit-footer-tag">✓ Windows 10/11 &bull; iOS &bull; Android &bull; Any Browser</span>
+            </div>
+          </div>
+
+          {/* Card 2: Helvia Meet */}
+          <div className="benefit-card reveal stagger-2">
+            <div className="benefit-card-top">
+              <div className="benefit-icon-box purple">
+                <GhostIcon />
+              </div>
+              <span className="benefit-pill purple">2. Executive Copilot</span>
+            </div>
+            <h3>Ace Every Video Interview with Confidence</h3>
+            <p className="benefit-lead">
+              Never freeze on a tough interview question again. Helvia discreetly listens to live meeting audio and shows you structured answers on your screen.
+            </p>
+            <ul className="benefit-points">
+              <li>
+                <div className="benefit-check purple"><CheckIcon /></div>
+                <div>
+                  <strong>100% Invisible Screenshare HUD:</strong> Hardware-level privacy ensures your assistant is completely hidden if you share your screen.
+                </div>
+              </li>
+              <li>
+                <div className="benefit-check purple"><CheckIcon /></div>
+                <div>
+                  <strong>Structured STAR Talking Points:</strong> Delivers instant Situation, Task, Action, and Result points tailored to your real background.
+                </div>
+              </li>
+              <li>
+                <div className="benefit-check purple"><CheckIcon /></div>
+                <div>
+                  <strong>Works on Zoom, Teams &amp; Meet:</strong> No meeting bots join the call and no recording notices appear. 100% private to you.
+                </div>
+              </li>
+            </ul>
+            <div className="benefit-card-footer">
+              <span className="benefit-footer-tag">✓ Undetectable &bull; Real-time AI Whisper &bull; Zero Bots</span>
+            </div>
+          </div>
+
+          {/* Card 3: Helvia Apply */}
+          <div className="benefit-card reveal stagger-3">
+            <div className="benefit-card-top">
+              <div className="benefit-icon-box amber">
+                <FileTextIcon />
+              </div>
+              <span className="benefit-pill amber">3. Talent Mobility</span>
+            </div>
+            <h3>Put Your Job Applications on Autopilot</h3>
+            <p className="benefit-lead">
+              Stop spending hours rewriting resumes and filling out repetitive job forms. Helvia tailors your resume for every job and submits applications automatically.
+            </p>
+            <ul className="benefit-points">
+              <li>
+                <div className="benefit-check amber"><CheckIcon /></div>
+                <div>
+                  <strong>99% ATS Resume Pass Rate:</strong> Automatically aligns your skill keywords with what recruiters search for on Greenhouse &amp; Lever.
+                </div>
+              </li>
+              <li>
+                <div className="benefit-check amber"><CheckIcon /></div>
+                <div>
+                  <strong>Autonomous Job Queue:</strong> Dispatches tailored applications to matching open roles daily so you never miss an opportunity.
+                </div>
+              </li>
+              <li>
+                <div className="benefit-check amber"><CheckIcon /></div>
+                <div>
+                  <strong>AI Mock Interview Drills:</strong> Practice with instant AI feedback before your actual interview calls to maximize offers.
+                </div>
+              </li>
+            </ul>
+            <div className="benefit-card-footer">
+              <span className="benefit-footer-tag">✓ Greenhouse &bull; Lever &bull; Workday &bull; LinkedIn</span>
+            </div>
           </div>
         </div>
 
-        <div className="ai-routing-showcase reveal-scale">
-          {/* APP 1: Remote Desktop Screen Analysis ("Ans 💡") */}
-          {activeAiTab === 'remote' && (
-            <div className="ai-route-card">
-              <div className="ai-card-header">
-                <span className="route-badge code">Screen Vision AI • &lt; 1.2s Response</span>
-                <h4>Instant Screen Diagnosis &amp; Problem Solving ("Ans 💡")</h4>
-              </div>
-              <p className="ai-route-desc">
-                When operating your PC from your phone or secondary laptop, simply tap <strong>"Ans 💡"</strong>. Helvia captures your active workspace, detects errors, math calculations, or design problems, and delivers the exact verified solution directly to your controller in seconds.
-              </p>
-
-              {/* Visual Architecture Flow Diagram */}
-              <div className="arch-p2p-flow" style={{ marginBottom: '1.25rem' }}>
-                <div className="arch-node-box">
-                  <div className="arch-node-icon pc">🖥️</div>
-                  <div className="arch-node-content">
-                    <div className="arch-node-header">
-                      <span className="arch-node-title">Your Windows PC Screen</span>
-                      <span className="arch-node-tag purple">Active Workspace</span>
-                    </div>
-                    <p className="arch-node-desc">
-                      Captures active window (code editor, terminal error, spreadsheet, or design) with zero cloud delay.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="arch-tunnel-pipe">
-                  <div className="arch-tunnel-badge">
-                    <span>⚡</span> Fast On-Device Vision Engine (&lt; 1.2s)
-                  </div>
-                  <div className="arch-tunnel-sub">
-                    Direct Diagnosis • Multi-Step Problem Solving
-                  </div>
-                </div>
-
-                <div className="arch-node-box">
-                  <div className="arch-node-icon phone">📱</div>
-                  <div className="arch-node-content">
-                    <div className="arch-node-header">
-                      <span className="arch-node-title">Your Phone or Laptop Controller</span>
-                      <span className="arch-node-tag green">💡 Verified Solution</span>
-                    </div>
-                    <p className="arch-node-desc">
-                      Displays clear step-by-step fix, exact command to run, or answer to click with 1 tap.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Solution Preview Card */}
-              <div className="ai-solution-preview-box">
-                <div className="ai-solution-header">
-                  <span>💡</span>
-                  <strong>Live "Ans 💡" Output Delivered To Controller:</strong>
-                </div>
-                <div className="ai-solution-item">
-                  <span className="ai-solution-bullet">🔍</span>
-                  <div>
-                    <strong>Screen Detection:</strong> Port 5432 connection timeout caused by local network binding failure.
-                  </div>
-                </div>
-                <div className="ai-solution-item">
-                  <span className="ai-solution-bullet">✅</span>
-                  <div>
-                    <strong>Suggested Fix:</strong> Run <code>docker-compose up -d --build</code> to bind ports and apply schema updates immediately.
-                  </div>
-                </div>
-              </div>
-
-              <div className="status-pill-grid" style={{ marginTop: '1.25rem' }}>
-                <span className="status-item-pill">✓ Sub-1.2s Fast Response</span>
-                <span className="status-item-pill">✓ Instant Error Diagnosis</span>
-                <span className="status-item-pill">✓ Math &amp; Logic (~98% Acc)</span>
-                <span className="status-item-pill">✓ 100% Local Screen Privacy</span>
-              </div>
-            </div>
-          )}
-
-          {/* APP 2: Meeting Copilot Live AI Whisperer */}
-          {activeAiTab === 'copilot' && (
-            <div className="ai-route-card">
-              <div className="ai-card-header">
-                <span className="route-badge logic">Live Audio Whisperer • &lt; 18ms Voice Recognition</span>
-                <h4>Private Real-Time In-Meeting Answer Generator</h4>
-              </div>
-              <p className="ai-route-desc">
-                During high-stakes technical panels, client discovery, or interviews on Zoom, Microsoft Teams, and Google Meet, Helvia listens to what the interviewer asks in real time and privately displays structured talking points right before your eyes.
-              </p>
-
-              {/* Visual Architecture Flow Diagram */}
-              <div className="arch-p2p-flow" style={{ marginBottom: '1.25rem' }}>
-                <div className="arch-node-box">
-                  <div className="arch-node-icon phone">🎙️</div>
-                  <div className="arch-node-content">
-                    <div className="arch-node-header">
-                      <span className="arch-node-title">Speaker Audio Stream</span>
-                      <span className="arch-node-tag purple">Direct Soundcard Hook</span>
-                    </div>
-                    <p className="arch-node-desc">
-                      Listens directly from system speakers with zero microphone echo, zero latency, and zero bots joining the call.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="arch-tunnel-pipe">
-                  <div className="arch-tunnel-badge">
-                    <span>⚡</span> Sub-18ms Speech-to-Text &amp; STAR AI
-                  </div>
-                  <div className="arch-tunnel-sub">
-                    Hardware Screen Shield Active (WDA_EXCLUDEFROMCAPTURE)
-                  </div>
-                </div>
-
-                <div className="arch-node-box">
-                  <div className="arch-node-icon pc">🛡️</div>
-                  <div className="arch-node-content">
-                    <div className="arch-node-header">
-                      <span className="arch-node-title">Your Private Floating HUD</span>
-                      <span className="arch-node-tag green">100% Invisible to Call</span>
-                    </div>
-                    <p className="arch-node-desc">
-                      Synthesizes clear first-person talking points (Problem, Solution, Result) ready to speak smoothly.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Solution Preview Card */}
-              <div className="ai-solution-preview-box">
-                <div className="ai-solution-header">
-                  <span>🎯</span>
-                  <strong>Live Talking Points Whispered To Screen (STAR Format):</strong>
-                </div>
-                <div className="ai-solution-item">
-                  <span className="ai-solution-bullet">🎙️</span>
-                  <div>
-                    <strong>Question Asked:</strong> "How do you handle sudden traffic spikes and slow database queries?"
-                  </div>
-                </div>
-                <div className="ai-solution-item">
-                  <span className="ai-solution-bullet">💬</span>
-                  <div>
-                    <strong>What You Say:</strong> • 1. <em>The Problem:</em> Database CPU hit 95% due to unindexed queries during flash sales. • 2. <em>The Solution:</em> Deployed Redis caching for hot keys and added composite indexes. • 3. <em>The Result:</em> Slashed query volume by 85% and brought response latency down from 450ms to 24ms.
-                  </div>
-                </div>
-              </div>
-
-              <div className="status-pill-grid" style={{ marginTop: '1.25rem' }}>
-                <span className="status-item-pill">✓ Sub-18ms Speech Ingest</span>
-                <span className="status-item-pill">✓ 100% Invisible on Screenshare</span>
-                <span className="status-item-pill">✓ Structured STAR Talking Points</span>
-                <span className="status-item-pill">✓ Zero Telltale Meeting Bots</span>
-              </div>
-            </div>
-          )}
-
-          {/* APP 3: Talent Mobility & ATS AI Coach */}
-          {activeAiTab === 'autoapply' && (
-            <div className="ai-route-card">
-              <div className="ai-card-header">
-                <span className="route-badge diagrams">Autonomous Career Agent • ATS Keyword Alignment</span>
-                <h4>Smart Resume Tailoring &amp; AI Mock Interview Practice</h4>
-              </div>
-              <p className="ai-route-desc">
-                Scans job postings from Greenhouse, Lever, and Workday, automatically adapts your resume skills to pass corporate screening filters with a 99%+ score, and lets you rehearse real interview questions with an AI coach that grades your answers.
-              </p>
-
-              {/* Visual Architecture Flow Diagram */}
-              <div className="arch-p2p-flow" style={{ marginBottom: '1.25rem' }}>
-                <div className="arch-node-box">
-                  <div className="arch-node-icon pc">📋</div>
-                  <div className="arch-node-content">
-                    <div className="arch-node-header">
-                      <span className="arch-node-title">Target Job Description</span>
-                      <span className="arch-node-tag purple">Greenhouse / Lever / Workday</span>
-                    </div>
-                    <p className="arch-node-desc">
-                      Extracts required technologies, domain experience, and key qualification benchmarks.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="arch-tunnel-pipe">
-                  <div className="arch-tunnel-badge">
-                    <span>⚡</span> ATS Semantic Keyword Matcher
-                  </div>
-                  <div className="arch-tunnel-sub">
-                    62% Standard ➜ 99.4% Tailored Match Score
-                  </div>
-                </div>
-
-                <div className="arch-node-box">
-                  <div className="arch-node-icon phone">🚀</div>
-                  <div className="arch-node-content">
-                    <div className="arch-node-header">
-                      <span className="arch-node-title">1-Click Apply &amp; Mock Drills</span>
-                      <span className="arch-node-tag green">Passed Automated Filter</span>
-                    </div>
-                    <p className="arch-node-desc">
-                      Human-paced smart form submission + real-time mock interview drills with instant feedback.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Solution Preview Card */}
-              <div className="ai-solution-preview-box">
-                <div className="ai-solution-header">
-                  <span>🏆</span>
-                  <strong>Live Application &amp; Interview Coaching Output:</strong>
-                </div>
-                <div className="ai-solution-item">
-                  <span className="ai-solution-bullet">📊</span>
-                  <div>
-                    <strong>Resume Match:</strong> 99.4% Match Rate (Realigned WebRTC, distributed transactions &amp; high concurrency).
-                  </div>
-                </div>
-                <div className="ai-solution-item">
-                  <span className="ai-solution-bullet">🎯</span>
-                  <div>
-                    <strong>AI Mock Interview Coach:</strong> Scored 96/100 on System Architecture drill with specific feedback on caching strategies.
-                  </div>
-                </div>
-              </div>
-
-              <div className="status-pill-grid" style={{ marginTop: '1.25rem' }}>
-                <span className="status-item-pill">✓ 99%+ ATS Filter Pass Rate</span>
-                <span className="status-item-pill">✓ Greenhouse &amp; Lever Ready</span>
-                <span className="status-item-pill">✓ Real-Time Mock Interview Drills</span>
-                <span className="status-item-pill">✓ Anti-Bot Human Typing Cadence</span>
-              </div>
-            </div>
-          )}
-
-          <div className="ai-privacy-banner">
+        {/* Quick Reassurance Banner */}
+        <div className="benefits-guarantee-strip">
+          <div className="guarantee-icon-wrap">
             <ShieldIcon />
-            <div>
-              <strong>Privacy First Architecture:</strong> Zero mention of third-party AI provider names or models on customer controller screens. Pure, uncluttered output across all 3 platforms.
-            </div>
           </div>
+          <div className="guarantee-text">
+            <strong>One Account. All Three Apps Unlocked. Zero Telemetry.</strong>
+            <span>One single Google login gives you unified access to Remote Control, Interview Copilot, and Auto-Apply with zero third-party tracking.</span>
+          </div>
+          <a href="#how-to-use" className="guarantee-action-btn">
+            <span>Watch How It Works</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </a>
         </div>
       </section>
 

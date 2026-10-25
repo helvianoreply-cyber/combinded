@@ -1447,7 +1447,7 @@ function App() {
             <a href="#practical-remote" className="nav-item-link">Remote Desktop</a>
             <a href="#meeting-copilot" className="nav-item-link">Executive Copilot</a>
             <a href="#auto-apply" className="nav-item-link">Talent Mobility</a>
-            <a href="#features" className="nav-item-link">Architecture & Security</a>
+            <a href="#security" className="nav-item-link">Architecture & Security</a>
             <a href="#pricing" className="nav-item-link">Pricing</a>
           </nav>
         ) : null}
@@ -1521,7 +1521,7 @@ function App() {
               <a href="#practical-remote" onClick={() => setMobileNavOpen(false)}>Zero-Trust Remote Desktop</a>
               <a href="#meeting-copilot" onClick={() => setMobileNavOpen(false)}>Executive Meeting Copilot</a>
               <a href="#auto-apply" onClick={() => setMobileNavOpen(false)}>Talent Mobility &amp; ATS</a>
-              <a href="#features" onClick={() => setMobileNavOpen(false)}>Security &amp; Architecture</a>
+              <a href="#security" onClick={() => setMobileNavOpen(false)}>Security &amp; Architecture</a>
               <a href="#pricing" onClick={() => setMobileNavOpen(false)}>Enterprise Pricing</a>
             </nav>
           )}
