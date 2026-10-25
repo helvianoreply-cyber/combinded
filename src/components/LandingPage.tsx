@@ -198,8 +198,11 @@ const WORKFLOW_SCENARIOS = [
     subtitle: 'Access your home or office computer from any phone browser on the go',
     context: 'You are away from your desk or commuting, and you urgently need to access a file, check an app, or send a document from your computer.',
     solution: 'Open your phone browser and go to your private Helvia link. Tap to connect and use your phone screen like a smooth trackpad with full keyboard and mouse control.',
-    image: '/video_thumb_remote.jpg',
-    youtubeUrl: 'https://youtu.be/33mtRu5HGFg',
+    flowSteps: [
+      { step: '01', icon: '📱', title: 'Open Phone Browser', detail: 'Visit your private link on Safari or Chrome. No apps to download.' },
+      { step: '02', icon: '📷', title: 'Scan PC QR Code', detail: 'Scan the on-screen code or enter your 6-digit PIN for instant pairing.' },
+      { step: '03', icon: '⚡', title: 'Full 60 FPS Control', detail: 'Your desktop streams with smooth mouse, tap gestures, and full keyboard.' },
+    ],
     caption: 'Connects instantly from your phone browser via QR code with smooth 60 FPS remote desktop streaming.',
     metrics: [
       { label: 'Time to Connect', value: '< 5 secs' },
@@ -214,8 +217,11 @@ const WORKFLOW_SCENARIOS = [
     subtitle: 'Discreet on-screen talking points when the interviewer asks a tricky question',
     context: 'During an interview on Zoom, Teams, or Google Meet, you are asked an unexpected question about an unfamiliar topic or complex scenario.',
     solution: 'Helvia listens in real time through your computer audio and immediately displays structured, natural talking points on your screen. The recruiter cannot see it, even while sharing screen.',
-    image: '/video_thumb_meet.jpg',
-    youtubeUrl: 'https://youtu.be/Lq7aHyJaAlU',
+    flowSteps: [
+      { step: '01', icon: '🎙️', title: 'Interviewer Speaks', detail: 'Recruiter asks a complex question during your Zoom, Teams, or Meet call.' },
+      { step: '02', icon: '🧠', title: 'Real-Time Synthesis', detail: 'Helvia analyzes speech locally and structures STAR points in under 1 second.' },
+      { step: '03', icon: '🛡️', title: 'Private Whisper HUD', detail: 'Clear talking points appear on your screen—100% invisible on screenshares.' },
+    ],
     caption: '100% invisible on Zoom & Teams screenshares with real-time talking points and zero meeting bots.',
     metrics: [
       { label: 'Screen Invisibility', value: '100% Invisible' },
@@ -230,8 +236,11 @@ const WORKFLOW_SCENARIOS = [
     subtitle: 'Automatically find matching jobs and submit tailored resumes while you sleep',
     context: 'Searching job boards and filling out the same repetitive application forms takes 15+ exhausting hours every single week.',
     solution: 'Select your target job title, location, and salary. Helvia searches top job boards, tailors your resume with the right keywords for each listing, and submits applications automatically.',
-    image: '/video_thumb_apply.jpg',
-    youtubeUrl: 'https://youtu.be/IyJGQZpWPEY',
+    flowSteps: [
+      { step: '01', icon: '📄', title: 'Set Target Criteria', detail: 'Upload your master resume, choose preferred job titles, and set salary filters.' },
+      { step: '02', icon: '🎯', title: 'Auto Keyword Tailoring', detail: 'Automatically re-aligns skills to reach 98% ATS match for each job posting.' },
+      { step: '03', icon: '🚀', title: 'Autonomous Dispatch', detail: 'Submits 30+ applications daily with real-time tracking and zero manual forms.' },
+    ],
     caption: 'Tailors your resume for each job description and submits applications automatically with 98% ATS match.',
     metrics: [
       { label: 'Time Saved', value: '15+ hrs / wk' },
@@ -246,8 +255,11 @@ const WORKFLOW_SCENARIOS = [
     subtitle: 'Instant stats, pricing details, and quick answers whispered right on your screen',
     context: 'In an important client pitch or management review, someone asks for specific pricing numbers, dates, or technical facts you don\'t recall offhand.',
     solution: 'Helvia catches the question and quietly displays the exact numbers and points on your screen, so you answer calmly and look thoroughly prepared.',
-    image: '/video_thumb_meet.jpg',
-    youtubeUrl: 'https://youtu.be/Lq7aHyJaAlU',
+    flowSteps: [
+      { step: '01', icon: '👥', title: 'Client Inquires', detail: 'Someone asks for an exact SLA, pricing detail, or historical milestone.' },
+      { step: '02', icon: '⚡', title: 'Instant Fact Retrieval', detail: 'Helvia surfaces the exact figure or bullet point onto your screen instantly.' },
+      { step: '03', icon: '🤝', title: 'Answer Confidently', detail: 'Deliver the exact answer smoothly without having to say "I\'ll check and get back".' },
+    ],
     caption: 'Whispers instant facts, numbers, and answers right on your screen without attendees ever noticing.',
     metrics: [
       { label: 'Answer Latency', value: 'Instant' },
@@ -262,8 +274,11 @@ const WORKFLOW_SCENARIOS = [
     subtitle: 'Interactive practice interviews with realistic questions and instant feedback',
     context: 'You have an important job interview tomorrow and want to practice answering out loud to build confidence and remove nervousness.',
     solution: 'Practice with Helvia\'s AI Coach. It asks real questions for your target job, listens to your spoken answers, and gives you scores and suggestions to improve.',
-    image: '/video_thumb_apply.jpg',
-    youtubeUrl: 'https://youtu.be/IyJGQZpWPEY',
+    flowSteps: [
+      { step: '01', icon: '🤖', title: 'AI Questions', detail: 'Simulates tough questions tailored specifically to your target job profile.' },
+      { step: '02', icon: '🗣️', title: 'Spoken Rehearsal', detail: 'Speak your answers out loud just like a real interview call.' },
+      { step: '03', icon: '📊', title: 'Instant Score & Tips', detail: 'Get immediate STAR grading, delivery clarity feedback, and tips.' },
+    ],
     caption: 'Simulates real interview questions with spoken practice, instant rubric scores, and targeted feedback.',
     metrics: [
       { label: 'Practice Rounds', value: 'Unlimited' },
@@ -382,8 +397,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [activeBenchmarkTab, setActiveBenchmarkTab] = useState<'stealth' | 'resumeMatch' | 'latency' | 'cpu'>('stealth')
   const [activeScenario, setActiveScenario] = useState<number>(0)
   const [openFaq, setOpenFaq] = useState<Record<number, boolean>>({ 0: true })
-  const [isPlayingMeetVideo, setIsPlayingMeetVideo] = useState(false)
-  const [isPlayingApplyVideo, setIsPlayingApplyVideo] = useState(false)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -1190,68 +1203,63 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span className="dot-mini red" />
                   <span className="dot-mini yellow" />
                   <span className="dot-mini green" />
-                  <span className="top-title">Helvia Meet • Official Demo Video</span>
-                  {isPlayingMeetVideo && (
-                    <button 
-                      type="button" 
-                      onClick={() => setIsPlayingMeetVideo(false)} 
-                      className="video-inline-close-btn"
-                      title="Reset preview"
-                    >
-                      ✕ Close Video
-                    </button>
-                  )}
+                  <span className="top-title">Helvia Meet • Live Call Screen View</span>
                 </div>
 
                 <div className="card-body-visual">
-                  <div className="feature-video-showcase">
-                    {isPlayingMeetVideo ? (
-                      <div className="feature-video-player-wrap">
-                        <iframe
-                          src="https://www.youtube-nocookie.com/embed/Lq7aHyJaAlU?autoplay=1&rel=0&modestbranding=1"
-                          title="Helvia Meet Video Demo"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="feature-video-iframe"
-                        />
+                  <div className="live-meeting-sim-box">
+                    <div className="meeting-sim-topbar">
+                      <div className="meeting-sim-status">
+                        <span className="sim-rec-pulse"></span>
+                        <span className="meeting-sim-title">Zoom / Teams Call (Screen Sharing Active)</span>
                       </div>
-                    ) : (
-                      <div className="feature-video-thumb-container">
-                        <img 
-                          src="/video_thumb_meet.jpg" 
-                          alt="Helvia Meet Demo Video Preview" 
-                          className="feature-video-thumb-img" 
-                        />
-                        <div className="feature-video-overlay-scrim">
-                          <button 
-                            type="button" 
-                            className="feature-video-play-pulse-btn"
-                            onClick={() => setIsPlayingMeetVideo(true)}
-                            aria-label="Play Helvia Meet Video Demo"
-                          >
-                            <div className="pulse-circle">
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <polygon points="6 4 20 12 6 20 6 4"></polygon>
-                              </svg>
-                            </div>
-                            <span className="play-label">Watch Full Demo Video</span>
-                          </button>
-                          <div className="feature-video-badge-bar">
-                            <span className="video-length-pill">▶ Video Walkthrough</span>
-                            <a 
-                              href="https://youtu.be/Lq7aHyJaAlU" 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="video-yt-direct-link"
-                              title="Open on YouTube"
-                            >
-                              <span>YouTube</span>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                            </a>
+                      <span className="meeting-sim-badge">🛡️ HUD 100% INVISIBLE TO OTHERS</span>
+                    </div>
+
+                    <div className="meeting-sim-conversation">
+                      {/* Interviewer Audio */}
+                      <div className="interviewer-bubble">
+                        <div className="speaker-label">
+                          <span className="speaker-avatar">👤</span>
+                          <strong>Interviewer (Spoken Audio):</strong>
+                        </div>
+                        <p className="speaker-quote">
+                          "Can you walk me through a situation where a project fell behind schedule, and how you handled the team communication?"
+                        </p>
+                      </div>
+
+                      {/* Helvia Secret Whisper HUD */}
+                      <div className="helvia-whisper-card">
+                        <div className="whisper-header">
+                          <span className="whisper-badge">⚡ HELVIA SECRET WHISPER</span>
+                          <span className="whisper-time">Analyzed &amp; generated in 0.8s</span>
+                        </div>
+                        <div className="whisper-body">
+                          <div className="star-point">
+                            <span className="star-letter s">S</span>
+                            <div><strong>Situation:</strong> Q3 data pipeline migration delayed by 10 days due to third-party API outage.</div>
+                          </div>
+                          <div className="star-point">
+                            <span className="star-letter a">A</span>
+                            <div><strong>Action:</strong> Reassigned non-critical tasks, set up transparent daily 15-min sync, and unblocked core developers.</div>
+                          </div>
+                          <div className="star-point">
+                            <span className="star-letter r">R</span>
+                            <div><strong>Result:</strong> Shipped 3 days ahead of revised schedule with 99.98% pipeline uptime; praised by VP.</div>
                           </div>
                         </div>
                       </div>
-                    )}
+                    </div>
+
+                    <div className="meeting-sim-footer">
+                      <div className="sim-footer-note">
+                        <span className="sim-check-icon">✓</span>
+                        <span><strong>Recruiter sees only your shared slides.</strong> Helvia is excluded from screen capture hardware-wide.</span>
+                      </div>
+                      <a href="#how-to-use" className="sim-tutorial-link">
+                        <span>Watch Video Tutorial in Guides ↓</span>
+                      </a>
+                    </div>
                   </div>
 
                   <div className="status-pill-grid">
@@ -1292,54 +1300,55 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* PRACTICAL 3: HELVIA AUTO APPLY & AI MOCK INTERVIEW COACH SIMULATOR */}
+      {/* APP 3 DEEP DIVE: HELVIA AUTO APPLY & AI MOCK INTERVIEW COACH */}
       <section className="autoapply-section feature-deep-section reveal" id="auto-apply-details" style={{ padding: '80px 0 60px' }}>
         <div className="container" style={{ maxWidth: 1240, margin: '0 auto', padding: '0 20px' }}>
           <div className="section-header-center" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
             <div className="badge-tag" style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', display: 'inline-flex', marginBottom: '1rem', fontWeight: 800 }}>
               <FileTextIcon />
-              <span>APP 3 • CAREER AUTOPILOT • ARCHITECTURE DEEP DIVE</span>
+              <span>APP 03 • AUTOPILOT JOB APPLICATIONS</span>
             </div>
             <h2 style={{ fontSize: 'clamp(2rem, 3.4vw, 2.6rem)', fontWeight: 850, color: '#ffffff', letterSpacing: '-0.02em', marginBottom: '0.85rem', textShadow: '0 4px 20px rgba(0, 0, 0, 0.35)' }}>
-              Autonomous ATS Resume Tailoring &amp; AI Mock Interview Practicer
+              Apply to Hundreds of Matching Jobs on Autopilot
             </h2>
             <p className="muted" style={{ maxWidth: 840, margin: '0 auto', fontSize: '1.02rem', color: 'rgba(255, 255, 255, 0.88)', lineHeight: 1.6, textShadow: '0 2px 8px rgba(0, 0, 0, 0.25)' }}>
-              Test the autonomous application pipeline. Watch how our agent reads live job postings from Stripe, Cloudflare, and Scale AI, extracts required tech stacks, dynamically optimizes ATS match scores to 99%, and conducts interactive AI mock interview drills.
+              Helvia automatically matches your experience to active job openings, customizes your resume with the right keywords to pass company filters, and submits applications while you focus on interview prep.
             </p>
           </div>
 
-          {/* 4 Core Architectural Features in Split-Screen Style */}
+          {/* 4 Core Features in Split-Screen Style */}
           <div className="feature-deep-container" style={{ marginTop: '1.5rem' }}>
             <div className="feature-deep-text reveal-left">
               <div className="feature-points-list">
                 <div className="feature-point-item stagger-1">
                   <div className="point-icon gold"><FileTextIcon /></div>
                   <div>
-                    <h3>99% Dynamic ATS Match Optimization</h3>
-                    <p>Parses live job descriptions in real-time to dynamically align semantic keywords, technical skills, and experience bullet points to bypass automated screening algorithms.</p>
+                    <h3>98% ATS Keyword Optimization</h3>
+                    <p>Matches your resume bullet points with the exact skills and keywords recruiters and automated company filters search for.</p>
                   </div>
                 </div>
 
                 <div className="feature-point-item stagger-2">
                   <div className="point-icon gold"><ZapIcon /></div>
                   <div>
-                    <h3>Multi-Portal Autonomous Submissions</h3>
-                    <p>Autonomously maps and formats applications across Greenhouse, Lever, and Workday with human-emulated typing cadence and anti-bot verification.</p>
+                    <h3>Autopilot Application Submissions</h3>
+                    <p>Submits tailored applications across LinkedIn, Greenhouse, and Lever daily at human-like pace with zero manual form-filling.</p>
                   </div>
                 </div>
 
                 <div className="feature-point-item stagger-3">
                   <div className="point-icon gold"><AwardIcon /></div>
                   <div>
-                    <h3>Interactive Competency Interview Coach</h3>
-                    <p>Practice behavioral, coding, and system design rounds against an AI interviewer with instant rubric scoring, delivery feedback, and STAR grading.</p>
+                    <h3>Interactive AI Mock Interview Practice</h3>
+                    <p>Practice answering realistic job questions out loud with instant scores, STAR feedback, and practical improvement tips.</p>
                   </div>
                 </div>
 
                 <div className="feature-point-item stagger-4">
                   <div className="point-icon gold"><CheckIcon /></div>
                   <div>
-                    <h3>Pipeline Status &amp; Conversion Analytics</h3>
-                    <p>Real-time telemetry dashboard tracking application submissions, progression stages, response velocities, and ATS keyword overlap scores.</p>
+                    <h3>Live Application Status Tracker</h3>
+                    <p>Track every submitted job, company responses, and interview invitations in real time from one simple, organized dashboard.</p>
                   </div>
                 </div>
               </div>
@@ -1351,72 +1360,61 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span className="dot-mini red" />
                   <span className="dot-mini yellow" />
                   <span className="dot-mini green" />
-                  <span className="top-title">Helvia Apply • Official Demo Video</span>
-                  {isPlayingApplyVideo && (
-                    <button 
-                      type="button" 
-                      onClick={() => setIsPlayingApplyVideo(false)} 
-                      className="video-inline-close-btn"
-                      title="Reset preview"
-                    >
-                      ✕ Close Video
-                    </button>
-                  )}
+                  <span className="top-title">Helvia Apply • Live Application Dispatch</span>
                 </div>
 
                 <div className="card-body-visual">
-                  <div className="feature-video-showcase">
-                    {isPlayingApplyVideo ? (
-                      <div className="feature-video-player-wrap">
-                        <iframe
-                          src="https://www.youtube-nocookie.com/embed/IyJGQZpWPEY?autoplay=1&rel=0&modestbranding=1"
-                          title="Helvia Apply Video Demo"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="feature-video-iframe"
-                        />
+                  <div className="live-apply-sim-box">
+                    <div className="apply-sim-topbar">
+                      <div className="apply-sim-target">
+                        <span className="sim-dot-gold"></span>
+                        <span>Target: <strong>Full-Stack Engineer (Remote)</strong></span>
                       </div>
-                    ) : (
-                      <div className="feature-video-thumb-container">
-                        <img 
-                          src="/video_thumb_apply.jpg" 
-                          alt="Helvia Apply Demo Video Preview" 
-                          className="feature-video-thumb-img" 
-                        />
-                        <div className="feature-video-overlay-scrim">
-                          <button 
-                            type="button" 
-                            className="feature-video-play-pulse-btn gold"
-                            onClick={() => setIsPlayingApplyVideo(true)}
-                            aria-label="Play Helvia Apply Video Demo"
-                          >
-                            <div className="pulse-circle">
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <polygon points="6 4 20 12 6 20 6 4"></polygon>
-                              </svg>
-                            </div>
-                            <span className="play-label">Watch Full Demo Video</span>
-                          </button>
-                          <div className="feature-video-badge-bar">
-                            <span className="video-length-pill">▶ Video Walkthrough</span>
-                            <a 
-                              href="https://youtu.be/IyJGQZpWPEY" 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="video-yt-direct-link"
-                              title="Open on YouTube"
-                            >
-                              <span>YouTube</span>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                            </a>
-                          </div>
+                      <span className="apply-ats-badge">🎯 98% ATS MATCH SCORE</span>
+                    </div>
+
+                    <div className="apply-activity-list">
+                      <div className="apply-item applied">
+                        <div className="apply-item-top">
+                          <span className="company-name">Stripe</span>
+                          <span className="job-role">Senior Full-Stack Engineer</span>
+                          <span className="apply-status-pill green">✓ Applied</span>
                         </div>
+                        <div className="apply-item-sub">Matched: React, Node.js, Distributed Systems • Tailored resume sent</div>
                       </div>
-                    )}
+
+                      <div className="apply-item applied">
+                        <div className="apply-item-top">
+                          <span className="company-name">Cloudflare</span>
+                          <span className="job-role">Systems Engineer</span>
+                          <span className="apply-status-pill green">✓ Applied</span>
+                        </div>
+                        <div className="apply-item-sub">Matched: Systems Architecture, Edge APIs • Greenhouse portal</div>
+                      </div>
+
+                      <div className="apply-item callback">
+                        <div className="apply-item-top">
+                          <span className="company-name">Datadog</span>
+                          <span className="job-role">Staff Platform Engineer</span>
+                          <span className="apply-status-pill purple">🎉 Interview Invite</span>
+                        </div>
+                        <div className="apply-item-sub">Screening call scheduled • AI Interview Practicer ready</div>
+                      </div>
+                    </div>
+
+                    <div className="apply-sim-footer">
+                      <div className="sim-footer-note">
+                        <span className="sim-check-icon">✓</span>
+                        <span><strong>42 applications sent this week.</strong> Zero repetitive form-filling or keyword guessing.</span>
+                      </div>
+                      <a href="#how-to-use" className="sim-tutorial-link gold">
+                        <span>Watch Video Tutorial in Guides ↓</span>
+                      </a>
+                    </div>
                   </div>
 
                   <div className="status-pill-grid">
-                    <span className="status-item-pill">✓ 99%+ ATS Keyword Match</span>
+                    <span className="status-item-pill">✓ 98%+ ATS Keyword Match</span>
                     <span className="status-item-pill">✓ Automated Job Submissions</span>
                     <span className="status-item-pill">✓ Live Application Tracker</span>
                     <span className="status-item-pill">✓ Interactive Mock Interview Drills</span>
@@ -1487,30 +1485,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <p>{WORKFLOW_SCENARIOS[activeScenario].solution}</p>
                 </div>
 
-                <div className="scenario-visual-box">
-                  <div className="scenario-visual-media">
-                    <img 
-                      src={WORKFLOW_SCENARIOS[activeScenario].image} 
-                      alt={WORKFLOW_SCENARIOS[activeScenario].title} 
-                      className="scenario-visual-img"
-                    />
-                    <div className="scenario-visual-overlay">
-                      <a 
-                        href={WORKFLOW_SCENARIOS[activeScenario].youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="scenario-visual-play-btn"
-                        title="Watch video walkthrough on YouTube"
-                      >
-                        <span className="play-triangle-glyph">▶</span>
-                        <span>Watch Demo Video</span>
-                      </a>
-                      <span className="scenario-visual-badge">{WORKFLOW_SCENARIOS[activeScenario].badge}</span>
-                    </div>
+                <div className="scenario-flow-showcase">
+                  <div className="scenario-flow-header">
+                    <span className="scenario-flow-title">⚡ How It Works in 3 Simple Steps</span>
+                    <span className="scenario-flow-badge">{WORKFLOW_SCENARIOS[activeScenario].badge}</span>
                   </div>
-                  <div className="scenario-visual-caption">
-                    <span className="visual-caption-icon">⚡</span>
-                    <span className="visual-caption-text">{WORKFLOW_SCENARIOS[activeScenario].caption}</span>
+                  <div className="scenario-flow-steps">
+                    {WORKFLOW_SCENARIOS[activeScenario].flowSteps.map((st, sIdx) => (
+                      <div className="scenario-step-card" key={sIdx}>
+                        <div className="scenario-step-top">
+                          <span className="step-icon-bubble">{st.icon}</span>
+                          <span className="step-index-tag">{st.step}</span>
+                        </div>
+                        <h4 className="step-card-title">{st.title}</h4>
+                        <p className="step-card-desc">{st.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="scenario-flow-footer">
+                    <span className="flow-footer-icon">💡</span>
+                    <span className="flow-footer-text">
+                      <strong>Everyday takeaway: </strong>
+                      {WORKFLOW_SCENARIOS[activeScenario].caption}
+                    </span>
                   </div>
                 </div>
               </div>
