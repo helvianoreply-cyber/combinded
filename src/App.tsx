@@ -1442,12 +1442,9 @@ function App() {
 
         {location.pathname === '/' ? (
           <nav className="desktop-nav">
-            <a href="#apps" className="nav-item-link highlight-apps-nav">Platforms</a>
-            <a href="#how-to-use" className="nav-item-link highlight-apps-nav">Video Guides</a>
-            <a href="#practical-remote" className="nav-item-link">Remote Desktop</a>
-            <a href="#meeting-copilot" className="nav-item-link">Executive Copilot</a>
-            <a href="#auto-apply" className="nav-item-link">Talent Mobility</a>
-            <a href="#security" className="nav-item-link">Architecture & Security</a>
+            <a href="#apps" className="nav-item-link">Platforms</a>
+            <a href="#how-to-use" className="nav-item-link">Video Guides</a>
+            <a href="#benchmarks" className="nav-item-link">Compare</a>
             <a href="#pricing" className="nav-item-link">Pricing</a>
           </nav>
         ) : null}
@@ -1516,13 +1513,10 @@ function App() {
         <div className="mobile-nav-drawer">
           {location.pathname === '/' && (
             <nav className="mobile-nav-links">
-              <a href="#apps" onClick={() => setMobileNavOpen(false)}>Enterprise Platforms</a>
-              <a href="#how-to-use" onClick={() => setMobileNavOpen(false)}>🎬 Video Guides &amp; Tutorials</a>
-              <a href="#practical-remote" onClick={() => setMobileNavOpen(false)}>Zero-Trust Remote Desktop</a>
-              <a href="#meeting-copilot" onClick={() => setMobileNavOpen(false)}>Executive Meeting Copilot</a>
-              <a href="#auto-apply" onClick={() => setMobileNavOpen(false)}>Talent Mobility &amp; ATS</a>
-              <a href="#security" onClick={() => setMobileNavOpen(false)}>Security &amp; Architecture</a>
-              <a href="#pricing" onClick={() => setMobileNavOpen(false)}>Enterprise Pricing</a>
+              <a href="#apps" onClick={() => setMobileNavOpen(false)}>🚀 Platforms</a>
+              <a href="#how-to-use" onClick={() => setMobileNavOpen(false)}>🎬 Video Guides</a>
+              <a href="#benchmarks" onClick={() => setMobileNavOpen(false)}>📊 Compare</a>
+              <a href="#pricing" onClick={() => setMobileNavOpen(false)}>💎 Pricing</a>
             </nav>
           )}
           <div className="mobile-nav-actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
