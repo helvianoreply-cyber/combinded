@@ -7,6 +7,7 @@ import { HELVIA_DOWNLOAD_LINKS } from '../lib/downloadLinks'
 import { PaymentModal } from './PaymentModal'
 import { InteractiveTopupStation } from './InteractiveTopupStation'
 import { VideoTutorialsSection } from './VideoTutorialsSection'
+import { validateCoupon, calculateDiscount, calculateUsdDiscount, type CouponInfo } from '../lib/coupons'
 
 interface LandingPageProps {
   signInWithGoogle: () => Promise<void>
@@ -342,6 +343,64 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<DbPlan | null>(null)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponInfo | null>(null)
+  const [couponInputText, setCouponInputText] = useState('')
+  const [couponFeedback, setCouponFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+
+  // Detect ?coupon=CODE or ?ref=CODE from URL or localStorage
+  useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search)
+      const rawCode = urlParams.get('coupon') || urlParams.get('ref') || urlParams.get('code') || urlParams.get('promo')
+      
+      if (rawCode) {
+        const valid = validateCoupon(rawCode)
+        if (valid) {
+          setAppliedCoupon(valid)
+          setCouponInputText(valid.code)
+          localStorage.setItem('helvia_creator_coupon', valid.code)
+          return
+        }
+      }
+
+      const stored = localStorage.getItem('helvia_creator_coupon')
+      if (stored) {
+        const valid = validateCoupon(stored)
+        if (valid) {
+          setAppliedCoupon(valid)
+          setCouponInputText(valid.code)
+        }
+      }
+    } catch {}
+  }, [])
+
+  const handleApplyCoupon = () => {
+    setCouponFeedback(null)
+    const raw = couponInputText.trim()
+    if (!raw) {
+      setCouponFeedback({ text: 'Please enter a coupon code.', type: 'error' })
+      return
+    }
+    const found = validateCoupon(raw)
+    if (found) {
+      setAppliedCoupon(found)
+      try {
+        localStorage.setItem('helvia_creator_coupon', found.code)
+      } catch {}
+      setCouponFeedback({ text: `🎉 Creator code "${found.code}" applied! 50% discount activated on all plans!`, type: 'success' })
+    } else {
+      setCouponFeedback({ text: `Code "${raw}" is invalid.`, type: 'error' })
+    }
+  }
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null)
+    setCouponInputText('')
+    setCouponFeedback(null)
+    try {
+      localStorage.removeItem('helvia_creator_coupon')
+    } catch {}
+  }
 
   const handleRazorpayUpgrade = (p: DbPlan, couponCode?: string, customAmountInr?: number) => {
     setIsPaymentModalOpen(false)
@@ -433,6 +492,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* 3D Dynamic Sky Canvas (Self-updating RAF loop without re-rendering page) */}
       <SkyCanvas3D />
 
+      {/* Dynamic Influencer/Creator 50% OFF Announcement Banner */}
+      {appliedCoupon && (
+        <div className="creator-coupon-banner">
+          <div className="creator-coupon-banner-inner">
+            <span className="creator-sparkle">🎉</span>
+            <span className="creator-banner-text">
+              Creator Code <strong>"{appliedCoupon.code}"</strong> Active: <strong>50% OFF</strong> all plans unlocked!
+            </span>
+            <a href="#pricing" className="creator-banner-jump-btn">View 50% Off Pricing ↓</a>
+            <button 
+              className="creator-banner-close-btn" 
+              onClick={handleRemoveCoupon}
+              title="Remove coupon"
+              type="button"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section - Early Morning Dawn Sky UI */}
       <section className="hero-peaceful-section reveal">
         <div className="hero-peaceful-content">
@@ -450,7 +530,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </h1>
 
           <p className="hero-peace-subtitle">
-            Helvia unites three enterprise-grade platforms into a unified subscription: zero-trust 60 FPS remote desktop access, real-time executive meeting intelligence with hardware display capture privacy, and data-driven ATS resume optimization with structured competency interview training.
+            Land your dream remote job in 30 days: Automated Applications + Stealth Live Interview Copilot + 60 FPS Remote Workstation in one unified suite.
           </p>
 
           {/* Triple-App Hero Launchpad */}
@@ -1811,6 +1891,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
             <h2>Simple, Transparent Pricing</h2>
             <p className="pricing-subtitle">One unified subscription powers all 3 breakthrough apps: Helvia Remote, Meeting Copilot, and Auto Apply &amp; Coach.</p>
+
+            {/* Interactive Creator / Influencer Code Box */}
+            <div className="pricing-coupon-box">
+              <div className="pricing-coupon-input-wrap">
+                <span className="pricing-coupon-tag-icon">🏷️</span>
+                <input 
+                  type="text" 
+                  className="pricing-coupon-input"
+                  placeholder="Have an influencer or promo code? (e.g. CREATOR50)"
+                  value={couponInputText}
+                  onChange={(e) => setCouponInputText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon() }}
+                />
+                {appliedCoupon ? (
+                  <button className="pricing-coupon-apply-btn applied" onClick={handleRemoveCoupon} type="button">
+                    ✓ 50% Active • Remove
+                  </button>
+                ) : (
+                  <button className="pricing-coupon-apply-btn" onClick={handleApplyCoupon} type="button">
+                    Apply 50% Code
+                  </button>
+                )}
+              </div>
+              {couponFeedback && (
+                <div className={`pricing-coupon-message ${couponFeedback.type}`}>
+                  {couponFeedback.text}
+                </div>
+              )}
+            </div>
           </div>
           
           {(() => {
@@ -1852,9 +1961,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       (userPlan.toLowerCase() === p.name.toLowerCase())
                     )
 
+                    const baseInr = getPlanInrPrice(p.price)
+                    const inrDiscount = appliedCoupon && !isFree ? calculateDiscount(baseInr, appliedCoupon) : null
+                    const effectiveInr = inrDiscount ? inrDiscount.discountedInr : baseInr
+
+                    const usdDiscount = appliedCoupon && !isFree ? calculateUsdDiscount(p.price, appliedCoupon) : null
+                    const effectiveUsd = usdDiscount ? usdDiscount.discountedUsd : p.price
+
                     return (
                       <div 
-                        className={`plan-card stagger-${(idx % 4) + 1} ${isPopular ? 'popular' : ''} ${isLifetime ? 'lifetime' : ''}`} 
+                        className={`plan-card stagger-${(idx % 4) + 1} ${isPopular ? 'popular' : ''} ${isLifetime ? 'lifetime' : ''} ${appliedCoupon && !isFree ? 'has-coupon' : ''}`} 
                         key={p.id || idx}
                       >
                         <div className={`plan-badge ${isPopular ? 'popular-badge' : isLifetime ? 'lifetime-badge' : isFree ? 'free-badge' : 'standard-badge'}`}>
@@ -1867,15 +1983,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           <div className="plan-price">
                             {isFree ? (
                               <span className="price-val">Free</span>
+                            ) : appliedCoupon ? (
+                              <>
+                                <span className="price-currency">$</span>
+                                <span className="price-orig-strikethrough">${p.price}</span>
+                                <span className="price-val discounted">{effectiveUsd}</span>
+                                <span className="price-inr-chip discounted">
+                                  <span className="inr-orig">₹{baseInr}</span> ₹{effectiveInr}
+                                </span>
+                                <span className="price-period">{isLifetime ? '/ life' : '/ pack'}</span>
+                              </>
                             ) : (
                               <>
                                 <span className="price-currency">$</span>
                                 <span className="price-val">{p.price}</span>
-                                <span className="price-inr-chip">₹{getPlanInrPrice(p.price)}</span>
+                                <span className="price-inr-chip">₹{baseInr}</span>
                                 <span className="price-period">{isLifetime ? '/ life' : '/ pack'}</span>
                               </>
                             )}
                           </div>
+                          {appliedCoupon && !isFree && (
+                            <div className="coupon-active-subbadge">
+                              <span>🔥 50% Creator Code Active</span>
+                            </div>
+                          )}
                         </div>
 
                         <p className="plan-meta">
@@ -1919,7 +2050,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                                 setIsPaymentModalOpen(true)
                               }}
                             >
-                              Select (${p.price} / ₹{getPlanInrPrice(p.price)})
+                              Select (${effectiveUsd} / ₹{effectiveInr})
                             </button>
                           )}
                         </div>
@@ -1930,7 +2061,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                 {/* Dedicated Separate 1-Month Unlimited VIP Pass Card */}
                 {unlimitedPlan && (() => {
-                  const inrPrice = getPlanInrPrice(unlimitedPlan.price)
+                  const unlBaseInr = getPlanInrPrice(unlimitedPlan.price)
+                  const unlInrDiscount = appliedCoupon ? calculateDiscount(unlBaseInr, appliedCoupon) : null
+                  const unlEffectiveInr = unlInrDiscount ? unlInrDiscount.discountedInr : unlBaseInr
+
+                  const unlUsdDiscount = appliedCoupon ? calculateUsdDiscount(unlimitedPlan.price, appliedCoupon) : null
+                  const unlEffectiveUsd = unlUsdDiscount ? unlUsdDiscount.discountedUsd : unlimitedPlan.price
+
                   const isCurrentUnlimited = userPlan && (
                     userPlan.toLowerCase() === 'usage' || 
                     userPlan.toLowerCase() === unlimitedPlan.tier.toLowerCase() ||
@@ -1950,7 +2087,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                             <span className="unlimited-duration-tag">30 Days Full Access</span>
                           </div>
                           <div className="unlimited-offer-pill">
-                            <span>⚡ Zero Minute Limits • Everything Uncapped</span>
+                            <span>{appliedCoupon ? '🔥 50% CREATOR DISCOUNT ACTIVATED' : '⚡ Zero Minute Limits • Everything Uncapped'}</span>
                           </div>
                         </div>
 
@@ -1964,11 +2101,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                             <div className="unlimited-pricing-block">
                               <div className="unlimited-price-tag">
                                 <span className="unlimited-currency">$</span>
-                                <span className="unlimited-amount">{unlimitedPlan.price}</span>
+                                {appliedCoupon ? (
+                                  <>
+                                    <span className="unlimited-orig-strikethrough">${unlimitedPlan.price}</span>
+                                    <span className="unlimited-amount discounted">{unlEffectiveUsd}</span>
+                                  </>
+                                ) : (
+                                  <span className="unlimited-amount">{unlimitedPlan.price}</span>
+                                )}
                                 <span className="unlimited-period">USD / 30 Days</span>
                               </div>
                               <div className="unlimited-inr-row">
-                                <span className="unlimited-inr-base">≈ ₹{inrPrice.toLocaleString('en-IN')} INR</span>
+                                {appliedCoupon ? (
+                                  <span className="unlimited-inr-base discounted">
+                                    <span className="inr-orig">₹{unlBaseInr.toLocaleString('en-IN')}</span> ≈ ₹{unlEffectiveInr.toLocaleString('en-IN')} INR
+                                  </span>
+                                ) : (
+                                  <span className="unlimited-inr-base">≈ ₹{unlBaseInr.toLocaleString('en-IN')} INR</span>
+                                )}
+                                {appliedCoupon && (
+                                  <span className="unlimited-coupon-deal">
+                                    🔥 50% CREATOR DISCOUNT APPLIED
+                                  </span>
+                                )}
                               </div>
                             </div>
 
@@ -2012,7 +2167,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                                     setIsPaymentModalOpen(true)
                                   }}
                                 >
-                                  Select Unlimited VIP (${unlimitedPlan.price} / ₹{inrPrice.toLocaleString('en-IN')})
+                                  Select Unlimited VIP (${unlEffectiveUsd} / ₹{unlEffectiveInr.toLocaleString('en-IN')})
                                 </button>
                               )}
                             </div>
@@ -2071,6 +2226,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         plan={selectedPlanForPayment}
+        initialCoupon={appliedCoupon}
         onSelectRazorpay={handleRazorpayUpgrade}
         onSelectDodo={handleDodoUpgrade}
       />

@@ -66,7 +66,7 @@ export const ACTIVE_COUPONS: Record<string, CouponInfo> = {
  */
 export function validateCoupon(code: string): CouponInfo | null {
   const clean = code.trim().replace(/\s+/g, '_').toUpperCase()
-  if (!clean) return null
+  if (!clean || clean.length < 2) return null
 
   // Direct match in registry
   if (ACTIVE_COUPONS[clean]) {
@@ -89,16 +89,22 @@ export function validateCoupon(code: string): CouponInfo | null {
       code: clean,
       offerId: clean.toLowerCase(),
       discountPercent: 50,
-      description: 'Razorpay Instant Offer',
+      description: 'Razorpay Instant Offer (50% OFF)',
     }
   }
 
-  return null
+  // Universal Creator / Influencer Code Support
+  // Any promo or creator code provided by influencers activates 50% Instant Discount!
+  return {
+    code: clean,
+    discountPercent: 50,
+    offerId: 'offer_TgYKvwy8HyzTTz',
+    description: `Creator Code "${clean}": 50% Instant Discount Activated`,
+  }
 }
 
 /**
  * Calculates discounted INR price specifically for Razorpay.
- * Dodo Payments (USD) remains unaffected.
  */
 export function calculateDiscount(
   priceInr: number,
@@ -113,17 +119,20 @@ export function calculateDiscount(
 
   if (coupon.discountPercent) {
     const percent = Math.min(100, Math.max(1, coupon.discountPercent))
-    if (priceInr === 1999 && percent === 50) {
-      discountedInr = 999
+    if (percent === 50) {
+      if (priceInr === 1999) discountedInr = 999
+      else if (priceInr === 1299) discountedInr = 649
+      else if (priceInr === 699) discountedInr = 349
+      else discountedInr = Math.max(1, Math.round(priceInr * 0.5))
     } else {
       discountedInr = Math.max(1, Math.round(priceInr * (1 - percent / 100)))
     }
-    label = `${percent}% OFF on Razorpay`
+    label = `${percent}% OFF Creator Discount`
   } else if (coupon.discountInr) {
     discountedInr = Math.max(1, priceInr - coupon.discountInr)
-    label = `₹${coupon.discountInr} OFF on Razorpay`
+    label = `₹${coupon.discountInr} OFF Creator Discount`
   } else {
-    label = 'Razorpay Offer Applied'
+    label = '50% Creator Discount Applied'
   }
 
   const savingsInr = priceInr - discountedInr
@@ -132,6 +141,42 @@ export function calculateDiscount(
     discountedInr,
     savingsInr,
     label,
+  }
+}
+
+/**
+ * Calculates discounted USD price for international display.
+ */
+export function calculateUsdDiscount(
+  priceUsd: number,
+  coupon?: CouponInfo | null
+): {
+  discountedUsd: number
+  savingsUsd: number
+  label: string
+} {
+  if (!coupon || !coupon.discountPercent || priceUsd === 0) {
+    return { discountedUsd: priceUsd, savingsUsd: 0, label: '' }
+  }
+
+  const percent = coupon.discountPercent
+  let discountedUsd = priceUsd * (1 - percent / 100)
+  
+  if (percent === 50) {
+    if (priceUsd === 21) discountedUsd = 10.5
+    else if (priceUsd === 15) discountedUsd = 7.5
+    else if (priceUsd === 8) discountedUsd = 4.0
+    else discountedUsd = Math.round(discountedUsd * 100) / 100
+  } else {
+    discountedUsd = Math.round(discountedUsd * 100) / 100
+  }
+
+  const savingsUsd = Math.round((priceUsd - discountedUsd) * 100) / 100
+
+  return {
+    discountedUsd,
+    savingsUsd,
+    label: `${percent}% OFF Creator Discount`,
   }
 }
 

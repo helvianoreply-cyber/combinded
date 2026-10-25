@@ -6,6 +6,7 @@ interface PaymentModalProps {
   isOpen: boolean
   onClose: () => void
   plan: DbPlan | null
+  initialCoupon?: CouponInfo | null
   onSelectRazorpay: (plan: DbPlan, couponCode?: string, customAmountInr?: number) => void
   onSelectDodo: (plan: DbPlan, couponCode?: string) => void
   isProcessing?: boolean
@@ -15,6 +16,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   isOpen,
   onClose,
   plan,
+  initialCoupon = null,
   onSelectRazorpay,
   onSelectDodo,
   isProcessing = false,
@@ -24,15 +26,21 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [couponError, setCouponError] = useState<string | null>(null)
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null)
 
-  // Reset coupon state whenever modal opens or closes or plan changes
+  // Reset or initialize coupon state whenever modal opens or closes or plan changes
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      if (initialCoupon) {
+        setAppliedCoupon(initialCoupon)
+        setCouponInput(initialCoupon.code)
+        setCouponSuccess(`Creator code "${initialCoupon.code}" active! 50% discount applied.`)
+      }
+    } else {
       setCouponInput('')
       setAppliedCoupon(null)
       setCouponError(null)
       setCouponSuccess(null)
     }
-  }, [isOpen, plan])
+  }, [isOpen, plan, initialCoupon])
 
   // Close on Escape key
   useEffect(() => {
