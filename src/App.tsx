@@ -231,7 +231,7 @@ function App() {
           const normalized = filtered.map((plan: any) => {
             const n = String(plan.name || '').toLowerCase()
             if (Number(plan.price) === 0 || plan.tier === 'basic' || n.includes('basic')) {
-              return { ...plan, price: 0, included_minutes: 5, included_responses: 5, included_applications: 5 }
+              return { ...plan, price: 0, included_minutes: 5, included_responses: 5, included_applications: 3 }
             }
             if (plan.id === '4d569314-3b27-45c8-93ad-3d5c2eebffc0' || n.includes('standard')) {
               return { ...plan, price: 8, included_minutes: 300, included_responses: 500, included_applications: 200 }
@@ -370,7 +370,7 @@ function App() {
           if (needsStarterQuotas) {
             const starterSeconds = 300
             const starterResponses = 5
-            const starterApps = (Number(userRow.applications_remaining) || 0) > 0 ? Number(userRow.applications_remaining) : 10
+            const starterApps = (Number(userRow.applications_remaining) || 0) > 0 ? Number(userRow.applications_remaining) : 3
             try {
               await sb
                 .from('users')
@@ -441,7 +441,7 @@ function App() {
       if (!userRow) {
         const starterSeconds = 300 // 5 minutes free trial
         const starterResponses = 5 // 5 free AI answers
-        const starterApps = 10     // 10 applications
+        const starterApps = 3      // 3 free job auto-applies
 
         const newRecord: Partial<DbUser> = {
           id,

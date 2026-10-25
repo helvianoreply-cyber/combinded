@@ -1011,7 +1011,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {/* Plan Description */}
                 <p className="plan-card-desc">
                   {isFree
-                    ? 'Basic account with zero usage quota. Upgrade to unlock remote streaming, AI Copilot, and job auto-applies.'
+                    ? 'Free starter trial with 5 mins remote streaming, 5 Ans 💡 AI answers, and 3 LinkedIn & ATS job auto-applies.'
                     : isLifetime
                       ? 'Unlimited lifetime remote desktop access with Bring Your Own Keys (BYOK) AI Copilot.'
                       : `Includes ${p.included_minutes} remote minutes, ${p.included_responses} Ans 💡 AI answers, and ${p.included_applications} LinkedIn & ATS job auto-applies.`}
@@ -1020,15 +1020,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {/* Quick Quota Highlights */}
                 <div className="plan-quota-pills">
                   <div className="plan-quota-pill">
-                    <span className="quota-val">{isLifetime ? 'BYOK' : isFree ? '0' : p.included_applications}</span>
+                    <span className="quota-val">{isLifetime ? 'BYOK' : isFree ? '3' : p.included_applications}</span>
                     <span className="quota-lbl">Auto-Applies</span>
                   </div>
                   <div className="plan-quota-pill">
-                    <span className="quota-val">{isLifetime ? '∞' : isFree ? '0m' : `${p.included_minutes}m`}</span>
+                    <span className="quota-val">{isLifetime ? '∞' : isFree ? '5m' : `${p.included_minutes}m`}</span>
                     <span className="quota-lbl">Remote Time</span>
                   </div>
                   <div className="plan-quota-pill">
-                    <span className="quota-val">{isFree ? '0' : isLifetime ? 'BYOK' : p.included_responses}</span>
+                    <span className="quota-val">{isFree ? '5' : isLifetime ? 'BYOK' : p.included_responses}</span>
                     <span className="quota-lbl">AI Answers</span>
                   </div>
                 </div>
@@ -1042,11 +1042,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         {isLifetime
                           ? 'BYOK Job Auto-Apply'
                           : isFree
-                            ? '0 Job Auto-Applies'
+                            ? '3 Job Auto-Applies'
                             : `${p.included_applications} Job Auto-Applies`}
                       </strong>
                       <span className="plan-feat-subtext">
-                        {isFree ? ' (Upgrade required)' : ' (LinkedIn, Indeed & ATS)'}
+                        {isFree ? ' (Free Starter Trial)' : ' (LinkedIn, Indeed & ATS)'}
                       </span>
                     </span>
                   </li>
@@ -1057,11 +1057,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         {isLifetime
                           ? 'Unlimited Remote Duration'
                           : isFree
-                            ? '0 Remote Minutes'
+                            ? '5 Remote Minutes'
                             : `${p.included_minutes} Remote Minutes`}
                       </strong>
                       <span className="plan-feat-subtext">
-                        {isFree ? ' (Upgrade required)' : ' (Sub-15ms 60 FPS stream)'}
+                        {isFree ? ' (Free Starter Trial)' : ' (Sub-15ms 60 FPS stream)'}
                       </span>
                     </span>
                   </li>
@@ -1070,13 +1070,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <span>
                       <strong>
                         {isFree
-                          ? '0 Ans 💡 AI Answers'
+                          ? '5 Ans 💡 AI Answers'
                           : isLifetime
                             ? 'BYOK Ans 💡 AI Screen Copilot'
                             : `${p.included_responses} Ans 💡 AI Screen Answers`}
                       </strong>
                       <span className="plan-feat-subtext">
-                        {isFree ? ' (Upgrade required)' : ''}
+                        {isFree ? ' (Free Starter Trial)' : ''}
                       </span>
                     </span>
                   </li>
@@ -1084,17 +1084,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <CheckCircleIcon />
                     <span>60 FPS P2P WebRTC Direct Stream</span>
                   </li>
-                  {isFree ? (
-                    <li className="disabled-feat">
-                      <span style={{ marginRight: '0.4rem' }}>✕</span>
-                      <span>AI Meeting & Screen Copilot (Upgrade required)</span>
-                    </li>
-                  ) : (
-                    <li>
-                      <CheckCircleIcon />
-                      <span>Stealth Host Input & Audio Loopback</span>
-                    </li>
-                  )}
+                  <li>
+                    <CheckCircleIcon />
+                    <span>{isFree ? 'Free Starter Unified Trial' : 'Stealth Host Input & Audio Loopback'}</span>
+                  </li>
                 </ul>
 
                 {/* CTA Action Button */}

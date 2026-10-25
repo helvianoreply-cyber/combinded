@@ -2081,22 +2081,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                   <p className="plan-meta">
                     {isFree 
-                      ? 'Basic account with 0 quotas. Upgrade to activate your unified suite.' 
+                      ? 'Free starter trial: 5 mins remote, 5 copilot answers, and 3 job auto-applies included.' 
                       : isLifetime
                         ? 'Unlimited lifetime remote access with Bring Your Own Keys.'
                         : `${p.included_minutes} mins remote, ${p.included_responses} copilot answers, ${p.included_applications} job auto-applies.`}
                   </p>
 
                   <ul className="plan-feature-list">
-                    <li><CheckIcon /> <span><strong>{isFree ? '0' : p.included_applications}</strong> Job Auto-Applies (LinkedIn & ATS)</span></li>
-                    <li><CheckIcon /> <span>{isLifetime ? 'Unlimited Remote' : isFree ? '0 Remote Mins (Upgrade required)' : `${p.included_minutes} Remote Mins`}</span></li>
-                    <li><CheckIcon /> <span>{isFree ? '0 Copilot Answers (Upgrade required)' : `${p.included_responses} Copilot Answers`}</span></li>
+                    <li><CheckIcon /> <span><strong>{isFree ? 3 : p.included_applications}</strong> Job Auto-Applies (LinkedIn & ATS)</span></li>
+                    <li><CheckIcon /> <span>{isLifetime ? 'Unlimited Remote' : isFree ? '5 Remote Mins' : `${p.included_minutes} Remote Mins`}</span></li>
+                    <li><CheckIcon /> <span>{isFree ? '5 Copilot Answers' : `${p.included_responses} Copilot Answers`}</span></li>
                     <li><CheckIcon /> <span>Anti-Detect Hardware (WDA)</span></li>
-                    {isFree ? (
-                      <li className="disabled-feat"><span>🔒 Executive Copilot & Auto-Apply</span></li>
-                    ) : (
-                      <li><CheckIcon /> <span>AI Interview Coach</span></li>
-                    )}
+                    <li><CheckIcon /> <span>{isFree ? 'Free Trial Unified Access' : 'AI Interview Coach'}</span></li>
                   </ul>
 
                   <div className="plan-cta">
