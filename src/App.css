@@ -18722,6 +18722,36 @@ section[id] {
   color: #ffffff;
 }
 
+.landing-unlimited-spotlight-wrap {
+  margin-top: 2.75rem;
+  width: 100%;
+}
+
+.unlimited-landing-select-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.05rem 2rem !important;
+  font-size: 1.05rem !important;
+  font-weight: 850 !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #d946ef 0%, #a855f7 50%, #6366f1 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 10px 30px rgba(217, 70, 239, 0.45) !important;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  text-decoration: none;
+}
+
+.unlimited-landing-select-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 40px rgba(217, 70, 239, 0.65) !important;
+  filter: brightness(1.1);
+}
+
 /* Dashboard Section Divider */
 .dashboard-section-divider {
   display: flex;

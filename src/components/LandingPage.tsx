@@ -1813,108 +1813,248 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <p className="pricing-subtitle">One unified subscription powers all 3 breakthrough apps: Helvia Remote, Meeting Copilot, and Auto Apply &amp; Coach.</p>
           </div>
           
-          <div className="plans-grid">
-            {(plans && plans.length > 0 ? plans : SEED_PLANS)
+          {(() => {
+            const allAvailablePlans = (plans && plans.length > 0 ? plans : SEED_PLANS)
+
+            // The 3 Core Plans: Basic Free Tier ($0), Standard Plan ($8), Pro+ Pro ($15)
+            const corePlans = allAvailablePlans
               .filter((p) => {
                 const n = String(p.name || '').toLowerCase()
-                return (
+                const isUnlimited = n.includes('unlimited') || p.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901'
+                return !isUnlimited && (
                   p.tier === 'basic' ||
                   n.includes('basic') ||
                   n.includes('standard') ||
                   n.includes('pro+') ||
-                  n.includes('unlimited') ||
                   p.id === 'ee803f63-7ffc-4c93-bd79-2cb349c318b1' ||
                   p.id === '4d569314-3b27-45c8-93ad-3d5c2eebffc0' ||
-                  p.id === 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812' ||
-                  p.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901'
+                  p.id === 'fdbc4259-cdb8-42b8-a0d5-02b8a7392812'
                 )
               })
               .sort((a, b) => Number(a.price) - Number(b.price))
-              .map((p, idx) => {
-              const isPopular = p.name.toLowerCase().includes('most popular') || p.name.toLowerCase().includes('pro+ pro')
-              const isLifetime = p.tier === 'pro plus+'
-              const isFree = Number(p.price) === 0
-              const isCurrentActive = userPlan && (
-                userPlan === p.tier || 
-                (isFree && (userPlan === 'basic' || !userPlan)) ||
-                (userPlan.toLowerCase() === p.name.toLowerCase())
-              )
 
-              return (
-                <div 
-                  className={`plan-card stagger-${(idx % 4) + 1} ${isPopular ? 'popular' : ''} ${isLifetime ? 'lifetime' : ''}`} 
-                  key={p.id || idx}
-                >
-                  <div className={`plan-badge ${isPopular ? 'popular-badge' : isLifetime ? 'lifetime-badge' : isFree ? 'free-badge' : 'standard-badge'}`}>
-                    <span>{isPopular ? '✨ Most Popular' : isLifetime ? '💎 Lifetime BYOK' : isFree ? '⚡ Free Trial' : '🚀 3-in-1 Suite'}</span>
-                  </div>
+            // The 1 Month Unlimited VIP Plan
+            const unlimitedPlan = allAvailablePlans.find((p) => {
+              const n = String(p.name || '').toLowerCase()
+              return n.includes('unlimited') || p.id === 'b1e06fa2-5819-48ce-8d07-28d8cf9c4901'
+            })
 
-                  <h3 className="plan-name">{p.name}</h3>
-                  
-                  <div className="plan-price-wrap">
-                    <div className="plan-price">
-                      {isFree ? (
-                        <span className="price-val">Free</span>
-                      ) : (
-                        <>
-                          <span className="price-currency">$</span>
-                          <span className="price-val">{p.price}</span>
-                          <span className="price-inr-chip">₹{getPlanInrPrice(p.price)}</span>
-                          <span className="price-period">{isLifetime ? '/ life' : '/ pack'}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
+            return (
+              <>
+                <div className="plans-grid">
+                  {corePlans.map((p, idx) => {
+                    const isPopular = p.name.toLowerCase().includes('most popular') || p.name.toLowerCase().includes('pro+ pro')
+                    const isLifetime = p.tier === 'pro plus+'
+                    const isFree = Number(p.price) === 0
+                    const isCurrentActive = userPlan && (
+                      userPlan === p.tier || 
+                      (isFree && (userPlan === 'basic' || !userPlan)) ||
+                      (userPlan.toLowerCase() === p.name.toLowerCase())
+                    )
 
-                  <p className="plan-meta">
-                    {isFree 
-                      ? 'Free starter trial: 5 mins remote, 5 copilot answers, and 3 job auto-applies included.' 
-                      : isLifetime
-                        ? 'Unlimited lifetime remote access with Bring Your Own Keys.'
-                        : `${p.included_minutes} mins remote, ${p.included_responses} copilot answers, ${p.included_applications} job auto-applies.`}
-                  </p>
-
-                  <ul className="plan-feature-list">
-                    <li><CheckIcon /> <span><strong>{isFree ? 3 : p.included_applications}</strong> Job Auto-Applies (LinkedIn & ATS)</span></li>
-                    <li><CheckIcon /> <span>{isLifetime ? 'Unlimited Remote' : isFree ? '5 Remote Mins' : `${p.included_minutes} Remote Mins`}</span></li>
-                    <li><CheckIcon /> <span>{isFree ? '5 Copilot Answers' : `${p.included_responses} Copilot Answers`}</span></li>
-                    <li><CheckIcon /> <span>Anti-Detect Hardware (WDA)</span></li>
-                    <li><CheckIcon /> <span>{isFree ? 'Free Trial Unified Access' : 'AI Interview Coach'}</span></li>
-                  </ul>
-
-                  <div className="plan-cta">
-                    {isFree ? (
-                      <button 
-                        className="plan-cta-main secondary" 
-                        type="button" 
-                        onClick={() => {
-                          if (isSignedIn) navigate('/dashboard')
-                          else signInWithGoogle()
-                        }}
+                    return (
+                      <div 
+                        className={`plan-card stagger-${(idx % 4) + 1} ${isPopular ? 'popular' : ''} ${isLifetime ? 'lifetime' : ''}`} 
+                        key={p.id || idx}
                       >
-                        {isSignedIn ? 'Active Default Tier' : 'Get Started Free'}
-                      </button>
-                    ) : isCurrentActive ? (
-                      <button className="plan-cta-main secondary" type="button" disabled>
-                        ✓ Current Plan
-                      </button>
-                    ) : (
-                      <button
-                        className={`plan-cta-main ${isPopular ? 'primary' : 'secondary'}`}
-                        type="button"
-                        onClick={() => {
-                          setSelectedPlanForPayment(p)
-                          setIsPaymentModalOpen(true)
-                        }}
-                      >
-                        Select (${p.price} / ₹{getPlanInrPrice(p.price)})
-                      </button>
-                    )}
-                  </div>
+                        <div className={`plan-badge ${isPopular ? 'popular-badge' : isLifetime ? 'lifetime-badge' : isFree ? 'free-badge' : 'standard-badge'}`}>
+                          <span>{isPopular ? '✨ Most Popular' : isLifetime ? '💎 Lifetime BYOK' : isFree ? '⚡ Free Trial' : '🚀 3-in-1 Suite'}</span>
+                        </div>
+
+                        <h3 className="plan-name">{p.name}</h3>
+                        
+                        <div className="plan-price-wrap">
+                          <div className="plan-price">
+                            {isFree ? (
+                              <span className="price-val">Free</span>
+                            ) : (
+                              <>
+                                <span className="price-currency">$</span>
+                                <span className="price-val">{p.price}</span>
+                                <span className="price-inr-chip">₹{getPlanInrPrice(p.price)}</span>
+                                <span className="price-period">{isLifetime ? '/ life' : '/ pack'}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <p className="plan-meta">
+                          {isFree 
+                            ? 'Free starter trial: 5 mins remote, 5 copilot answers, and 3 job auto-applies included.' 
+                            : isLifetime
+                              ? 'Unlimited lifetime remote access with Bring Your Own Keys.'
+                              : `${p.included_minutes} mins remote, ${p.included_responses} copilot answers, ${p.included_applications} job auto-applies.`}
+                        </p>
+
+                        <ul className="plan-feature-list">
+                          <li><CheckIcon /> <span><strong>{isFree ? 3 : p.included_applications}</strong> Job Auto-Applies (LinkedIn & ATS)</span></li>
+                          <li><CheckIcon /> <span>{isLifetime ? 'Unlimited Remote' : isFree ? '5 Remote Mins' : `${p.included_minutes} Remote Mins`}</span></li>
+                          <li><CheckIcon /> <span>{isFree ? '5 Copilot Answers' : `${p.included_responses} Copilot Answers`}</span></li>
+                          <li><CheckIcon /> <span>Anti-Detect Hardware (WDA)</span></li>
+                          <li><CheckIcon /> <span>{isFree ? 'Free Trial Unified Access' : 'AI Interview Coach'}</span></li>
+                        </ul>
+
+                        <div className="plan-cta">
+                          {isFree ? (
+                            <button 
+                              className="plan-cta-main secondary" 
+                              type="button" 
+                              onClick={() => {
+                                if (isSignedIn) navigate('/dashboard')
+                                else signInWithGoogle()
+                              }}
+                            >
+                              {isSignedIn ? 'Active Default Tier' : 'Get Started Free'}
+                            </button>
+                          ) : isCurrentActive ? (
+                            <button className="plan-cta-main secondary" type="button" disabled>
+                              ✓ Current Plan
+                            </button>
+                          ) : (
+                            <button
+                              className={`plan-cta-main ${isPopular ? 'primary' : 'secondary'}`}
+                              type="button"
+                              onClick={() => {
+                                setSelectedPlanForPayment(p)
+                                setIsPaymentModalOpen(true)
+                              }}
+                            >
+                              Select (${p.price} / ₹{getPlanInrPrice(p.price)})
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
-          </div>
+
+                {/* Dedicated Separate 1-Month Unlimited VIP Pass Card */}
+                {unlimitedPlan && (() => {
+                  const inrPrice = getPlanInrPrice(unlimitedPlan.price)
+                  const isCurrentUnlimited = userPlan && (
+                    userPlan.toLowerCase() === 'usage' || 
+                    userPlan.toLowerCase() === unlimitedPlan.tier.toLowerCase() ||
+                    userPlan.toLowerCase() === unlimitedPlan.name.toLowerCase()
+                  )
+
+                  return (
+                    <div className="landing-unlimited-spotlight-wrap" style={{ marginTop: '2.5rem' }}>
+                      <div className="unlimited-spotlight-card">
+                        <div className="unlimited-spotlight-glow" />
+
+                        <div className="unlimited-spotlight-header">
+                          <div className="unlimited-badge-cluster">
+                            <span className="unlimited-crown-badge">
+                              👑 1-Month Unlimited VIP Pass
+                            </span>
+                            <span className="unlimited-duration-tag">30 Days Full Access</span>
+                          </div>
+                          <div className="unlimited-offer-pill">
+                            <span>⚡ Zero Minute Limits • Everything Uncapped</span>
+                          </div>
+                        </div>
+
+                        <div className="unlimited-spotlight-body">
+                          <div className="unlimited-spotlight-main">
+                            <h3 className="unlimited-spotlight-title">{unlimitedPlan.name}</h3>
+                            <p className="unlimited-spotlight-subtitle">
+                              Complete unrestricted access for 30 full days. Run long meetings, continuous AI screen analysis, and bulk auto-apply to hundreds of jobs with zero per-minute deductions.
+                            </p>
+
+                            <div className="unlimited-pricing-block">
+                              <div className="unlimited-price-tag">
+                                <span className="unlimited-currency">$</span>
+                                <span className="unlimited-amount">{unlimitedPlan.price}</span>
+                                <span className="unlimited-period">USD / 30 Days</span>
+                              </div>
+                              <div className="unlimited-inr-row">
+                                <span className="unlimited-inr-base">≈ ₹{inrPrice.toLocaleString('en-IN')} INR</span>
+                              </div>
+                            </div>
+
+                            <div className="unlimited-stats-row">
+                              <div className="unlimited-stat-card">
+                                <div className="unlimited-stat-icon">⏱️</div>
+                                <div>
+                                  <div className="unlimited-stat-number">∞ Unlimited</div>
+                                  <div className="unlimited-stat-label">Remote PC Minutes</div>
+                                </div>
+                              </div>
+
+                              <div className="unlimited-stat-card">
+                                <div className="unlimited-stat-icon">💡</div>
+                                <div>
+                                  <div className="unlimited-stat-number">∞ Unlimited</div>
+                                  <div className="unlimited-stat-label">Copilot Screen Answers</div>
+                                </div>
+                              </div>
+
+                              <div className="unlimited-stat-card">
+                                <div className="unlimited-stat-icon">💼</div>
+                                <div>
+                                  <div className="unlimited-stat-number">∞ Unlimited</div>
+                                  <div className="unlimited-stat-label">Job Auto-Applies</div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="unlimited-cta-container">
+                              {isCurrentUnlimited ? (
+                                <button className="unlimited-current-badge-btn" type="button" disabled>
+                                  <CheckIcon /> Current Active Plan
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="unlimited-landing-select-btn"
+                                  onClick={() => {
+                                    setSelectedPlanForPayment(unlimitedPlan)
+                                    setIsPaymentModalOpen(true)
+                                  }}
+                                >
+                                  Select Unlimited VIP (${unlimitedPlan.price} / ₹{inrPrice.toLocaleString('en-IN')})
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="unlimited-spotlight-sidebar">
+                            <h4 className="unlimited-features-heading">⚡ Everything Unlocked in VIP:</h4>
+                            <ul className="unlimited-features-list">
+                              <li>
+                                <CheckIcon />
+                                <span><strong>Zero Minute Limits:</strong> Stream desktop sessions continuously with no balance countdown.</span>
+                              </li>
+                              <li>
+                                <CheckIcon />
+                                <span><strong>Infinite AI Vision Answers:</strong> Real-time meeting transcription, answers &amp; interview coaching.</span>
+                              </li>
+                              <li>
+                                <CheckIcon />
+                                <span><strong>Bulk ATS Job Auto-Applies:</strong> Rapid automated submission across LinkedIn &amp; company portals.</span>
+                              </li>
+                              <li>
+                                <CheckIcon />
+                                <span><strong>60 FPS Ultra-Low Latency:</strong> Full hardware acceleration with ghost cursor and audio loopback.</span>
+                              </li>
+                              <li>
+                                <CheckIcon />
+                                <span><strong>Anti-Detect Kernel Guard:</strong> 100% undetected by meeting detection &amp; proctor software.</span>
+                              </li>
+                              <li>
+                                <CheckIcon />
+                                <span><strong>VIP Priority Support:</strong> Dedicated 24/7 WhatsApp executive support and fast server allocation.</span>
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </>
+            )
+          })()}
 
           {/* Dynamic On-Demand Top-Up Station */}
           <InteractiveTopupStation onTopup={handleTopup} />
