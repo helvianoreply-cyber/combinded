@@ -5,6 +5,7 @@ import { HELVIA_APPS_CATALOG } from '../lib/downloadLinks'
 import { PaymentModal } from './PaymentModal'
 import { InteractiveTopupStation } from './InteractiveTopupStation'
 import { ReviewSessionCard } from './ReviewSessionCard'
+import { VideoTutorialsSection } from './VideoTutorialsSection'
 import { supabase } from '../lib/supabaseClient'
 
 interface DashboardProps {
@@ -782,6 +783,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             ))}
           </div>
         </section>
+
+        {/* Video Walkthroughs in Dashboard */}
+        <VideoTutorialsSection compact={true} id="dashboard-video-tutorials" />
 
         {/* =========================================================
             FEATURED 1-MONTH UNLIMITED VIP SPOTLIGHT (STANDALONE SECTION)

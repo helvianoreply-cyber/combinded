@@ -1443,6 +1443,7 @@ function App() {
         {location.pathname === '/' ? (
           <nav className="desktop-nav">
             <a href="#apps" className="nav-item-link highlight-apps-nav">Platforms</a>
+            <a href="#how-to-use" className="nav-item-link highlight-apps-nav">Video Guides</a>
             <a href="#practical-remote" className="nav-item-link">Remote Desktop</a>
             <a href="#meeting-copilot" className="nav-item-link">Executive Copilot</a>
             <a href="#auto-apply" className="nav-item-link">Talent Mobility</a>
@@ -1516,6 +1517,7 @@ function App() {
           {location.pathname === '/' && (
             <nav className="mobile-nav-links">
               <a href="#apps" onClick={() => setMobileNavOpen(false)}>Enterprise Platforms</a>
+              <a href="#how-to-use" onClick={() => setMobileNavOpen(false)}>🎬 Video Guides &amp; Tutorials</a>
               <a href="#practical-remote" onClick={() => setMobileNavOpen(false)}>Zero-Trust Remote Desktop</a>
               <a href="#meeting-copilot" onClick={() => setMobileNavOpen(false)}>Executive Meeting Copilot</a>
               <a href="#auto-apply" onClick={() => setMobileNavOpen(false)}>Talent Mobility &amp; ATS</a>

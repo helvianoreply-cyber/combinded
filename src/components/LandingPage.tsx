@@ -6,6 +6,7 @@ import { type DbPlan, SEED_PLANS, getPlanInrPrice } from '../lib/database.types'
 import { HELVIA_DOWNLOAD_LINKS } from '../lib/downloadLinks'
 import { PaymentModal } from './PaymentModal'
 import { InteractiveTopupStation } from './InteractiveTopupStation'
+import { VideoTutorialsSection } from './VideoTutorialsSection'
 
 interface LandingPageProps {
   signInWithGoogle: () => Promise<void>
@@ -156,26 +157,6 @@ const FileTextIcon = () => (
 )
 
 
-const ActivityIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-  </svg>
-)
-
-const SlidersIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="4" y1="21" x2="4" y2="14"></line>
-    <line x1="4" y1="10" x2="4" y2="3"></line>
-    <line x1="12" y1="21" x2="12" y2="12"></line>
-    <line x1="12" y1="8" x2="12" y2="3"></line>
-    <line x1="20" y1="21" x2="20" y2="16"></line>
-    <line x1="20" y1="12" x2="20" y2="3"></line>
-    <line x1="1" y1="14" x2="7" y2="14"></line>
-    <line x1="9" y1="8" x2="15" y2="8"></line>
-    <line x1="17" y1="16" x2="23" y2="16"></line>
-  </svg>
-)
-
 const ChevronDownIcon = ({ open }: { open: boolean }) => (
   <svg 
     width="18" 
@@ -191,18 +172,6 @@ const ChevronDownIcon = ({ open }: { open: boolean }) => (
     <polyline points="6 9 12 15 18 9"></polyline>
   </svg>
 )
-
-// Data constants
-const EDGE_NODES = [
-  { id: 'fra', city: 'Frankfurt', region: 'eu', ping: '8.2 ms', flag: '🇩🇪', loss: '0.00%', load: '24%', type: 'Direct P2P' },
-  { id: 'tyo', city: 'Tokyo', region: 'apac', ping: '13.6 ms', flag: '🇯🇵', loss: '0.00%', load: '38%', type: 'Direct P2P' },
-  { id: 'sfo', city: 'Silicon Valley', region: 'na', ping: '11.4 ms', flag: '🇺🇸', loss: '0.00%', load: '41%', type: 'NVENC ICE' },
-  { id: 'sin', city: 'Singapore', region: 'apac', ping: '10.1 ms', flag: '🇸🇬', loss: '0.00%', load: '29%', type: 'Direct P2P' },
-  { id: 'blr', city: 'Bangalore', region: 'apac', ping: '6.8 ms', flag: '🇮🇳', loss: '0.00%', load: '32%', type: 'Direct P2P' },
-  { id: 'lon', city: 'London', region: 'eu', ping: '9.4 ms', flag: '🇬🇧', loss: '0.00%', load: '27%', type: 'Direct P2P' },
-  { id: 'syd', city: 'Sydney', region: 'apac', ping: '20.5 ms', flag: '🇦🇺', loss: '0.00%', load: '19%', type: 'STUN Relay' },
-  { id: 'sao', city: 'São Paulo', region: 'na', ping: '24.1 ms', flag: '🇧🇷', loss: '0.00%', load: '22%', type: 'AES-GCM Tunnel' },
-]
 
 const BENCHMARK_DATA = {
   latency: [
@@ -411,13 +380,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
 
   // Interactive sections state
-  const [activeTelemetryTab, setActiveTelemetryTab] = useState<'interview' | 'autoapply' | 'remote'>('interview')
   const [activeBenchmarkTab, setActiveBenchmarkTab] = useState<'stealth' | 'resumeMatch' | 'latency' | 'cpu'>('stealth')
   const [activeScenario, setActiveScenario] = useState<number>(0)
   const [openFaq, setOpenFaq] = useState<Record<number, boolean>>({ 0: true })
-  const [roiTeamSize, setRoiTeamSize] = useState<number>(6)
-  const [roiHoursPerWeek, setRoiHoursPerWeek] = useState<number>(10)
-
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -448,10 +413,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const toggleFaq = (index: number) => {
     setOpenFaq(prev => ({ ...prev, [index]: !prev[index] }))
   }
-
-  // Calculations for ROI
-  const hoursSavedPerMonth = Math.round(roiTeamSize * roiHoursPerWeek * 1.5)
-  const annualDollarSavings = roiTeamSize * 780
 
   return (
     <>
@@ -1074,312 +1035,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* NEW: Live Global P2P ICE Mesh & Real-Time Node Matrix */}
-      {/* NEW: Live Multi-Platform Engine Telemetry & Performance Matrix */}
-      <section className="network-telemetry-section reveal" id="live-mesh">
-        <div className="edge-telemetry-card">
-          <div className="edge-telemetry-header">
-            <div className="edge-badge">
-              <ActivityIcon />
-              <span>LIVE MULTI-PLATFORM ENGINE TELEMETRY</span>
-            </div>
-            <h2>Real-Time Engine Telemetry &amp; Performance Matrix</h2>
-            <p className="muted">
-              Live operational metrics across Helvia's Executive Interview Intelligence, Autonomous ATS Pipeline, and Zero-Trust Remote Mesh.
-            </p>
-
-            {/* Platform Selector Nav */}
-            <div className="telemetry-platform-tabs">
-              <button 
-                className={`telemetry-tab-btn ${activeTelemetryTab === 'interview' ? 'active' : ''}`} 
-                onClick={() => setActiveTelemetryTab('interview')}
-              >
-                🎙️ Helvia Interview &amp; Copilot
-              </button>
-              <button 
-                className={`telemetry-tab-btn ${activeTelemetryTab === 'autoapply' ? 'active' : ''}`} 
-                onClick={() => setActiveTelemetryTab('autoapply')}
-              >
-                🚀 Auto Apply &amp; ATS Pipeline
-              </button>
-              <button 
-                className={`telemetry-tab-btn ${activeTelemetryTab === 'remote' ? 'active' : ''}`} 
-                onClick={() => setActiveTelemetryTab('remote')}
-              >
-                🖥️ Remote P2P ICE Mesh
-              </button>
-            </div>
-          </div>
-
-          {/* Tab 1: Executive Interview Intelligence Telemetry */}
-          {activeTelemetryTab === 'interview' && (
-            <div className="interview-telemetry-board telemetry-tab-pane">
-              <div className="interview-telemetry-top">
-                <div className="interview-telemetry-status">
-                  <span className="live-audio-dot pulse-purple"></span>
-                  <strong>Live Call Audio Ingest: Zoom Session Active</strong>
-                  <span className="telemetry-chip purple">WDA_EXCLUDEFROMCAPTURE: 100% INVISIBLE</span>
-                </div>
-                <div className="interview-latency-badge">
-                  <span className="bolt-icon">⚡</span> Sub-18ms Inference • Ring-0 Audio Hook
-                </div>
-              </div>
-
-              <div className="interview-telemetry-main-grid">
-                {/* Audio Waveform & Speaker Card */}
-                <div className="interview-stream-card">
-                  <div className="stream-card-header">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span className="speaker-avatar">SJ</span>
-                      <div>
-                        <strong>Sarah J. (Lead Technical Interviewer)</strong>
-                        <span className="speaker-meta">Zoom Audio Stream • 48 kHz Lossless</span>
-                      </div>
-                    </div>
-                    <span className="telemetry-chip purple">Live Mic</span>
-                  </div>
-                  
-                  <div className="audio-wave-visualizer">
-                    <div className="wave-bar" style={{ height: '35%' }}></div>
-                    <div className="wave-bar" style={{ height: '65%' }}></div>
-                    <div className="wave-bar" style={{ height: '90%' }}></div>
-                    <div className="wave-bar" style={{ height: '45%' }}></div>
-                    <div className="wave-bar" style={{ height: '80%' }}></div>
-                    <div className="wave-bar" style={{ height: '100%' }}></div>
-                    <div className="wave-bar" style={{ height: '60%' }}></div>
-                    <div className="wave-bar" style={{ height: '40%' }}></div>
-                    <div className="wave-bar" style={{ height: '75%' }}></div>
-                    <div className="wave-bar" style={{ height: '95%' }}></div>
-                    <div className="wave-bar" style={{ height: '55%' }}></div>
-                    <div className="wave-bar" style={{ height: '30%' }}></div>
-                  </div>
-
-                  <div className="transcribed-speech-box">
-                    <span className="speech-quote-icon">“</span>
-                    <p className="speech-text">
-                      How would you design a distributed cache with Raft consensus and mitigate split-brain writes during network partitions?
-                    </p>
-                  </div>
-                </div>
-
-                {/* Real-Time Spoken Talking Points HUD */}
-                <div className="interview-hud-card">
-                  <div className="hud-card-header">
-                    <span className="hud-badge-live">● LIVE TALKING POINTS HUD</span>
-                    <span className="hud-latency-pill">&lt; 18 ms Local Ollama</span>
-                  </div>
-
-                  <div className="hud-talking-points">
-                    <div className="talking-point-item">
-                      <span className="point-number">1</span>
-                      <p><strong>Quorum Majority (N/2 + 1):</strong> Enforce strict partition majority for leader elections; isolated minority nodes reject writes immediately.</p>
-                    </div>
-                    <div className="talking-point-item">
-                      <span className="point-number">2</span>
-                      <p><strong>Monotonic Generation Fencing:</strong> Issue incrementing fencing tokens with every lease to invalidate zombie leader writes on storage engines.</p>
-                    </div>
-                    <div className="talking-point-item">
-                      <span className="point-number">3</span>
-                      <p><strong>Lease TTL &amp; Heartbeats:</strong> Bound split-brain window to sub-second TTLs via distributed consensus leases (etcd/Consul).</p>
-                    </div>
-                  </div>
-
-                  <div className="hud-actions-footer">
-                    <span className="hud-action-chip active">💬 What to say</span>
-                    <span className="hud-action-chip">💡 Deep Assist</span>
-                    <span className="hud-action-chip">❓ Follow-up questions</span>
-                    <span className="hud-action-chip">📝 Meeting Recap</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 2: Autonomous Auto Apply & ATS Pipeline Telemetry */}
-          {activeTelemetryTab === 'autoapply' && (
-            <div className="autoapply-telemetry-board telemetry-tab-pane">
-              <div className="autoapply-telemetry-top">
-                <div className="autoapply-telemetry-status">
-                  <span className="live-audio-dot pulse-amber"></span>
-                  <strong>Autonomous Pipeline Active: Multi-Portal Scraper &amp; Matcher</strong>
-                  <span className="telemetry-chip amber">99.4% AVERAGE ATS PASS RATE</span>
-                </div>
-                <div className="autoapply-counter-badge">
-                  <span>48 Applications Dispatched Today</span> • <span>14 Callbacks Scheduled</span>
-                </div>
-              </div>
-
-              <div className="autoapply-telemetry-main-grid">
-                {/* Target Job Queue */}
-                <div className="autoapply-queue-card">
-                  <div className="queue-card-header">
-                    <strong>Live Matched Target Roles</strong>
-                    <span className="queue-sync-pill">● Real-Time Sync</span>
-                  </div>
-
-                  <div className="queue-items-list">
-                    <div className="queue-job-item">
-                      <div className="job-brand-logo">S</div>
-                      <div className="job-info">
-                        <strong>Staff Distributed Systems Engineer</strong>
-                        <span className="job-company">Stripe • Remote • $380k - $440k</span>
-                      </div>
-                      <span className="job-score-pill">99.4% ATS</span>
-                    </div>
-
-                    <div className="queue-job-item">
-                      <div className="job-brand-logo" style={{ background: '#f97316' }}>C</div>
-                      <div className="job-info">
-                        <strong>Principal Edge Infrastructure Architect</strong>
-                        <span className="job-company">Cloudflare • Remote • $340k - $410k</span>
-                      </div>
-                      <span className="job-score-pill">98.8% ATS</span>
-                    </div>
-
-                    <div className="queue-job-item">
-                      <div className="job-brand-logo" style={{ background: '#10b981' }}>O</div>
-                      <div className="job-info">
-                        <strong>Senior Platform &amp; Network Engineer</strong>
-                        <span className="job-company">OpenAI • Hybrid • $310k - $370k</span>
-                      </div>
-                      <span className="job-score-pill">99.1% ATS</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Dynamic ATS Resume Diff & Submission Pipeline */}
-                <div className="autoapply-diff-card">
-                  <div className="diff-card-header">
-                    <strong>Dynamic Experience Keyword Realignment</strong>
-                    <span className="portal-badge">Greenhouse API</span>
-                  </div>
-
-                  <div className="resume-tailor-diff-view">
-                    <div className="diff-original">
-                      <span className="diff-label">Original Master Resume</span>
-                      <p>“Built backend services with Go and handled cloud infrastructure deployments for microservices.”</p>
-                    </div>
-                    <div className="diff-arrow">➜</div>
-                    <div className="diff-tailored">
-                      <span className="diff-label">ATS Tailored Bullet (99.4% Match)</span>
-                      <p>“Architected high-throughput P2P WebRTC data channels and distributed Go services processing 45k RPS with &lt;15ms latency, enforcing Raft consensus.”</p>
-                    </div>
-                  </div>
-
-                  <div className="pipeline-stats-row">
-                    <div className="pipe-stat">
-                      <span className="pipe-val">Greenhouse</span>
-                      <span className="pipe-status ok">✓ API Connected</span>
-                    </div>
-                    <div className="pipe-stat">
-                      <span className="pipe-val">Lever</span>
-                      <span className="pipe-status ok">✓ Direct Submit</span>
-                    </div>
-                    <div className="pipe-stat">
-                      <span className="pipe-val">Workday</span>
-                      <span className="pipe-status ok">✓ Anti-Bot Passed</span>
-                    </div>
-                    <div className="pipe-stat">
-                      <span className="pipe-val">Mock Score</span>
-                      <span className="pipe-status score">98 / 100</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 3: Real-Time Live P2P Telemetry for Remote */}
-          {activeTelemetryTab === 'remote' && (
-            <div className="telemetry-tab-pane">
-              <div className="remote-telemetry-board">
-                <div className="interview-telemetry-top" style={{ marginBottom: '1.25rem' }}>
-                  <div className="interview-telemetry-status">
-                    <span className="live-audio-dot pulse-blue"></span>
-                    <strong>Live P2P Connection: Direct WebRTC Web Host</strong>
-                    <span className="telemetry-chip blue">AES-256-GCM ENCRYPTED</span>
-                  </div>
-                  <div className="interview-latency-badge" style={{ background: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#93c5fd' }}>
-                    <span className="bolt-icon">⚡</span> Sub-15ms Glass-to-Glass • 60 FPS NVENC
-                  </div>
-                </div>
-
-                <div className="remote-stats-showcase-grid">
-                  <div className="remote-stat-card">
-                    <div className="remote-stat-icon">⚡</div>
-                    <div className="remote-stat-val">12.4 ms</div>
-                    <div className="remote-stat-lbl">Average P2P Latency</div>
-                    <p className="remote-stat-sub">Direct peer-to-peer WebRTC bypasses server bottlenecks.</p>
-                  </div>
-                  <div className="remote-stat-card">
-                    <div className="remote-stat-icon">🖥️</div>
-                    <div className="remote-stat-val">60 FPS 4K</div>
-                    <div className="remote-stat-lbl">DirectX GPU Duplication</div>
-                    <p className="remote-stat-sub">Hardware DXGI Desktop Duplication API with sub-frame encoding.</p>
-                  </div>
-                  <div className="remote-stat-card">
-                    <div className="remote-stat-icon">🛡️</div>
-                    <div className="remote-stat-val">100% Stealth</div>
-                    <div className="remote-stat-lbl">Anti-Detect Display Affinity</div>
-                    <p className="remote-stat-sub">Excluded from screen captures via WDA_EXCLUDEFROMCAPTURE.</p>
-                  </div>
-                  <div className="remote-stat-card">
-                    <div className="remote-stat-icon">🌐</div>
-                    <div className="remote-stat-val">0.00% Loss</div>
-                    <div className="remote-stat-lbl">Lossless ICE Data Channels</div>
-                    <p className="remote-stat-sub">Zero middleman buffer bloat across 8 edge hubs worldwide.</p>
-                  </div>
-                </div>
-
-                {/* Regional Edge Latency Quick Pills */}
-                <div className="remote-regions-strip">
-                  <span className="regions-strip-title">🌍 Active Global Edge Hubs:</span>
-                  <div className="regions-pill-row">
-                    {EDGE_NODES.slice(0, 6).map((node) => (
-                      <div className="region-live-pill" key={node.id}>
-                        <span className="node-flag">{node.flag}</span>
-                        <span className="region-name">{node.city}</span>
-                        <span className="region-ping">{node.ping}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Balanced Multi-Platform Telemetry Counters */}
-          <div className="telemetry-grid">
-            <div className="telemetry-metric-box">
-              <div className="telemetry-icon">🎙️</div>
-              <div className="telemetry-value">&lt; 18 ms</div>
-              <div className="telemetry-label">Interview Speech Ingestion</div>
-              <p className="telemetry-desc">Sub-18ms local speech transcription and real-time STAR talking point synthesis.</p>
-            </div>
-
-            <div className="telemetry-metric-box">
-              <div className="telemetry-icon">🛡️</div>
-              <div className="telemetry-value">100% Excluded</div>
-              <div className="telemetry-label">Display Capture Privacy</div>
-              <p className="telemetry-desc">Hardware WDA_EXCLUDEFROMCAPTURE shields HUD completely during Zoom &amp; Teams calls.</p>
-            </div>
-
-            <div className="telemetry-metric-box">
-              <div className="telemetry-icon">📄</div>
-              <div className="telemetry-value">99.4%</div>
-              <div className="telemetry-label">ATS Resume Match Rate</div>
-              <p className="telemetry-desc">Dynamic experience and skill realignment tailored per job description on Greenhouse &amp; Lever.</p>
-            </div>
-
-            <div className="telemetry-metric-box">
-              <div className="telemetry-icon">⚡</div>
-              <div className="telemetry-value">&lt; 15 ms / 60 FPS</div>
-              <div className="telemetry-label">Zero-Trust Remote P2P</div>
-              <p className="telemetry-desc">Direct WebRTC ICE peer data channels with native GPU NVENC hardware hooks.</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* NEW: Official Video Tutorials & Interactive App Demos */}
+      <VideoTutorialsSection />
 
       {/* NEW: Quantitative Benchmark Comparison & Performance Matrix */}
       <section className="benchmark-section reveal" id="benchmarks">
@@ -2082,90 +1739,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* NEW: Interactive Productivity & ROI Calculator */}
-      <section className="roi-calculator-section reveal" id="calculator">
-        <div className="section-header-center">
-          <p className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-            <SlidersIcon /> TIME &amp; COST EFFICIENCY
-          </p>
-          <h2>Interactive Team Productivity &amp; ROI Calculator</h2>
-          <p className="muted">Calculate how many hours and subscription dollars your engineering team recovers every month.</p>
-        </div>
-
-        <div className="roi-calculator-card reveal-scale">
-          <div className="roi-inputs-col">
-            <div className="roi-slider-group">
-              <div className="roi-slider-header">
-                <label htmlFor="team-size-range">Team Size (Engineers / IT Pros)</label>
-                <span className="slider-current-val">{roiTeamSize} members</span>
-              </div>
-              <input 
-                id="team-size-range"
-                type="range" 
-                min="1" 
-                max="50" 
-                value={roiTeamSize}
-                onChange={(e) => setRoiTeamSize(Number(e.target.value))}
-                className="roi-slider"
-              />
-              <div className="slider-ticks">
-                <span>1</span>
-                <span>15</span>
-                <span>30</span>
-                <span>50</span>
-              </div>
-            </div>
-
-            <div className="roi-slider-group">
-              <div className="roi-slider-header">
-                <label htmlFor="hours-range">Remote On-Call &amp; Access Hours / Week</label>
-                <span className="slider-current-val">{roiHoursPerWeek} hrs / member</span>
-              </div>
-              <input 
-                id="hours-range"
-                type="range" 
-                min="2" 
-                max="30" 
-                value={roiHoursPerWeek}
-                onChange={(e) => setRoiHoursPerWeek(Number(e.target.value))}
-                className="roi-slider"
-              />
-              <div className="slider-ticks">
-                <span>2 hrs</span>
-                <span>10 hrs</span>
-                <span>20 hrs</span>
-                <span>30 hrs</span>
-              </div>
-            </div>
-
-            <div className="roi-notes-pill">
-              <ZapIcon />
-              <span>Assumes 35% time recovery from instant QR connection &amp; "Ans 💡" auto-routing.</span>
-            </div>
-          </div>
-
-          <div className="roi-results-col">
-            <div className="roi-stat-box highlight">
-              <span className="roi-stat-title">Monthly Engineering Hours Saved</span>
-              <span className="roi-stat-number">{hoursSavedPerMonth} hrs</span>
-              <span className="roi-stat-desc">Eliminating cumbersome VPN handshakes and heavy client bootups</span>
-            </div>
-
-            <div className="roi-stat-box">
-              <span className="roi-stat-title">Estimated Annual License Savings</span>
-              <span className="roi-stat-number">${annualDollarSavings.toLocaleString()}</span>
-              <span className="roi-stat-desc">Compared to legacy enterprise TeamViewer &amp; AnyDesk tiered pricing</span>
-            </div>
-
-            <div className="roi-stat-box">
-              <span className="roi-stat-title">Incident MTTR Reduction</span>
-              <span className="roi-stat-number">64% Faster</span>
-              <span className="roi-stat-desc">Immediate phone-to-desktop triage from anywhere with full lock mode</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Target Market / Who is this App For */}
       <section className="target-market-section reveal" id="target-market">
         <div className="section-header-center">
@@ -2438,39 +2011,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <p className="muted">
               Video, audio, and inputs stream directly peer-to-peer (P2P). This guarantees sub-30ms latency while keeping operational server costs negligible.
             </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Security Badges */}
-      <section className="security-section reveal">
-        <div className="security-header">
-          <div className="panel-icon" style={{ margin: '0 auto 1rem' }}>
-            <LockIcon />
-          </div>
-          <h2>Enterprise-Grade Security by Default</h2>
-          <p className="muted">Your connections and inputs are guarded by industry standard cryptographic protocols</p>
-        </div>
-        <div className="security-badges">
-          <div className="security-badge stagger-1">
-            <div className="security-badge-icon">🔒</div>
-            <p className="security-badge-title">AES-256 Encryption</p>
-            <p className="security-badge-desc">End-to-end encrypted direct data streams</p>
-          </div>
-          <div className="security-badge stagger-2">
-            <div className="security-badge-icon">🛡️</div>
-            <p className="security-badge-title">Cryptographic Tokens</p>
-            <p className="security-badge-desc">Server-side validated against Supabase</p>
-          </div>
-          <div className="security-badge stagger-3">
-            <div className="security-badge-icon">🔐</div>
-            <p className="security-badge-title">Direct P2P WebRTC</p>
-            <p className="security-badge-desc">No middleman video storage</p>
-          </div>
-          <div className="security-badge stagger-4">
-            <div className="security-badge-icon">✅</div>
-            <p className="security-badge-title">Hardware Hooks</p>
-            <p className="security-badge-desc">Native Windows input injection</p>
           </div>
         </div>
       </section>
@@ -2919,7 +2459,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <ul>
                 <li><a href="#features">Zero-Trust Kernel IOCTL</a></li>
                 <li><a href="#features">Display Capture Privacy (WDA)</a></li>
-                <li><a href="#calculator">ROI &amp; Efficiency Model</a></li>
+                <li><a href="#how-to-use">Video Walkthroughs</a></li>
                 <li><a href="#scenarios">Field-Tested Workflows</a></li>
                 <li><a href="#benchmarks">Hardware Benchmarks</a></li>
               </ul>
