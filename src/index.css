@@ -67,6 +67,7 @@
 html {
   font-size: 12px;
   overflow-x: hidden;
+  overflow-y: auto;
   margin: 0;
   padding: 0;
   width: 100%;
@@ -79,9 +80,15 @@ body {
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  overflow-x: hidden;
   background-color: transparent;
   color: #fdf2f8;
+  scrollbar-width: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* Ensure only one sleek, unified scrollbar on the entire page */

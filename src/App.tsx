@@ -1443,7 +1443,10 @@ function App() {
         {location.pathname === '/' ? (
           <nav className="desktop-nav">
             <a href="#apps" className="nav-item-link">Platforms</a>
-            <a href="#how-to-use" className="nav-item-link">Guides</a>
+            <a href="#practical-remote" className="nav-item-link">Remote PC</a>
+            <a href="#meeting-copilot-details" className="nav-item-link">Meeting Copilot</a>
+            <a href="#auto-apply-details" className="nav-item-link">Auto Apply</a>
+            <a href="#how-to-use" className="nav-item-link">Video Guides</a>
             <a href="#benchmarks" className="nav-item-link">Compare</a>
             <a href="#pricing" className="nav-item-link">Pricing</a>
           </nav>
@@ -1514,7 +1517,10 @@ function App() {
           {location.pathname === '/' && (
             <nav className="mobile-nav-links">
               <a href="#apps" onClick={() => setMobileNavOpen(false)}>🚀 Platforms</a>
-              <a href="#how-to-use" onClick={() => setMobileNavOpen(false)}>🎬 Guides</a>
+              <a href="#practical-remote" onClick={() => setMobileNavOpen(false)}>🖥️ Remote PC</a>
+              <a href="#meeting-copilot-details" onClick={() => setMobileNavOpen(false)}>🎙️ Meeting Copilot</a>
+              <a href="#auto-apply-details" onClick={() => setMobileNavOpen(false)}>📄 Auto Apply</a>
+              <a href="#how-to-use" onClick={() => setMobileNavOpen(false)}>🎬 Video Guides</a>
               <a href="#benchmarks" onClick={() => setMobileNavOpen(false)}>📊 Compare</a>
               <a href="#pricing" onClick={() => setMobileNavOpen(false)}>💎 Pricing</a>
             </nav>
