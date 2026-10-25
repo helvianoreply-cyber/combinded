@@ -378,7 +378,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     setCouponFeedback(null)
     const raw = couponInputText.trim()
     if (!raw) {
-      setCouponFeedback({ text: 'Please enter a coupon code.', type: 'error' })
+      setCouponFeedback({ text: 'Please enter official coupon code: FIRST_50', type: 'error' })
       return
     }
     const found = validateCoupon(raw)
@@ -387,9 +387,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       try {
         localStorage.setItem('helvia_creator_coupon', found.code)
       } catch {}
-      setCouponFeedback({ text: `🎉 Creator code "${found.code}" applied! 50% discount activated on all plans!`, type: 'success' })
+      setCouponFeedback({ text: `🎉 Official code FIRST_50 applied! 50% discount activated on all plans!`, type: 'success' })
     } else {
-      setCouponFeedback({ text: `Code "${raw}" is invalid.`, type: 'error' })
+      setCouponFeedback({ text: `Code "${raw}" is invalid. Please enter official code: FIRST_50`, type: 'error' })
     }
   }
 
@@ -1899,18 +1899,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <input 
                   type="text" 
                   className="pricing-coupon-input"
-                  placeholder="Have an influencer or promo code? (e.g. CREATOR50)"
+                  placeholder="Enter influencer coupon code (e.g. FIRST_50)"
                   value={couponInputText}
                   onChange={(e) => setCouponInputText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon() }}
                 />
                 {appliedCoupon ? (
                   <button className="pricing-coupon-apply-btn applied" onClick={handleRemoveCoupon} type="button">
-                    ✓ 50% Active • Remove
+                    ✓ FIRST_50 Active (50% OFF) • Remove
                   </button>
                 ) : (
                   <button className="pricing-coupon-apply-btn" onClick={handleApplyCoupon} type="button">
-                    Apply 50% Code
+                    Apply FIRST_50
                   </button>
                 )}
               </div>

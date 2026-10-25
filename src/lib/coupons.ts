@@ -7,100 +7,53 @@ export interface CouponInfo {
 }
 
 /**
- * Registry of active coupoffn codes exclusively for Razorpay.
- * Linked to Razorpay Offer: offer_TgYKvwy8HyzTTz (Apply_50_off - 50% Instant Discount)
+export const OFFICIAL_COUPON_CODE = 'FIRST_50'
+
+/**
+ * Single Official Coupon: FIRST_50
+ * Distributed to all influencers for 50% instant discount on membership plans.
+ * Linked to Razorpay Offer: offer_ThtiX0ut4rhpCT
  */
 export const ACTIVE_COUPONS: Record<string, CouponInfo> = {
   FIRST_50: {
     code: 'FIRST_50',
     discountPercent: 50,
     offerId: 'offer_ThtiX0ut4rhpCT',
-    description: '50% Instant Discount for First Payment (UPI, Netbanking & Cards)',
+    description: 'Official 50% Instant Discount (Code: FIRST_50)',
   },
   FIRST50: {
     code: 'FIRST_50',
     discountPercent: 50,
     offerId: 'offer_ThtiX0ut4rhpCT',
-    description: '50% Instant Discount for First Payment (UPI, Netbanking & Cards)',
+    description: 'Official 50% Instant Discount (Code: FIRST_50)',
   },
   OFFER_THTIX0UT4RHPCT: {
     code: 'FIRST_50',
     discountPercent: 50,
     offerId: 'offer_ThtiX0ut4rhpCT',
-    description: '50% Instant Discount for First Payment (UPI, Netbanking & Cards)',
-  },
-  APPLY_50_OFF: {
-    code: 'Apply_50_off',
-    discountPercent: 50,
-    offerId: 'offer_TgYKvwy8HyzTTz',
-    description: '50% Instant Discount on Razorpay (UPI, Netbanking & Cards)',
-  },
-  APPLY50OFF: {
-    code: 'Apply_50_off',
-    discountPercent: 50,
-    offerId: 'offer_TgYKvwy8HyzTTz',
-    description: '50% Instant Discount on Razorpay (UPI, Netbanking & Cards)',
-  },
-  APPLY50: {
-    code: 'Apply_50_off',
-    discountPercent: 50,
-    offerId: 'offer_TgYKvwy8HyzTTz',
-    description: '50% Instant Discount on Razorpay (UPI, Netbanking & Cards)',
-  },
-  '50OFF': {
-    code: 'Apply_50_off',
-    discountPercent: 50,
-    offerId: 'offer_TgYKvwy8HyzTTz',
-    description: '50% Instant Discount on Razorpay (UPI, Netbanking & Cards)',
-  },
-  OFFER_TGYKVWY8HYZTTZ: {
-    code: 'Apply_50_off',
-    discountPercent: 50,
-    offerId: 'offer_TgYKvwy8HyzTTz',
-    description: '50% Instant Discount on Razorpay (UPI, Netbanking & Cards)',
+    description: 'Official 50% Instant Discount (Code: FIRST_50)',
   },
 }
 
 /**
- * Validates a coupon code string (Exclusively for Razorpay).
+ * Validates a coupon code string. Only FIRST_50 is accepted.
  */
 export function validateCoupon(code: string): CouponInfo | null {
   const clean = code.trim().replace(/\s+/g, '_').toUpperCase()
-  if (!clean || clean.length < 2) return null
+  if (!clean) return null
 
-  // Direct match in registry
+  // Direct match for FIRST_50
   if (ACTIVE_COUPONS[clean]) {
     return ACTIVE_COUPONS[clean]
   }
 
-  // Match without underscores
+  // Match without underscores (e.g. FIRST50)
   const noUnderscore = clean.replace(/_/g, '')
   if (ACTIVE_COUPONS[noUnderscore]) {
     return ACTIVE_COUPONS[noUnderscore]
   }
 
-  // Direct match for the offer ID
-  if (clean.toLowerCase() === 'offer_tgykvwy8hyzttz') {
-    return ACTIVE_COUPONS.APPLY_50_OFF
-  }
-
-  if (clean.toLowerCase().startsWith('offer_')) {
-    return {
-      code: clean,
-      offerId: clean.toLowerCase(),
-      discountPercent: 50,
-      description: 'Razorpay Instant Offer (50% OFF)',
-    }
-  }
-
-  // Universal Creator / Influencer Code Support
-  // Any promo or creator code provided by influencers activates 50% Instant Discount!
-  return {
-    code: clean,
-    discountPercent: 50,
-    offerId: 'offer_TgYKvwy8HyzTTz',
-    description: `Creator Code "${clean}": 50% Instant Discount Activated`,
-  }
+  return null
 }
 
 /**

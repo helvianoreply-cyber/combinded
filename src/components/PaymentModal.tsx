@@ -83,9 +83,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     if (found) {
       setAppliedCoupon(found)
       const calc = calculateDiscount(originalInrAmount, found)
-      setCouponSuccess(`Coupon "${found.code}" applied! ${calc.label}`)
+      setCouponSuccess(`Official Coupon "${found.code}" applied! ${calc.label}`)
     } else {
-      setCouponError(`Coupon code "${raw}" is invalid or expired.`)
+      setCouponError(`Invalid coupon code. Please enter official code: FIRST_50`)
     }
   }
 
@@ -215,7 +215,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   <input
                     type="text"
                     className={`payment-coupon-input ${appliedCoupon ? 'applied' : ''}`}
-                    placeholder="Enter coupon code"
+                    placeholder="Enter coupon code (FIRST_50)"
                     value={couponInput}
                     onChange={(e) => {
                       setCouponInput(e.target.value)
