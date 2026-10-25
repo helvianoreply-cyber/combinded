@@ -1444,6 +1444,7 @@ function App() {
           <nav className="desktop-nav">
             <a href="#apps" className="nav-item-link">Platforms</a>
             <a href="#how-to-use" className="nav-item-link">Video Guides</a>
+            <a href="#scenarios" className="nav-item-link">Workflows</a>
             <a href="#benchmarks" className="nav-item-link">Compare</a>
             <a href="#pricing" className="nav-item-link">Pricing</a>
           </nav>
@@ -1515,6 +1516,7 @@ function App() {
             <nav className="mobile-nav-links">
               <a href="#apps" onClick={() => setMobileNavOpen(false)}>🚀 Platforms</a>
               <a href="#how-to-use" onClick={() => setMobileNavOpen(false)}>🎬 Video Guides</a>
+              <a href="#scenarios" onClick={() => setMobileNavOpen(false)}>⚡ Workflows</a>
               <a href="#benchmarks" onClick={() => setMobileNavOpen(false)}>📊 Compare</a>
               <a href="#pricing" onClick={() => setMobileNavOpen(false)}>💎 Pricing</a>
             </nav>
