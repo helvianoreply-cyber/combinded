@@ -7,6 +7,7 @@ import { HELVIA_DOWNLOAD_LINKS } from './lib/downloadLinks'
 import { LandingPage } from './components/LandingPage'
 import { Dashboard } from './components/Dashboard'
 import { AdminReviewsPanel } from './components/AdminReviewsPanel'
+import { Analytics } from '@vercel/analytics/react'
 import './App.css'
 
 function PrivacyPolicyPage() {
@@ -1659,6 +1660,9 @@ function App() {
         </span>
         <span className="wa-text-label">Support</span>
       </a>
+
+      {/* Vercel Web Analytics for Visitor Tracking */}
+      <Analytics />
     </div>
   )
 }
