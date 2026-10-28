@@ -483,9 +483,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             ========================================================= */}
         {(() => {
           const activeUser = liveProfile || userProfile || {
-            seconds_remaining: 0,
-            responses_remaining: 0,
-            applications_remaining: 0,
+            seconds_remaining: 300,
+            responses_remaining: 5,
+            applications_remaining: 3,
             verifier: false,
           }
           const isUserUnlimited = isUserUnlimitedPlan

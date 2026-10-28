@@ -365,6 +365,44 @@ export default {
           } catch (_) {}
         }
 
+        // 3. If not found by email or id, create fresh basic user record with starter quotas
+        if (!profile && email) {
+          try {
+            const newRecord = {
+              id: userId || undefined,
+              email: email.trim().toLowerCase(),
+              plan: 'basic',
+              verifier: false,
+              login_verifier: false,
+              session_verifier: false,
+              responses_remaining: 5,
+              responses_used: 0,
+              seconds_remaining: 300,
+              seconds_used: 0,
+              applications_remaining: 3,
+              applications_applied: 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }
+            const createRes = await fetch(`${supabaseBase}/rest/v1/users`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: serviceKey,
+                Authorization: `Bearer ${serviceKey}`,
+                Prefer: 'return=representation',
+              },
+              body: JSON.stringify(newRecord),
+            })
+            if (createRes.ok) {
+              const rows = await createRes.json()
+              if (Array.isArray(rows) && rows.length > 0) {
+                profile = rows[0]
+              }
+            }
+          } catch (_) {}
+        }
+
         if (profile) {
           let isExpired = false
           let expiryIso = profile.plan_expires_at || null
@@ -426,6 +464,47 @@ export default {
             profile.plan_expires_at = null
           } else if (expiryIso) {
             profile.plan_expires_at = expiryIso
+          }
+
+          // Auto-award starter trial quotas to new/fresh basic users who haven't used any tokens yet
+          const isFreshBasicUser =
+            (!profile.plan || profile.plan === 'basic') &&
+            !profile.plan_expires_at &&
+            (Number(profile.seconds_used) || 0) === 0 &&
+            (Number(profile.responses_used) || 0) === 0 &&
+            (Number(profile.applications_applied) || 0) === 0 &&
+            (
+              ((Number(profile.seconds_remaining) || 0) === 0 && (Number(profile.responses_remaining) || 0) === 0) ||
+              (Number(profile.applications_remaining) || 0) === 10
+            )
+
+          if (!isExpired && isFreshBasicUser) {
+            const starterSeconds = 300 // 5 minutes free trial
+            const starterResponses = 5 // 5 free AI answers
+            const starterApps = 3      // 3 free job auto-applies
+
+            try {
+              await fetch(`${supabaseBase}/rest/v1/users?id=eq.${encodeURIComponent(profile.id)}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  apikey: serviceKey,
+                  Authorization: `Bearer ${serviceKey}`,
+                },
+                body: JSON.stringify({
+                  plan: 'basic',
+                  seconds_remaining: starterSeconds,
+                  responses_remaining: starterResponses,
+                  applications_remaining: starterApps,
+                  updated_at: new Date().toISOString(),
+                }),
+              })
+            } catch (_) {}
+
+            profile.seconds_remaining = starterSeconds
+            profile.responses_remaining = starterResponses
+            profile.applications_remaining = starterApps
+            profile.plan = 'basic'
           }
 
           // Compute friendly detected plan metadata

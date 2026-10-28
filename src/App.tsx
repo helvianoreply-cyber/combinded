@@ -361,10 +361,14 @@ function App() {
           // Auto-award starter trial quotas to new/fresh basic users who haven't used any tokens yet
           const needsStarterQuotas = 
             userRow.plan === 'basic' &&
-            (Number(userRow.seconds_remaining) || 0) === 0 &&
-            (Number(userRow.responses_remaining) || 0) === 0 &&
+            !userRow.plan_expires_at &&
             (Number(userRow.seconds_used) || 0) === 0 &&
-            (Number(userRow.responses_used) || 0) === 0
+            (Number(userRow.responses_used) || 0) === 0 &&
+            (Number(userRow.applications_applied) || 0) === 0 &&
+            (
+              ((Number(userRow.seconds_remaining) || 0) === 0 && (Number(userRow.responses_remaining) || 0) === 0) ||
+              (Number(userRow.applications_remaining) || 0) === 10
+            )
 
           const shouldFixLoginVerifier = userRow.login_verifier === true
 
@@ -372,30 +376,25 @@ function App() {
             const starterSeconds = 300
             const starterResponses = 5
             const starterApps = 3
-            try {
-              await sb
-                .from('users')
-                .update({
-                  seconds_remaining: starterSeconds,
-                  responses_remaining: starterResponses,
-                  applications_remaining: starterApps,
-                  verifier: false,
-                  login_verifier: false,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', userRow.id)
 
-              userRow = {
-                ...userRow,
-                seconds_remaining: starterSeconds,
-                responses_remaining: starterResponses,
-                applications_remaining: starterApps,
-                verifier: false,
-                login_verifier: false,
-              }
-            } catch (e) {
-              console.warn('Non-fatal quota update error:', e)
+            userRow = {
+              ...userRow,
+              seconds_remaining: starterSeconds,
+              responses_remaining: starterResponses,
+              applications_remaining: starterApps,
+              verifier: false,
+              login_verifier: false,
             }
+
+            // Sync with Worker using Service Role Key to guarantee persistence in Supabase bypassing RLS
+            try {
+              const apiBase =
+                import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+              const deviceId = getOrCreateDeviceId()
+              fetch(
+                `${apiBase}/get-profile?email=${encodeURIComponent(normalizedEmail)}&userId=${encodeURIComponent(id)}&deviceId=${encodeURIComponent(deviceId)}&fresh=true`
+              ).catch(() => {})
+            } catch (_) {}
           } else if (shouldFixLoginVerifier) {
             try {
               await sb
