@@ -502,7 +502,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           const appsDisplay = isUserUnlimited
             ? '∞ Unlimited'
-            : (activeUser.applications_remaining ?? 10).toLocaleString()
+            : (activeUser.applications_remaining ?? 3).toLocaleString()
 
           return (
             <div className={`dashboard-plan-token-card ${detectedPlanInfo.className}`}>

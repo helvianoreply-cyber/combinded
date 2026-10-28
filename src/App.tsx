@@ -371,7 +371,7 @@ function App() {
           if (needsStarterQuotas) {
             const starterSeconds = 300
             const starterResponses = 5
-            const starterApps = (Number(userRow.applications_remaining) || 0) > 0 ? Number(userRow.applications_remaining) : 3
+            const starterApps = 3
             try {
               await sb
                 .from('users')
@@ -517,7 +517,7 @@ function App() {
         responses_used: 0,
         seconds_remaining: 300,
         seconds_used: 0,
-        applications_remaining: 10,
+        applications_remaining: 3,
         applications_applied: 0,
       } as DbUser
     }
