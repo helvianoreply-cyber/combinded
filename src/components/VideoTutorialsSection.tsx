@@ -26,7 +26,7 @@ export const VideoTutorialsSection: React.FC<VideoTutorialsSectionProps> = ({
   }
 
   return (
-    <section className={`how-to-use-section reveal ${compact ? 'compact-mode' : ''}`} id={id}>
+    <section className={`how-to-use-section ${compact ? 'compact-mode' : 'reveal'}`} id={id}>
       <div className="section-header-center">
         <div className="eyebrow-pill-badge">
           <span className="badge-glow-dot" />

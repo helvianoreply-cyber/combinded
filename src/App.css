@@ -10253,7 +10253,11 @@ section[id] {
 }
 
 .how-to-use-section.compact-mode {
-  padding: 2.5rem 1rem;
+  padding: 1.5rem 1rem;
+  max-width: 1100px;
+  margin: 0 auto 2.5rem auto;
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 .eyebrow-pill-badge {
