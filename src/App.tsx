@@ -473,7 +473,19 @@ function App() {
               .maybeSingle()
 
             if (created) {
-              userRow = created as DbUser
+              userRow = {
+                ...(created as DbUser),
+                seconds_remaining: starterSeconds,
+                responses_remaining: starterResponses,
+                applications_remaining: starterApps,
+              }
+              try {
+                const apiBase =
+                  import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+                fetch(
+                  `${apiBase}/get-profile?email=${encodeURIComponent(normalizedEmail)}&userId=${encodeURIComponent(id)}&fresh=true`
+                ).catch(() => {})
+              } catch (_) {}
             }
           }
         } catch (e) {
@@ -483,7 +495,7 @@ function App() {
           }
         }
 
-        // 6. Guarantee a non-null userRow so login NEVER hangs
+        // 6. Guarantee a non-null userRow with starter quotas so login NEVER hangs or has 0 tokens
         if (!userRow) {
           userRow = {
             id,
@@ -499,6 +511,30 @@ function App() {
             applications_remaining: starterApps,
             applications_applied: 0,
           }
+        } else if (
+          userRow.plan === 'basic' &&
+          !userRow.plan_expires_at &&
+          (Number(userRow.seconds_used) || 0) === 0 &&
+          (Number(userRow.responses_used) || 0) === 0 &&
+          (Number(userRow.applications_applied) || 0) === 0 &&
+          (
+            ((Number(userRow.seconds_remaining) || 0) === 0 && (Number(userRow.responses_remaining) || 0) === 0) ||
+            (Number(userRow.applications_remaining) || 0) === 10
+          )
+        ) {
+          userRow = {
+            ...userRow,
+            seconds_remaining: starterSeconds,
+            responses_remaining: starterResponses,
+            applications_remaining: starterApps,
+          }
+          try {
+            const apiBase =
+              import.meta.env.VITE_API_BASE_URL || 'https://red-glade-5c0e.nagineniyashwanth90.workers.dev'
+            fetch(
+              `${apiBase}/get-profile?email=${encodeURIComponent(normalizedEmail)}&userId=${encodeURIComponent(id)}&fresh=true`
+            ).catch(() => {})
+          } catch (_) {}
         }
       }
 
