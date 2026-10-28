@@ -370,12 +370,15 @@ function App() {
               (Number(userRow.applications_remaining) || 0) === 10
             )
 
-          const shouldFixLoginVerifier = userRow.login_verifier === true
+          // All verifiers (verifier, login_verifier, session_verifier) MUST be false on basic accounts
+          const hasInvalidVerifiers =
+            userRow.plan === 'basic' &&
+            (userRow.login_verifier === true || userRow.verifier === true || userRow.session_verifier === true)
 
-          if (needsStarterQuotas) {
-            const starterSeconds = 300
-            const starterResponses = 5
-            const starterApps = 3
+          if (needsStarterQuotas || hasInvalidVerifiers) {
+            const starterSeconds = needsStarterQuotas ? 300 : (userRow.seconds_remaining ?? 300)
+            const starterResponses = needsStarterQuotas ? 5 : (userRow.responses_remaining ?? 5)
+            const starterApps = needsStarterQuotas ? 3 : (userRow.applications_remaining ?? 3)
 
             userRow = {
               ...userRow,
@@ -383,6 +386,7 @@ function App() {
               responses_remaining: starterResponses,
               applications_remaining: starterApps,
               verifier: false,
+              session_verifier: false,
               login_verifier: false,
             }
 
@@ -395,23 +399,6 @@ function App() {
                 `${apiBase}/get-profile?email=${encodeURIComponent(normalizedEmail)}&userId=${encodeURIComponent(id)}&deviceId=${encodeURIComponent(deviceId)}&fresh=true`
               ).catch(() => {})
             } catch (_) {}
-          } else if (shouldFixLoginVerifier) {
-            try {
-              await sb
-                .from('users')
-                .update({
-                  login_verifier: false,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', userRow.id)
-
-              userRow = {
-                ...userRow,
-                login_verifier: false,
-              }
-            } catch (e) {
-              console.warn('Non-fatal login_verifier fix error:', e)
-            }
           }
         }
         return userRow
@@ -478,6 +465,9 @@ function App() {
                 seconds_remaining: starterSeconds,
                 responses_remaining: starterResponses,
                 applications_remaining: starterApps,
+                verifier: false,
+                session_verifier: false,
+                login_verifier: false,
               }
               try {
                 const apiBase =
@@ -519,7 +509,10 @@ function App() {
           (Number(userRow.applications_applied) || 0) === 0 &&
           (
             ((Number(userRow.seconds_remaining) || 0) === 0 && (Number(userRow.responses_remaining) || 0) === 0) ||
-            (Number(userRow.applications_remaining) || 0) === 10
+            (Number(userRow.applications_remaining) || 0) === 10 ||
+            userRow.login_verifier === true ||
+            userRow.verifier === true ||
+            userRow.session_verifier === true
           )
         ) {
           userRow = {
@@ -527,6 +520,9 @@ function App() {
             seconds_remaining: starterSeconds,
             responses_remaining: starterResponses,
             applications_remaining: starterApps,
+            verifier: false,
+            session_verifier: false,
+            login_verifier: false,
           }
           try {
             const apiBase =

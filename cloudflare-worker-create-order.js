@@ -478,10 +478,15 @@ export default {
               (Number(profile.applications_remaining) || 0) === 10
             )
 
-          if (!isExpired && isFreshBasicUser) {
-            const starterSeconds = 300 // 5 minutes free trial
-            const starterResponses = 5 // 5 free AI answers
-            const starterApps = 3      // 3 free job auto-applies
+          // All verifiers (login_verifier, verifier, session_verifier) MUST be false on basic accounts
+          const hasInvalidVerifiers =
+            (!profile.plan || profile.plan === 'basic') &&
+            (profile.login_verifier === true || profile.verifier === true || profile.session_verifier === true)
+
+          if (!isExpired && (isFreshBasicUser || hasInvalidVerifiers)) {
+            const starterSeconds = isFreshBasicUser ? 300 : (profile.seconds_remaining ?? 300)
+            const starterResponses = isFreshBasicUser ? 5 : (profile.responses_remaining ?? 5)
+            const starterApps = isFreshBasicUser ? 3 : (profile.applications_remaining ?? 3)
 
             try {
               await fetch(`${supabaseBase}/rest/v1/users?id=eq.${encodeURIComponent(profile.id)}`, {
@@ -496,6 +501,9 @@ export default {
                   seconds_remaining: starterSeconds,
                   responses_remaining: starterResponses,
                   applications_remaining: starterApps,
+                  verifier: false,
+                  session_verifier: false,
+                  login_verifier: false,
                   updated_at: new Date().toISOString(),
                 }),
               })
@@ -504,6 +512,9 @@ export default {
             profile.seconds_remaining = starterSeconds
             profile.responses_remaining = starterResponses
             profile.applications_remaining = starterApps
+            profile.verifier = false
+            profile.session_verifier = false
+            profile.login_verifier = false
             profile.plan = 'basic'
           }
 
