@@ -459,6 +459,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
     } catch {}
   }
 
+  const handleQuickApplyCoupon = (code: string = 'FIRST_50') => {
+    setCouponFeedback(null)
+    const valid = validateCoupon(code)
+    if (valid) {
+      setAppliedCoupon(valid)
+      setCouponInputText(valid.code)
+      try {
+        localStorage.setItem('helvia_creator_coupon', valid.code)
+      } catch {}
+      setCouponFeedback({ text: '🎉 Official code FIRST_50 applied! 50% discount activated on all plans!', type: 'success' })
+    }
+  }
+
   const openPaymentModal = (p: DbPlan) => {
     if (isUserUnlimitedPlan) {
       alert(`You currently have an active Unlimited VIP Plan${effectiveExpiry ? ` (valid until ${new Date(effectiveExpiry).toLocaleDateString()})` : ''}. You cannot purchase any another plan or top-up while your unlimited plan is active.`)
@@ -742,13 +755,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         )}
 
-        {/* Basic Plan Alert: when 0 tokens remaining */}
+        {/* Basic Plan Alert: when 0 tokens remaining -> High-converting Upgrade Trigger */}
         {currentPlan === 'basic' && userProfile && (Number(userProfile.seconds_remaining) || 0) === 0 && (Number(userProfile.responses_remaining) || 0) === 0 && (
-          <div className="dashboard-alert warning" style={{ maxWidth: 840, margin: '0 auto 2rem auto', border: '1px solid rgba(245, 158, 11, 0.4)', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.9rem 1.25rem', borderRadius: 12 }}>
-            <span>⚠️</span>
-            <span>
-              <strong>Free Trial Notice:</strong> You are currently on the free basic tier with 0 active tokens. Select a plan below to activate remote minutes, AI answers, and job auto-applications.
-            </span>
+          <div className="dashboard-upgrade-hero-card">
+            <div className="upgrade-hero-left">
+              <span className="upgrade-hero-icon">⚡</span>
+              <div className="upgrade-hero-texts">
+                <div className="upgrade-hero-badge">STARTER QUOTA EXHAUSTED</div>
+                <h3 className="upgrade-hero-title">Keep Your Practice Momentum Going!</h3>
+                <p className="upgrade-hero-desc">
+                  Unlock <strong>500 AI Answers + 300 Remote Minutes + 200 Job Auto-Applies</strong> for just <strong>₹349 / $4</strong> with coupon <span className="upgrade-hero-code">FIRST_50</span> (50% OFF).
+                </p>
+              </div>
+            </div>
+            <div className="upgrade-hero-actions">
+              <button 
+                type="button" 
+                className="upgrade-hero-btn"
+                onClick={() => {
+                  const standardPlan = availablePlans.find(p => p.name.toLowerCase().includes('standard')) || availablePlans[1] || availablePlans[0]
+                  openPaymentModal(standardPlan)
+                }}
+              >
+                <span>⚡ Upgrade Now (₹349 / $4)</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -848,6 +879,48 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Video Walkthroughs in Dashboard */}
         <VideoTutorialsSection compact={true} id="dashboard-video-tutorials" />
 
+        {/* Career Breakthrough ROI Box */}
+        <div className="pricing-roi-card" style={{ maxWidth: 1100, margin: '2rem auto 1.5rem auto' }}>
+          <div className="roi-card-left">
+            <div className="roi-icon-bubble">💼</div>
+            <div className="roi-texts">
+              <div className="roi-pill-tag">CAREER BREAKTHROUGH INVESTMENT</div>
+              <h4 className="roi-headline">A Single Remote Offer Pays $80,000 – $140,000 / Year (₹15L – ₹35L)</h4>
+              <p className="roi-subtext">
+                Helvia Pro is just <strong className="roi-price-glow">$4 / ₹349</strong> with coupon <strong>FIRST_50</strong>. 
+                That's less than a single coffee for the stealth interview intelligence that secures your offer.
+              </p>
+            </div>
+          </div>
+          <div className="roi-multiplier-badge">
+            <span className="mult-num">10,000x</span>
+            <span className="mult-sub">Expected Career ROI</span>
+          </div>
+        </div>
+
+        {/* Dynamic Urgency / Scarcity Countdown Banner */}
+        <div className="pricing-urgency-banner" style={{ maxWidth: 1100, margin: '0 auto 1.5rem auto' }}>
+          <div className="urgency-left">
+            <span className="urgency-flame">🔥</span>
+            <span className="urgency-text">
+              <strong>Founder’s Flash Deal:</strong> 50% OFF unlocked with code <span className="urgency-code-badge">FIRST_50</span>
+            </span>
+          </div>
+          <div className="urgency-right">
+            <div className="urgency-remaining-pill">
+              <span className="slots-live-dot"></span>
+              <span>Only <strong>14</strong> coupon slots left today</span>
+            </div>
+            <button 
+              type="button" 
+              className={`urgency-action-btn ${appliedCoupon?.code === 'FIRST_50' ? 'applied' : ''}`}
+              onClick={() => handleQuickApplyCoupon('FIRST_50')}
+            >
+              {appliedCoupon?.code === 'FIRST_50' ? '✓ 50% OFF Active' : '⚡ Auto-Apply Code'}
+            </button>
+          </div>
+        </div>
+
         {/* Dashboard Interactive Creator / Influencer Coupon Box */}
         <div className="pricing-coupon-box" style={{ margin: '2rem auto 2.5rem auto' }}>
           <div className="pricing-coupon-input-wrap">
@@ -921,12 +994,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </span>
                       </div>
 
-                      {/* Big Coupon Price Tag on Unlimited Spotlight Card */}
+                      {/* Big Coupon Price Tag on Unlimited Spotlight Card & 1-Click Auto-Apply */}
                       <div className="coupon-tag-price-row unlimited">
                         <span className="coupon-tag-label">🏷️ Coupon Price:</span>
                         <span className="coupon-tag-amount">$10.50</span>
                         <span className="coupon-tag-inr">₹999 INR</span>
-                        <span style={{ fontSize: '0.82rem', color: '#86efac', fontWeight: 700, marginLeft: '0.35rem' }}>(Try this coupon code: <strong>FIRST_50</strong>)</span>
+                        <button 
+                          type="button" 
+                          className={`coupon-apply-pill-btn ${appliedCoupon?.code === 'FIRST_50' ? 'active' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleQuickApplyCoupon('FIRST_50')
+                          }}
+                        >
+                          {appliedCoupon?.code === 'FIRST_50' ? '✓ 50% OFF Active' : '⚡ Click to Apply FIRST_50'}
+                        </button>
                       </div>
                     </div>
 
@@ -1119,13 +1201,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     )}
                   </div>
 
-                  {/* Big Coupon Price Tag on Dashboard cards */}
+                  {/* Big Coupon Price Tag on Dashboard cards & 1-Click Auto-Apply */}
                   {!isFree && (
                     <div className="coupon-tag-price-row">
                       <span className="coupon-tag-label">🏷️ Coupon Price:</span>
                       <span className="coupon-tag-amount">${Math.round(p.price * 0.5 * 10) / 10}</span>
                       <span className="coupon-tag-inr">₹{calculateDiscount(baseInr, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</span>
-                      <span style={{ fontSize: '0.74rem', color: '#86efac', fontWeight: 700, marginLeft: '0.2rem' }}>(Try this coupon code: <strong>FIRST_50</strong>)</span>
+                      <button 
+                        type="button" 
+                        className={`coupon-apply-pill-btn ${appliedCoupon?.code === 'FIRST_50' ? 'active' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleQuickApplyCoupon('FIRST_50')
+                        }}
+                      >
+                        {appliedCoupon?.code === 'FIRST_50' ? '✓ 50% OFF Active' : '⚡ Click to Apply FIRST_50'}
+                      </button>
                     </div>
                   )}
                 </div>

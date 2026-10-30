@@ -96,6 +96,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setCouponSuccess(null)
   }
 
+  const handleQuickApplyModalCoupon = (code: string = 'FIRST_50') => {
+    setCouponInput(code)
+    const valid = validateCoupon(code)
+    if (valid) {
+      setAppliedCoupon(valid)
+      setCouponSuccess(`${valid.code} (50% OFF applied)`)
+      setCouponError(null)
+    }
+  }
+
   const handleProceedRazorpay = () => {
     if (isProcessing) return
     const couponToUse = activeCoupon?.code || couponInput.trim() || undefined
@@ -158,7 +168,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <span style={{ textDecoration: 'line-through', opacity: 0.65 }}>≈ ₹{originalInrAmount.toLocaleString('en-IN')}</span> <span className="payment-curr-sub">INR</span>
             </div>
             <div className="payment-plan-coupon-tag">
-              <span>🏷️ Coupon Price: <strong>${Math.round(plan.price * 0.5 * 10) / 10} / ₹{calculateDiscount(originalInrAmount, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</strong> <span style={{ opacity: 0.85, fontWeight: 700 }}>(Try this coupon code: <strong>FIRST_50</strong>)</span></span>
+              <span>🏷️ Coupon Price: <strong>${Math.round(plan.price * 0.5 * 10) / 10} / ₹{calculateDiscount(originalInrAmount, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</strong></span>
+              <button 
+                type="button" 
+                className={`modal-coupon-quick-apply-btn ${appliedCoupon ? 'applied' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleQuickApplyModalCoupon('FIRST_50')
+                }}
+              >
+                {appliedCoupon ? '✓ 50% OFF Active' : '⚡ Click to Apply FIRST_50 (50% OFF)'}
+              </button>
             </div>
           </div>
         </div>
@@ -202,15 +222,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <div className="modal-coupon-tag-row">
               <span className="modal-coupon-tag-label">🏷️ Coupon Price:</span>
               <span className="modal-coupon-tag-amount">₹{calculateDiscount(originalInrAmount, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr.toLocaleString('en-IN')}</span>
-              {!appliedCoupon ? (
-                <span className="modal-coupon-hint-text">
-                  (Try this coupon code: <strong>FIRST_50</strong>)
-                </span>
-              ) : (
-                <span className="modal-coupon-hint-text" style={{ color: '#16a34a', fontWeight: 800 }}>
-                  (✓ Code FIRST_50 applied!)
-                </span>
-              )}
+              <button 
+                type="button" 
+                className={`modal-coupon-quick-apply-btn ${appliedCoupon ? 'applied' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleQuickApplyModalCoupon('FIRST_50')
+                }}
+              >
+                {appliedCoupon ? '✓ Code FIRST_50 Active' : '⚡ Click to Apply FIRST_50'}
+              </button>
             </div>
 
             <p className="payment-card-desc">
@@ -301,16 +322,27 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               {isProcessing ? (
                 <span>Opening Gateway…</span>
               ) : (
-                <>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="5" width="20" height="14" rx="2"></rect>
-                    <line x1="2" y1="10" x2="22" y2="10"></line>
-                  </svg>
-                  <span>
-                    Pay ₹{effectiveInrAmount.toLocaleString('en-IN')} with Razorpay
-                    {discountCalc ? ` (50% OFF)` : ''}
-                  </span>
-                </>
+                <div className="btn-content-stacked">
+                  <div className="btn-main-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                      <line x1="2" y1="10" x2="22" y2="10"></line>
+                    </svg>
+                    <span>
+                      Pay ₹{effectiveInrAmount.toLocaleString('en-IN')} with Razorpay
+                      {discountCalc ? ` (50% OFF)` : ''}
+                    </span>
+                  </div>
+                  <div className="btn-upi-badges">
+                    <span>⚡ Instant UPI QR</span>
+                    <span>•</span>
+                    <span>Google Pay</span>
+                    <span>•</span>
+                    <span>PhonePe</span>
+                    <span>•</span>
+                    <span>Paytm</span>
+                  </div>
+                </div>
               )}
             </button>
           </div>
@@ -345,7 +377,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <div className="modal-coupon-tag-row">
               <span className="modal-coupon-tag-label">🏷️ Coupon Price:</span>
               <span className="modal-coupon-tag-amount">${Math.round(plan.price * 0.5 * 10) / 10}</span>
-              <span className="modal-coupon-hint-text">(Try this coupon code: <strong>FIRST_50</strong>)</span>
+              <button 
+                type="button" 
+                className={`modal-coupon-quick-apply-btn ${appliedCoupon ? 'applied' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleQuickApplyModalCoupon('FIRST_50')
+                }}
+              >
+                {appliedCoupon ? '✓ Code FIRST_50 Active' : '⚡ Click to Apply FIRST_50'}
+              </button>
             </div>
 
             <p className="payment-card-desc">
@@ -393,6 +434,31 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 </>
               )}
             </button>
+          </div>
+        </div>
+
+        {/* Risk-Reversal & Satisfaction Guarantee */}
+        <div className="payment-guarantee-row">
+          <div className="guarantee-badge-item">
+            <span className="guarantee-icon">🛡️</span>
+            <div>
+              <div className="guarantee-title">100% Stealth Guarantee</div>
+              <p className="guarantee-desc">Undetectable on Zoom, Teams &amp; Meet</p>
+            </div>
+          </div>
+          <div className="guarantee-badge-item">
+            <span className="guarantee-icon">⚡</span>
+            <div>
+              <div className="guarantee-title">Instant Quotas</div>
+              <p className="guarantee-desc">Tokens load in &lt; 3 seconds</p>
+            </div>
+          </div>
+          <div className="guarantee-badge-item">
+            <span className="guarantee-icon">🤝</span>
+            <div>
+              <div className="guarantee-title">Direct WhatsApp Help</div>
+              <p className="guarantee-desc">Live support for setup &amp; calls</p>
+            </div>
           </div>
         </div>
 

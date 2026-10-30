@@ -464,6 +464,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     } catch {}
   }
 
+  const [stealthViewMode, setStealthViewMode] = useState<'candidate' | 'screenshare'>('candidate')
+
+  const handleQuickApplyCoupon = (code: string = 'FIRST_50') => {
+    setCouponFeedback(null)
+    const valid = validateCoupon(code)
+    if (valid) {
+      setAppliedCoupon(valid)
+      setCouponInputText(valid.code)
+      try {
+        localStorage.setItem('helvia_creator_coupon', valid.code)
+      } catch {}
+      setCouponFeedback({ text: `🎉 Official code FIRST_50 applied! 50% discount activated on all plans!`, type: 'success' })
+    }
+  }
+
   const handleRazorpayUpgrade = (p: DbPlan, couponCode?: string, customAmountInr?: number) => {
     setIsPaymentModalOpen(false)
     if (!isSignedIn) {
@@ -905,23 +920,60 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
               </div>
 
-              {/* Live Interactive UI Simulation Box */}
+              {/* Live Interactive UI Simulation Box with Stealth Proof Toggle */}
               <div className="eco-simulation-box copilot-sim">
                 <div className="eco-sim-topbar">
-                  <span className="sim-ghost-badge">🛡️ PRIVACY SHIELD: ACTIVE</span>
-                  <span className="sim-screen-hidden-pill">SCREENSHARE EXCLUDED</span>
+                  <div className="stealth-proof-toggle-group">
+                    <button 
+                      type="button" 
+                      className={`stealth-toggle-btn ${stealthViewMode === 'candidate' ? 'active' : ''}`}
+                      onClick={() => setStealthViewMode('candidate')}
+                    >
+                      👁️ Your Screen (HUD Active)
+                    </button>
+                    <button 
+                      type="button" 
+                      className={`stealth-toggle-btn ${stealthViewMode === 'screenshare' ? 'active' : ''}`}
+                      onClick={() => setStealthViewMode('screenshare')}
+                    >
+                      🎥 Interviewer Screenshare (Zoom/Meet/Teams)
+                    </button>
+                  </div>
+                  <span className={`sim-ghost-badge ${stealthViewMode === 'screenshare' ? 'verified' : ''}`}>
+                    {stealthViewMode === 'screenshare' ? '🛡️ ZERO TRACE DETECTED (100% INVISIBLE)' : '🛡️ PRIVACY SHIELD: ACTIVE'}
+                  </span>
                 </div>
                 <div className="eco-sim-body">
-                  <div className="copilot-hud-mock">
-                    <div className="hud-incoming-q">
-                      <span className="hud-q-icon"><MicIcon /></span>
-                      <span className="hud-q-text">"How do you resolve distributed database split-brain scenarios?"</span>
+                  {stealthViewMode === 'candidate' ? (
+                    <div className="copilot-hud-mock">
+                      <div className="hud-incoming-q">
+                        <span className="hud-q-icon"><MicIcon /></span>
+                        <span className="hud-q-text">"How do you resolve distributed database split-brain scenarios?"</span>
+                      </div>
+                      <div className="hud-whisper-answer">
+                        <span className="hud-ans-badge">💡 EXECUTIVE BRIEF &amp; TALKING POINTS</span>
+                        <p className="hud-ans-lead">"1. Quorum-based consensus (Raft/Paxos). 2. Fencing tokens to invalidate partitioned leaders. 3. Cite practical Consul/etcd cluster topology."</p>
+                      </div>
                     </div>
-                    <div className="hud-whisper-answer">
-                      <span className="hud-ans-badge">💡 EXECUTIVE BRIEF &amp; TALKING POINTS</span>
-                      <p className="hud-ans-lead">"1. Quorum-based consensus (Raft/Paxos). 2. Fencing tokens to invalidate partitioned leaders. 3. Cite practical Consul/etcd cluster topology."</p>
+                  ) : (
+                    <div className="copilot-hud-mock screenshare-hidden-mode">
+                      <div className="screenshare-clean-desktop">
+                        <div className="clean-desktop-icon-row">
+                          <span className="clean-app-chip">📁 IDE / Editor</span>
+                          <span className="clean-app-chip">🌐 Chrome Browser</span>
+                          <span className="clean-app-chip">📄 Architecture.pdf</span>
+                        </div>
+                        <div className="clean-desktop-center-notice">
+                          <div className="clean-shield-large">🛡️</div>
+                          <h4>Interviewer Screen Share View is 100% Clean</h4>
+                          <p>
+                            Native Windows <code className="wda-code">WDA_EXCLUDEFROMCAPTURE</code> hardware flag excludes the Helvia overlay entirely. The interviewer sees only your clean desktop.
+                          </p>
+                          <span className="clean-status-pill">✓ 0% Screen Leakage • Complete Confidentiality Guaranteed</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -1979,6 +2031,48 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <h2>Simple, Transparent Pricing</h2>
             <p className="pricing-subtitle">One unified subscription powers all 3 breakthrough apps: Helvia Remote, Meeting Copilot, and Auto Apply &amp; Coach.</p>
 
+            {/* Career Breakthrough ROI Box */}
+            <div className="pricing-roi-card">
+              <div className="roi-card-left">
+                <div className="roi-icon-bubble">💼</div>
+                <div className="roi-texts">
+                  <div className="roi-pill-tag">CAREER BREAKTHROUGH INVESTMENT</div>
+                  <h4 className="roi-headline">A Single Remote Offer Pays $80,000 – $140,000 / Year (₹15L – ₹35L)</h4>
+                  <p className="roi-subtext">
+                    Helvia Pro is just <strong className="roi-price-glow">$4 / ₹349</strong> with coupon <strong>FIRST_50</strong>. 
+                    That's less than a single coffee for the stealth interview intelligence that secures your offer.
+                  </p>
+                </div>
+              </div>
+              <div className="roi-multiplier-badge">
+                <span className="mult-num">10,000x</span>
+                <span className="mult-sub">Expected Career ROI</span>
+              </div>
+            </div>
+
+            {/* Dynamic Urgency / Scarcity Countdown Banner */}
+            <div className="pricing-urgency-banner">
+              <div className="urgency-left">
+                <span className="urgency-flame">🔥</span>
+                <span className="urgency-text">
+                  <strong>Founder’s Flash Deal:</strong> 50% OFF unlocked with code <span className="urgency-code-badge">FIRST_50</span>
+                </span>
+              </div>
+              <div className="urgency-right">
+                <div className="urgency-remaining-pill">
+                  <span className="slots-live-dot"></span>
+                  <span>Only <strong>14</strong> coupon slots left today</span>
+                </div>
+                <button 
+                  type="button" 
+                  className={`urgency-action-btn ${appliedCoupon?.code === 'FIRST_50' ? 'applied' : ''}`}
+                  onClick={() => handleQuickApplyCoupon('FIRST_50')}
+                >
+                  {appliedCoupon?.code === 'FIRST_50' ? '✓ 50% OFF Active' : '⚡ Auto-Apply Code'}
+                </button>
+              </div>
+            </div>
+
             {/* Interactive Creator / Influencer Code Box */}
             <div className="pricing-coupon-box">
               <div className="pricing-coupon-input-wrap">
@@ -2082,13 +2176,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                             )}
                           </div>
 
-                          {/* Big Coupon Price Tag with Slash Strikethrough */}
+                          {/* Big Coupon Price Tag with Slash Strikethrough & 1-Click Auto-Apply */}
                           {!isFree && (
                             <div className="coupon-tag-price-row">
                               <span className="coupon-tag-label">🏷️ Coupon Price:</span>
                               <span className="coupon-tag-amount">${Math.round(p.price * 0.5 * 10) / 10}</span>
                               <span className="coupon-tag-inr">₹{calculateDiscount(baseInr, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</span>
-                              <span style={{ fontSize: '0.74rem', color: '#86efac', fontWeight: 700, marginLeft: '0.2rem' }}>(Try this coupon code: <strong>FIRST_50</strong>)</span>
+                              <button 
+                                type="button" 
+                                className={`coupon-apply-pill-btn ${appliedCoupon?.code === 'FIRST_50' ? 'active' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleQuickApplyCoupon('FIRST_50')
+                                }}
+                              >
+                                {appliedCoupon?.code === 'FIRST_50' ? '✓ 50% OFF Active' : '⚡ Click to Apply FIRST_50'}
+                              </button>
                             </div>
                           )}
                         </div>
@@ -2194,12 +2297,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                                 </span>
                               </div>
 
-                              {/* Big Coupon Price Tag on Unlimited Card */}
+                              {/* Big Coupon Price Tag on Unlimited Card & 1-Click Auto-Apply */}
                               <div className="coupon-tag-price-row unlimited">
                                 <span className="coupon-tag-label">🏷️ Coupon Price:</span>
                                 <span className="coupon-tag-amount">$10.50</span>
                                 <span className="coupon-tag-inr">₹999 INR</span>
-                                <span style={{ fontSize: '0.82rem', color: '#86efac', fontWeight: 700, marginLeft: '0.35rem' }}>(Try this coupon code: <strong>FIRST_50</strong>)</span>
+                                <button 
+                                  type="button" 
+                                  className={`coupon-apply-pill-btn ${appliedCoupon?.code === 'FIRST_50' ? 'active' : ''}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleQuickApplyCoupon('FIRST_50')
+                                  }}
+                                >
+                                  {appliedCoupon?.code === 'FIRST_50' ? '✓ 50% OFF Active' : '⚡ Click to Apply FIRST_50'}
+                                </button>
                               </div>
                             </div>
 
@@ -2286,6 +2398,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </>
             )
           })()}
+
+          {/* Risk Reversal & Stealth Guarantee Strip */}
+          <div className="pricing-guarantee-strip">
+            <div className="guarantee-strip-item">
+              <span className="strip-icon">🛡️</span>
+              <div>
+                <strong>100% Stealth &amp; Invisible Guarantee</strong>
+                <p>Native hardware display affinity ensures Zoom, Teams &amp; Meet cannot record your answers.</p>
+              </div>
+            </div>
+            <div className="guarantee-strip-item">
+              <span className="strip-icon">⚡</span>
+              <div>
+                <strong>Instant Quota Delivery</strong>
+                <p>Your minutes, AI responses, and auto-applies load immediately after payment confirmation.</p>
+              </div>
+            </div>
+            <div className="guarantee-strip-item">
+              <span className="strip-icon">💬</span>
+              <div>
+                <strong>24/7 Priority WhatsApp Support</strong>
+                <p>Real engineer support on WhatsApp (+91 9032025916) for mock interview practice and setup.</p>
+              </div>
+            </div>
+          </div>
 
           {/* Dynamic On-Demand Top-Up Station */}
           <InteractiveTopupStation onTopup={handleTopup} />
