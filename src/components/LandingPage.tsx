@@ -2001,6 +2001,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                               <span className="coupon-tag-label">🏷️ Coupon Price:</span>
                               <span className="coupon-tag-amount">${Math.round(p.price * 0.5 * 10) / 10}</span>
                               <span className="coupon-tag-inr">₹{calculateDiscount(baseInr, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</span>
+                              <span style={{ fontSize: '0.74rem', color: '#86efac', fontWeight: 700, marginLeft: '0.2rem' }}>(Try this coupon code: <strong>FIRST_50</strong>)</span>
                             </div>
                           )}
                         </div>
@@ -2111,6 +2112,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                                 <span className="coupon-tag-label">🏷️ Coupon Price:</span>
                                 <span className="coupon-tag-amount">$10.50</span>
                                 <span className="coupon-tag-inr">₹999 INR</span>
+                                <span style={{ fontSize: '0.82rem', color: '#86efac', fontWeight: 700, marginLeft: '0.35rem' }}>(Try this coupon code: <strong>FIRST_50</strong>)</span>
                               </div>
                             </div>
 

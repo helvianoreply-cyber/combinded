@@ -158,7 +158,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <span style={{ textDecoration: 'line-through', opacity: 0.65 }}>≈ ₹{originalInrAmount.toLocaleString('en-IN')}</span> <span className="payment-curr-sub">INR</span>
             </div>
             <div className="payment-plan-coupon-tag">
-              <span>🏷️ Coupon Price: <strong>${Math.round(plan.price * 0.5 * 10) / 10} / ₹{calculateDiscount(originalInrAmount, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</strong></span>
+              <span>🏷️ Coupon Price: <strong>${Math.round(plan.price * 0.5 * 10) / 10} / ₹{calculateDiscount(originalInrAmount, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</strong> <span style={{ opacity: 0.85, fontWeight: 700 }}>(Try this coupon code: <strong>FIRST_50</strong>)</span></span>
             </div>
           </div>
         </div>
@@ -202,7 +202,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <div className="modal-coupon-tag-row">
               <span className="modal-coupon-tag-label">🏷️ Coupon Price:</span>
               <span className="modal-coupon-tag-amount">₹{calculateDiscount(originalInrAmount, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr.toLocaleString('en-IN')}</span>
-              {!appliedCoupon && <span className="modal-coupon-hint-text">(Apply code below)</span>}
+              {!appliedCoupon ? (
+                <span className="modal-coupon-hint-text">
+                  (Try this coupon code: <strong>FIRST_50</strong>)
+                </span>
+              ) : (
+                <span className="modal-coupon-hint-text" style={{ color: '#16a34a', fontWeight: 800 }}>
+                  (✓ Code FIRST_50 applied!)
+                </span>
+              )}
             </div>
 
             <p className="payment-card-desc">
@@ -337,7 +345,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <div className="modal-coupon-tag-row">
               <span className="modal-coupon-tag-label">🏷️ Coupon Price:</span>
               <span className="modal-coupon-tag-amount">${Math.round(plan.price * 0.5 * 10) / 10}</span>
-              <span className="modal-coupon-hint-text">(With code FIRST_50)</span>
+              <span className="modal-coupon-hint-text">(Try this coupon code: <strong>FIRST_50</strong>)</span>
             </div>
 
             <p className="payment-card-desc">
