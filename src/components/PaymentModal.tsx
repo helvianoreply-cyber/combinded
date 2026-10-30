@@ -151,10 +151,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </div>
           <div className="payment-plan-amounts">
             <div className="payment-amount-usd">
-              ${plan.price} <span className="payment-curr-sub">USD</span>
+              <span style={{ textDecoration: 'line-through', opacity: 0.6, fontSize: '1.45rem', marginRight: '0.35rem' }}>${plan.price}</span>
+              <span className="payment-curr-sub">USD</span>
             </div>
             <div className="payment-amount-inr">
-              ≈ ₹{originalInrAmount.toLocaleString('en-IN')} <span className="payment-curr-sub">INR</span>
+              <span style={{ textDecoration: 'line-through', opacity: 0.65 }}>≈ ₹{originalInrAmount.toLocaleString('en-IN')}</span> <span className="payment-curr-sub">INR</span>
+            </div>
+            <div className="payment-plan-coupon-tag">
+              <span>🏷️ Coupon Price: <strong>${Math.round(plan.price * 0.5 * 10) / 10} / ₹{calculateDiscount(originalInrAmount, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</strong></span>
             </div>
           </div>
         </div>
@@ -186,9 +190,19 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   <span className="payment-card-price highlight">₹{effectiveInrAmount.toLocaleString('en-IN')}</span>
                 </div>
               ) : (
-                <span className="payment-card-price">₹{originalInrAmount.toLocaleString('en-IN')}</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                  <del className="card-strike-price">₹{originalInrAmount.toLocaleString('en-IN')}</del>
+                  <span className="payment-card-price">₹{originalInrAmount.toLocaleString('en-IN')}</span>
+                </div>
               )}
               <span className="payment-card-period">{isLifetime ? 'one-time' : isUnlimited ? 'INR / month (30 Days)' : 'total INR'}</span>
+            </div>
+
+            {/* Prominent Coupon Price Tag on Razorpay card */}
+            <div className="modal-coupon-tag-row">
+              <span className="modal-coupon-tag-label">🏷️ Coupon Price:</span>
+              <span className="modal-coupon-tag-amount">₹{calculateDiscount(originalInrAmount, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr.toLocaleString('en-IN')}</span>
+              {!appliedCoupon && <span className="modal-coupon-hint-text">(Apply code below)</span>}
             </div>
 
             <p className="payment-card-desc">
@@ -312,8 +326,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </div>
 
             <div className="payment-card-price-row">
-              <span className="payment-card-price">${plan.price}</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                <del className="card-strike-price">${plan.price}</del>
+                <span className="payment-card-price">${plan.price}</span>
+              </div>
               <span className="payment-card-period">{isLifetime ? 'one-time' : isUnlimited ? 'USD / month (30 Days)' : 'USD'}</span>
+            </div>
+
+            {/* Prominent Coupon Price Tag on Dodo card */}
+            <div className="modal-coupon-tag-row">
+              <span className="modal-coupon-tag-label">🏷️ Coupon Price:</span>
+              <span className="modal-coupon-tag-amount">${Math.round(plan.price * 0.5 * 10) / 10}</span>
+              <span className="modal-coupon-hint-text">(With code FIRST_50)</span>
             </div>
 
             <p className="payment-card-desc">

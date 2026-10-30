@@ -12773,10 +12773,60 @@ section[id] {
   color: #16a34a;
 }
 
-.payment-amount-usd.discounted span,
-.payment-amount-inr.discounted span {
-  color: #16a34a;
+.payment-plan-coupon-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px dashed rgba(22, 163, 74, 0.45);
+  color: #15803d;
+  font-weight: 800;
+  font-size: 0.76rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px;
+  margin-top: 0.35rem;
+  white-space: nowrap;
+}
+
+.payment-plan-coupon-tag strong {
   font-weight: 900;
+  color: #16a34a;
+}
+
+.modal-coupon-tag-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.65rem;
+  padding: 0.28rem 0.55rem;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px dashed rgba(22, 163, 74, 0.4);
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.modal-coupon-tag-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #15803d;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.modal-coupon-tag-amount {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #16a34a;
+  line-height: 1;
+}
+
+.modal-coupon-hint-text {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
+  margin-left: 0.15rem;
 }
 
 /* =========================================================
