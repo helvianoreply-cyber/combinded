@@ -8,6 +8,7 @@ import { PaymentModal } from './PaymentModal'
 import { InteractiveTopupStation } from './InteractiveTopupStation'
 import { VideoTutorialsSection } from './VideoTutorialsSection'
 import { validateCoupon, calculateDiscount, calculateUsdDiscount, type CouponInfo } from '../lib/coupons'
+import { supabase } from '../lib/supabaseClient'
 
 interface LandingPageProps {
   signInWithGoogle: () => Promise<void>
@@ -347,6 +348,67 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [couponInputText, setCouponInputText] = useState('')
   const [couponFeedback, setCouponFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
 
+  // Dynamic user count: 18,000 baseline (from ecosystem app) + actual Supabase registered user accounts
+  const [totalUserCount, setTotalUserCount] = useState<number>(() => {
+    try {
+      const cached = localStorage.getItem('helvia_total_users')
+      if (cached) {
+        const num = parseInt(cached, 10)
+        if (!isNaN(num) && num >= 18000) return num
+      }
+    } catch {}
+    return 18046 // Initial graceful fallback (18,000 baseline + initial DB count)
+  })
+
+  useEffect(() => {
+    let isCancelled = false
+
+    const fetchUserAccountsCount = async () => {
+      try {
+        if (supabase) {
+          const { count, error } = await supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+          if (!error && typeof count === 'number' && !isCancelled) {
+            const calculatedTotal = 18000 + count
+            setTotalUserCount(calculatedTotal)
+            try {
+              localStorage.setItem('helvia_total_users', calculatedTotal.toString())
+            } catch {}
+            return
+          }
+        }
+      } catch (err) {
+        console.warn('Direct Supabase users count fetch failed, trying worker fallback:', err)
+      }
+
+      // Fallback via Worker endpoint if direct supabase client didn't succeed
+      try {
+        const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+        if (apiBase) {
+          const res = await fetch(`${apiBase}/user-count`)
+          if (res.ok) {
+            const data = await res.json()
+            if (data && typeof data.totalUsers === 'number' && !isCancelled) {
+              setTotalUserCount(data.totalUsers)
+              try {
+                localStorage.setItem('helvia_total_users', data.totalUsers.toString())
+              } catch {}
+            }
+          }
+        }
+      } catch {}
+    }
+
+    fetchUserAccountsCount()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
+  const formattedUserCount = totalUserCount.toLocaleString('en-US')
+
   // Detect ?coupon=CODE or ?ref=CODE from URL or localStorage
   useEffect(() => {
     try {
@@ -533,6 +595,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             Land your dream remote job in 30 days: Automated Applications + Stealth Live Interview Copilot + 60 FPS Remote Workstation in one unified suite.
           </p>
 
+          {/* Social Proof Trust Badge */}
+          <div className="hero-social-proof-wrap">
+            <div className="hero-avatar-stack">
+              <span className="avatar-chip avt-bg-1" title="Software Architect">JD</span>
+              <span className="avatar-chip avt-bg-2" title="Senior Engineering Manager">AK</span>
+              <span className="avatar-chip avt-bg-3" title="Lead Sysadmin">MR</span>
+              <span className="avatar-chip avt-bg-4" title="Enterprise Architect">SL</span>
+              <span className="avatar-chip avt-bg-5" title="Fullstack Tech Lead">VN</span>
+            </div>
+            <div className="hero-social-proof-content">
+              <div className="hero-stars-line">
+                <span className="stars-cluster">★★★★★</span>
+                <span className="rating-grade">4.9/5 Rating</span>
+                <span className="rating-dot">•</span>
+                <span className="rating-live-indicator">
+                  <span className="live-pulse-dot"></span>
+                  Live Community
+                </span>
+              </div>
+              <p className="hero-proof-statement">
+                Trusted by <strong className="proof-count-glow">{formattedUserCount}+</strong> professionals, engineers &amp; job seekers
+              </p>
+            </div>
+          </div>
+
           {/* Triple-App Hero Launchpad */}
           <div className="hero-3apps-launchpad">
             <div className="hero-launchpad-grid">
@@ -613,7 +700,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         {/* Trusted Companies Banner */}
         <div className="trusted-companies-row" style={{ marginTop: '2rem' }}>
-          <p className="trusted-title">TRUSTED BY ENGINEERING DIRECTORS, SYSADMINS &amp; ENTERPRISE PROFESSIONALS</p>
+          <p className="trusted-title">TRUSTED BY {formattedUserCount}+ ACTIVE USERS, SYSADMINS &amp; ENTERPRISE PROFESSIONALS</p>
           <div className="company-pills-list">
             <span className="company-pill">DATALAYER INFRASTRUCTURE</span>
             <span className="company-pill">SCALEFLOW EDGE</span>
@@ -1818,7 +1905,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="stats-grid">
           <div className="stat-item stagger-1">
             <div className="stat-icon"><UsersIcon /></div>
-            <p className="stat-number">10,000+</p>
+            <p className="stat-number">{formattedUserCount}+</p>
             <p className="stat-label">Active Users</p>
           </div>
           <div className="stat-item stagger-2">
@@ -2369,7 +2456,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="marquee-header">
               <div className="marquee-eyebrow-pill">
                 <span className="eyebrow-stars">★★★★★</span>
-                <span>TRUSTED BY 1,200+ ENTERPRISE TEAMS</span>
+                <span>TRUSTED BY {formattedUserCount}+ ACTIVE USERS &amp; ENTERPRISE TEAMS</span>
               </div>
               <h2>Trusted by Technology Leaders &amp; Enterprise Engineers</h2>
               <p className="marquee-subtitle">
