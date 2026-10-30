@@ -20959,6 +20959,576 @@ section[id] {
   }
 }
 
+/* =========================================================
+   STUNNING CONVERSION & ATTRACTION SUITE
+   ========================================================= */
+
+/* 1. Global Tech Employers Hiring Wall */
+.hiring-companies-showcase {
+  margin-top: 1.75rem;
+  padding: 1.25rem 1.5rem;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-2xl);
+  backdrop-filter: blur(16px);
+  max-width: 980px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hiring-showcase-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.15rem;
+}
+
+.hiring-sparkle {
+  font-size: 1.1rem;
+}
+
+.hiring-title-text {
+  font-size: 0.74rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  color: #38bdf8;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.hiring-logos-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1.25rem 2rem;
+}
+
+.hiring-brand-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.85rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 750;
+  font-size: 0.86rem;
+  transition: all var(--transition-fast);
+}
+
+.hiring-brand-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.brand-logo-icon {
+  font-size: 1rem;
+  font-weight: 900;
+  font-family: system-ui, sans-serif;
+}
+
+.google-icon { color: #ea4335; }
+.amazon-icon { color: #ff9900; }
+.msft-icon { color: #00a4ef; }
+.stripe-icon { color: #635bff; }
+.meta-icon { color: #0668e1; }
+.vercel-icon { color: #ffffff; }
+.atlassian-icon { color: #0052cc; }
+.snowflake-icon { color: #29b5e8; }
+
+.hiring-showcase-sub {
+  margin: 1.15rem 0 0 0;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.hiring-showcase-sub strong {
+  color: #4ade80;
+}
+
+/* 2. Live Audio Waveform in Copilot HUD */
+.hud-q-left {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.live-audio-waveform {
+  display: inline-flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 16px;
+  padding: 0 4px;
+}
+
+.wave-bar {
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, #38bdf8, #10b981);
+  border-radius: 3px;
+  animation: wavePulse 1.2s infinite ease-in-out;
+}
+
+.bar-1 { animation-delay: 0.0s; height: 35%; }
+.bar-2 { animation-delay: 0.2s; height: 90%; }
+.bar-3 { animation-delay: 0.4s; height: 60%; }
+.bar-4 { animation-delay: 0.15s; height: 100%; }
+.bar-5 { animation-delay: 0.35s; height: 45%; }
+
+@keyframes wavePulse {
+  0%, 100% { transform: scaleY(0.35); opacity: 0.5; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+.hud-latency-pill {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* 3. 97% Bundle Savings Breakdown Meter */
+.bundle-savings-meter-card {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1.75rem;
+  max-width: 980px;
+  margin: 2.5rem auto 1rem;
+  padding: 1.75rem 2rem;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: var(--radius-2xl);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(74, 222, 128, 0.12) inset;
+  text-align: left;
+}
+
+.bundle-savings-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 0.85rem;
+}
+
+.bundle-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  padding: 0.35rem 0;
+}
+
+.bundle-item-row strong {
+  color: #f1f5f9;
+  font-weight: 750;
+}
+
+.bundle-item-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0.65rem 0;
+}
+
+.bundle-item-total {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #f87171;
+}
+
+.bundle-separate-del {
+  font-size: 1rem;
+  font-weight: 850;
+  color: #f87171;
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+
+.bundle-savings-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px dashed rgba(74, 222, 128, 0.4);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem 1.4rem;
+}
+
+.bundle-offer-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(74, 222, 128, 0.5);
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+}
+
+.bundle-helvia-price-box {
+  margin: 0.65rem 0;
+}
+
+.bundle-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: #cbd5e1;
+  text-transform: uppercase;
+}
+
+.bundle-highlight-price {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #4ade80;
+  line-height: 1.1;
+  text-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
+}
+
+.bundle-code-tag {
+  display: block;
+  font-size: 0.76rem;
+  color: #86efac;
+  font-weight: 750;
+}
+
+.bundle-meter-track {
+  width: 100%;
+  height: 24px;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  margin: 0.65rem 0;
+  position: relative;
+}
+
+.bundle-meter-fill {
+  width: 97%;
+  height: 100%;
+  background: linear-gradient(90deg, #16a34a, #22c55e, #4ade80);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.65rem;
+  color: #0f172a;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.6);
+}
+
+.bundle-claim-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.65rem 1rem;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: #ffffff !important;
+  font-size: 0.86rem;
+  font-weight: 850;
+  border-radius: var(--radius-full);
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
+  transition: all var(--transition-fast);
+}
+
+.bundle-claim-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 8px 22px rgba(22, 163, 74, 0.6);
+}
+
+/* 4. Floating Live Activity Social Proof Toast (Bottom-Left) */
+.floating-activity-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.7rem 1.1rem;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  max-width: 380px;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.floating-activity-toast.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.floating-activity-toast.hidden {
+  opacity: 0;
+  transform: translateY(16px) scale(0.95);
+  pointer-events: none;
+}
+
+.activity-toast-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.76rem;
+  font-weight: 850;
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+
+.activity-toast-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.activity-toast-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.activity-toast-name {
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.activity-toast-city {
+  color: #cbd5e1;
+}
+
+.activity-toast-time {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.activity-toast-action {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  line-height: 1.25;
+}
+
+.action-verified-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #0f172a;
+  font-size: 0.6rem;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.activity-toast-close {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.2rem;
+  margin-left: 0.35rem;
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+}
+
+.activity-toast-close:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* 5. Floating Sticky Bottom 50% OFF Deal Bar (On Scroll) */
+.floating-sticky-deal-bar {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9997;
+  width: 90%;
+  max-width: 780px;
+  animation: slideUpDealBar 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpDealBar {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.sticky-deal-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 1.25rem;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55), 0 0 20px rgba(245, 158, 11, 0.2);
+}
+
+.sticky-deal-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.sticky-flame-icon {
+  font-size: 1.25rem;
+}
+
+.sticky-deal-text {
+  font-size: 0.84rem;
+  color: #fde68a;
+}
+
+.sticky-price-glow {
+  color: #4ade80;
+  font-weight: 850;
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+.sticky-deal-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.sticky-deal-cta {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #0f172a !important;
+  font-size: 0.82rem;
+  font-weight: 850;
+  padding: 0.45rem 1.15rem;
+  border-radius: var(--radius-full);
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.sticky-deal-cta:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.6);
+}
+
+.sticky-deal-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+
+.sticky-deal-close:hover {
+  color: #ffffff;
+}
+
+/* 6. High-Conversion CTA Shimmer Light-Sweep Effect */
+.plan-cta-main.primary,
+.unlimited-landing-select-btn,
+.payment-action-btn.razorpay-btn,
+.bundle-claim-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.plan-cta-main.primary::after,
+.unlimited-landing-select-btn::after,
+.payment-action-btn.razorpay-btn::after,
+.bundle-claim-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+  transform: skewX(-20deg);
+  animation: btnShimmerSweep 3.5s infinite ease-in-out;
+}
+
+@keyframes btnShimmerSweep {
+  0% { left: -100%; }
+  40% { left: 150%; }
+  100% { left: 150%; }
+}
+
+@media (max-width: 768px) {
+  .bundle-savings-meter-card {
+    grid-template-columns: 1fr;
+    padding: 1.25rem 1.1rem;
+  }
+  .floating-activity-toast {
+    left: 12px;
+    right: 12px;
+    bottom: 80px;
+    max-width: none;
+  }
+  .floating-sticky-deal-bar {
+    width: 95%;
+    bottom: 12px;
+  }
+  .sticky-deal-text {
+    font-size: 0.76rem;
+  }
+  .sticky-deal-cta {
+    font-size: 0.74rem;
+    padding: 0.35rem 0.8rem;
+  }
+}
+
 
 
 

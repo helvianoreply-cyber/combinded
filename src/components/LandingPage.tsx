@@ -328,6 +328,15 @@ const FAQS = [
 
 
 
+// Live purchase & candidate activity notifications
+const LIVE_PURCHASE_ACTIVITIES = [
+  { name: 'Arjun K.', role: 'Senior Software Engineer', city: 'Bengaluru', action: 'upgraded to Standard Plan (50% OFF)', time: '2m ago', avatar: 'AK', bg: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' },
+  { name: 'David M.', role: 'Solutions Architect', city: 'San Francisco', action: 'applied to 140 remote jobs with Auto-Apply', time: '5m ago', avatar: 'DM', bg: 'linear-gradient(135deg, #10b981, #047857)' },
+  { name: 'Sneha P.', role: 'Fullstack Dev', city: 'Hyderabad', action: 'unlocked 1-Month Unlimited VIP Pass', time: '8m ago', avatar: 'SP', bg: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' },
+  { name: 'Alex T.', role: 'DevOps Lead', city: 'London', action: 'aced System Design round with Stealth Copilot', time: '12m ago', avatar: 'AT', bg: 'linear-gradient(135deg, #f59e0b, #d97706)' },
+  { name: 'Rahul V.', role: 'Staff Cloud Engineer', city: 'Toronto', action: 'claimed 50% Founder Deal (FIRST_50)', time: '15m ago', avatar: 'RV', bg: 'linear-gradient(135deg, #ec4899, #be185d)' },
+]
+
 export const LandingPage: React.FC<LandingPageProps> = ({
   signInWithGoogle,
   isSupabaseConfigured,
@@ -478,6 +487,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       setCouponFeedback({ text: `🎉 Official code FIRST_50 applied! 50% discount activated on all plans!`, type: 'success' })
     }
   }
+
+  const [toastIdx, setToastIdx] = useState(0)
+  const [toastVisible, setToastVisible] = useState(true)
+  const [toastDismissed, setToastDismissed] = useState(false)
+  const [stickyBarVisible, setStickyBarVisible] = useState(false)
+  const [stickyBarDismissed, setStickyBarDismissed] = useState(false)
+
+  // Rotate activity toasts every 8.5 seconds
+  useEffect(() => {
+    if (toastDismissed) return
+    const interval = setInterval(() => {
+      setToastVisible(false)
+      setTimeout(() => {
+        setToastIdx((prev) => (prev + 1) % LIVE_PURCHASE_ACTIVITIES.length)
+        setToastVisible(true)
+      }, 400)
+    }, 8500)
+    return () => clearInterval(interval)
+  }, [toastDismissed])
+
+  // Scroll listener for sticky bottom deal bar
+  useEffect(() => {
+    if (stickyBarDismissed) return
+    const handleScroll = () => {
+      if (window.scrollY > 480) {
+        setStickyBarVisible(true)
+      } else {
+        setStickyBarVisible(false)
+      }
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [stickyBarDismissed])
 
   const handleRazorpayUpgrade = (p: DbPlan, couponCode?: string, customAmountInr?: number) => {
     setIsPaymentModalOpen(false)
@@ -713,8 +755,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
 
-        {/* Trusted Companies Banner */}
-        <div className="trusted-companies-row" style={{ marginTop: '2rem' }}>
+        {/* Trusted Companies Banner & Tech Employers Hiring Wall */}
+        <div className="trusted-companies-row" style={{ marginTop: '2.5rem' }}>
           <p className="trusted-title">TRUSTED BY {formattedUserCount}+ ACTIVE USERS, SYSADMINS &amp; ENTERPRISE PROFESSIONALS</p>
           <div className="company-pills-list">
             <span className="company-pill">DATALAYER INFRASTRUCTURE</span>
@@ -722,6 +764,51 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <span className="company-pill active-pill">SYNAPSE LABS</span>
             <span className="company-pill">NEXUS ENTERPRISE</span>
             <span className="company-pill">HYPERGRID CLOUD</span>
+          </div>
+
+          {/* Global Tech Employers Hiring Wall */}
+          <div className="hiring-companies-showcase">
+            <div className="hiring-showcase-title-row">
+              <span className="hiring-sparkle">🚀</span>
+              <span className="hiring-title-text">WHERE CANDIDATES &amp; LEADERS HAVE INTERVIEWED &amp; SECURED REMOTE OFFERS</span>
+            </div>
+            <div className="hiring-logos-track">
+              <div className="hiring-brand-item">
+                <span className="brand-logo-icon google-icon">G</span>
+                <span className="brand-name">Google</span>
+              </div>
+              <div className="hiring-brand-item">
+                <span className="brand-logo-icon amazon-icon">a</span>
+                <span className="brand-name">Amazon AWS</span>
+              </div>
+              <div className="hiring-brand-item">
+                <span className="brand-logo-icon msft-icon">⊞</span>
+                <span className="brand-name">Microsoft</span>
+              </div>
+              <div className="hiring-brand-item">
+                <span className="brand-logo-icon stripe-icon">S</span>
+                <span className="brand-name">Stripe</span>
+              </div>
+              <div className="hiring-brand-item">
+                <span className="brand-logo-icon meta-icon">∞</span>
+                <span className="brand-name">Meta</span>
+              </div>
+              <div className="hiring-brand-item">
+                <span className="brand-logo-icon vercel-icon">▲</span>
+                <span className="brand-name">Vercel</span>
+              </div>
+              <div className="hiring-brand-item">
+                <span className="brand-logo-icon atlassian-icon">A</span>
+                <span className="brand-name">Atlassian</span>
+              </div>
+              <div className="hiring-brand-item">
+                <span className="brand-logo-icon snowflake-icon">❄</span>
+                <span className="brand-name">Snowflake</span>
+              </div>
+            </div>
+            <p className="hiring-showcase-sub">
+              Average verified candidate offer: <strong>$110,000 – $145,000 / yr</strong> (or ₹18L – ₹35L CTC)
+            </p>
           </div>
         </div>
       </section>
@@ -947,8 +1034,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   {stealthViewMode === 'candidate' ? (
                     <div className="copilot-hud-mock">
                       <div className="hud-incoming-q">
-                        <span className="hud-q-icon"><MicIcon /></span>
+                        <div className="hud-q-left">
+                          <span className="hud-q-icon"><MicIcon /></span>
+                          <div className="live-audio-waveform" title="Live audio stream capture active">
+                            <span className="wave-bar bar-1"></span>
+                            <span className="wave-bar bar-2"></span>
+                            <span className="wave-bar bar-3"></span>
+                            <span className="wave-bar bar-4"></span>
+                            <span className="wave-bar bar-5"></span>
+                          </div>
+                        </div>
                         <span className="hud-q-text">"How do you resolve distributed database split-brain scenarios?"</span>
+                        <span className="hud-latency-pill">⚡ 18ms Live Ingest</span>
                       </div>
                       <div className="hud-whisper-answer">
                         <span className="hud-ans-badge">💡 EXECUTIVE BRIEF &amp; TALKING POINTS</span>
@@ -1950,6 +2047,51 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </tbody>
           </table>
         </div>
+
+        {/* 97% Bundle Savings Breakdown Meter */}
+        <div className="bundle-savings-meter-card">
+          <div className="bundle-savings-left">
+            <span className="bundle-savings-tag">💰 COST OF SEPARATE FRAGMENTED TOOLS</span>
+            <div className="bundle-item-row">
+              <span>🖥️ Dedicated Remote Desktop (Parsec / TeamViewer):</span>
+              <strong>$35 / mo</strong>
+            </div>
+            <div className="bundle-item-row">
+              <span>🎙️ Live Stealth Interview AI (FinalRound / Clueless):</span>
+              <strong>$80 / mo</strong>
+            </div>
+            <div className="bundle-item-row">
+              <span>📄 Automated ATS Job Submitter (LoopCV / LazyApply):</span>
+              <strong>$49 / mo</strong>
+            </div>
+            <div className="bundle-item-divider" />
+            <div className="bundle-item-row bundle-item-total">
+              <span>Total Separate Subscriptions:</span>
+              <del className="bundle-separate-del">$164 / month (≈ ₹13,500/mo)</del>
+            </div>
+          </div>
+
+          <div className="bundle-savings-right">
+            <div className="bundle-offer-chip">97% BUNDLE SAVINGS</div>
+            <div className="bundle-helvia-price-box">
+              <span className="bundle-label">Helvia 3-in-1 Suite:</span>
+              <span className="bundle-highlight-price">$4 / ₹349</span>
+              <span className="bundle-code-tag">with coupon FIRST_50</span>
+            </div>
+            <div className="bundle-meter-track">
+              <div className="bundle-meter-fill">
+                <span>97% Saved ($160 / ₹13,150)</span>
+              </div>
+            </div>
+            <a 
+              href="#pricing" 
+              className="bundle-claim-btn"
+              onClick={() => handleQuickApplyCoupon('FIRST_50')}
+            >
+              ⚡ Claim 97% Bundle Deal (50% OFF) ↓
+            </a>
+          </div>
+        </div>
       </section>
 
       {/* Stats Section */}
@@ -2796,6 +2938,65 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
       </footer>
+
+      {/* Floating Live Activity Social Proof Toast (Bottom-Left) */}
+      {!toastDismissed && (
+        <div className={`floating-activity-toast ${toastVisible ? 'visible' : 'hidden'}`}>
+          <div className="activity-toast-avatar" style={{ background: LIVE_PURCHASE_ACTIVITIES[toastIdx].bg }}>
+            {LIVE_PURCHASE_ACTIVITIES[toastIdx].avatar}
+          </div>
+          <div className="activity-toast-details">
+            <div className="activity-toast-header">
+              <span className="activity-toast-name">{LIVE_PURCHASE_ACTIVITIES[toastIdx].name}</span>
+              <span className="activity-toast-city">• {LIVE_PURCHASE_ACTIVITIES[toastIdx].city}</span>
+              <span className="activity-toast-time">{LIVE_PURCHASE_ACTIVITIES[toastIdx].time}</span>
+            </div>
+            <div className="activity-toast-action">
+              <span className="action-verified-check">✓</span>
+              <span>{LIVE_PURCHASE_ACTIVITIES[toastIdx].action}</span>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            className="activity-toast-close"
+            onClick={() => setToastDismissed(true)}
+            title="Dismiss notification"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Floating Sticky Bottom 50% OFF Deal Bar (On Scroll) */}
+      {stickyBarVisible && !stickyBarDismissed && (
+        <div className="floating-sticky-deal-bar">
+          <div className="sticky-deal-inner">
+            <div className="sticky-deal-left">
+              <span className="sticky-flame-icon">🔥</span>
+              <div className="sticky-deal-text">
+                <strong>Founder's 50% OFF Active:</strong> Unlock 500 AI Answers + 300 Remote Mins for just <span className="sticky-price-glow">$4 / ₹349</span>
+              </div>
+            </div>
+            <div className="sticky-deal-right">
+              <a 
+                href="#pricing" 
+                className="sticky-deal-cta"
+                onClick={() => handleQuickApplyCoupon('FIRST_50')}
+              >
+                ⚡ Claim 50% OFF Deal ↓
+              </a>
+              <button 
+                type="button" 
+                className="sticky-deal-close"
+                onClick={() => setStickyBarDismissed(true)}
+                title="Dismiss banner"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
