@@ -7,6 +7,7 @@ import { InteractiveTopupStation } from './InteractiveTopupStation'
 import { ReviewSessionCard } from './ReviewSessionCard'
 import { VideoTutorialsSection } from './VideoTutorialsSection'
 import { supabase } from '../lib/supabaseClient'
+import { validateCoupon, calculateDiscount, calculateUsdDiscount, type CouponInfo } from '../lib/coupons'
 
 interface DashboardProps {
   displayName: string | null
@@ -398,6 +399,66 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<DbPlan | null>(null)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
 
+  // Interactive Coupon Bar on Dashboard
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponInfo | null>(null)
+  const [couponInputText, setCouponInputText] = useState('')
+  const [couponFeedback, setCouponFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+
+  // Detect ?coupon=CODE from URL or localStorage
+  useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search)
+      const rawCode = urlParams.get('coupon') || urlParams.get('ref') || urlParams.get('code') || urlParams.get('promo')
+
+      if (rawCode) {
+        const valid = validateCoupon(rawCode)
+        if (valid) {
+          setAppliedCoupon(valid)
+          setCouponInputText(valid.code)
+          localStorage.setItem('helvia_creator_coupon', valid.code)
+          return
+        }
+      }
+
+      const stored = localStorage.getItem('helvia_creator_coupon')
+      if (stored) {
+        const valid = validateCoupon(stored)
+        if (valid) {
+          setAppliedCoupon(valid)
+          setCouponInputText(valid.code)
+        }
+      }
+    } catch {}
+  }, [])
+
+  const handleApplyCoupon = () => {
+    setCouponFeedback(null)
+    const raw = couponInputText.trim()
+    if (!raw) {
+      setCouponFeedback({ text: 'Please enter official coupon code: FIRST_50', type: 'error' })
+      return
+    }
+    const found = validateCoupon(raw)
+    if (found) {
+      setAppliedCoupon(found)
+      try {
+        localStorage.setItem('helvia_creator_coupon', found.code)
+      } catch {}
+      setCouponFeedback({ text: '🎉 Official code FIRST_50 applied! 50% discount activated on all plans!', type: 'success' })
+    } else {
+      setCouponFeedback({ text: `Code "${raw}" is invalid. Please enter official code: FIRST_50`, type: 'error' })
+    }
+  }
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null)
+    setCouponInputText('')
+    setCouponFeedback(null)
+    try {
+      localStorage.removeItem('helvia_creator_coupon')
+    } catch {}
+  }
+
   const openPaymentModal = (p: DbPlan) => {
     if (isUserUnlimitedPlan) {
       alert(`You currently have an active Unlimited VIP Plan${effectiveExpiry ? ` (valid until ${new Date(effectiveExpiry).toLocaleDateString()})` : ''}. You cannot purchase any another plan or top-up while your unlimited plan is active.`)
@@ -787,6 +848,35 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Video Walkthroughs in Dashboard */}
         <VideoTutorialsSection compact={true} id="dashboard-video-tutorials" />
 
+        {/* Dashboard Interactive Creator / Influencer Coupon Box */}
+        <div className="pricing-coupon-box" style={{ margin: '2rem auto 2.5rem auto' }}>
+          <div className="pricing-coupon-input-wrap">
+            <span className="pricing-coupon-tag-icon">🏷️</span>
+            <input 
+              type="text" 
+              className="pricing-coupon-input"
+              placeholder="Enter coupon code (e.g. FIRST_50 for 50% OFF)"
+              value={couponInputText}
+              onChange={(e) => setCouponInputText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon() }}
+            />
+            {appliedCoupon ? (
+              <button className="pricing-coupon-apply-btn applied" onClick={handleRemoveCoupon} type="button">
+                ✓ {appliedCoupon.code} Active (50% OFF) • Remove
+              </button>
+            ) : (
+              <button className="pricing-coupon-apply-btn" onClick={handleApplyCoupon} type="button">
+                Apply Coupon
+              </button>
+            )}
+          </div>
+          {couponFeedback && (
+            <div className={`pricing-coupon-message ${couponFeedback.type}`}>
+              {couponFeedback.text}
+            </div>
+          )}
+        </div>
+
         {/* =========================================================
             FEATURED 1-MONTH UNLIMITED VIP SPOTLIGHT (STANDALONE SECTION)
             ========================================================= */}
@@ -796,7 +886,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           return (
             <section className="unlimited-spotlight-section">
-              <div className={`unlimited-spotlight-card ${isCurrentUnlimited ? 'active-plan' : ''}`}>
+              <div className={`unlimited-spotlight-card ${isCurrentUnlimited ? 'active-plan' : ''} ${appliedCoupon ? 'has-coupon' : ''}`}>
                 <div className="unlimited-spotlight-glow" />
 
                 <div className="unlimited-spotlight-header">
@@ -822,11 +912,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className="unlimited-pricing-block">
                       <div className="unlimited-price-tag">
                         <span className="unlimited-currency">$</span>
-                        <span className="unlimited-amount">{unlimitedPlan.price}</span>
+                        <span className="unlimited-orig-strikethrough">${unlimitedPlan.price}</span>
                         <span className="unlimited-period">USD / month (30 Days)</span>
                       </div>
                       <div className="unlimited-inr-row">
-                        <span className="unlimited-inr-base">≈ ₹{inrPrice.toLocaleString('en-IN')} INR</span>
+                        <span className="unlimited-inr-base" style={{ textDecoration: 'line-through', opacity: 0.65 }}>
+                          ₹{inrPrice.toLocaleString('en-IN')} INR
+                        </span>
+                      </div>
+
+                      {/* Big Coupon Price Tag on Unlimited Spotlight Card */}
+                      <div className="coupon-tag-price-row unlimited">
+                        <span className="coupon-tag-label">🏷️ Coupon Price:</span>
+                        <span className="coupon-tag-amount">$10.50</span>
+                        <span className="coupon-tag-inr">₹999 INR</span>
                       </div>
                     </div>
 
@@ -947,10 +1046,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             const isMaxPlus = priceNum === 25
             const isUltraPlus = priceNum === 35
 
+            const baseInr = getPlanInrPrice(p.price)
+            const inrDiscount = appliedCoupon && !isFree ? calculateDiscount(baseInr, appliedCoupon) : null
+            const effectiveInr = inrDiscount ? inrDiscount.discountedInr : baseInr
+            const usdDiscount = appliedCoupon && !isFree ? calculateUsdDiscount(p.price, appliedCoupon) : null
+            const effectiveUsd = usdDiscount ? usdDiscount.discountedUsd : p.price
+
             return (
               <div
                 key={p.id}
-                className={`all-plans-card ${isPopular ? 'featured popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''} ${isCurrentFree ? 'active-plan' : ''}`}
+                className={`all-plans-card ${isPopular ? 'featured popular' : ''} ${isLifetime ? 'lifetime' : ''} ${isUltraPlus ? 'power' : ''} ${isMaxPlus ? 'capacity' : ''} ${isCurrentFree ? 'active-plan' : ''} ${appliedCoupon && !isFree ? 'has-coupon' : ''}`}
               >
                 {/* Top Badge & Tier Category Row */}
                 <div className="plan-card-badge-row">
@@ -993,19 +1098,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div className="plan-card-price-row">
                     <div className="plan-price-main">
                       <span className="plan-price-currency">{isFree ? '' : '$'}</span>
-                      <span className={`plan-card-price ${isFree ? 'free' : isPopular ? 'popular' : ''}`}>
-                        {isFree ? 'Free' : p.price}
-                      </span>
+                      {isFree ? (
+                        <span className="plan-card-price free">Free</span>
+                      ) : (
+                        <span className="price-orig-strikethrough" style={{ fontSize: '2.1rem' }}>
+                          ${p.price}
+                        </span>
+                      )}
                     </div>
                     {!isFree && (
                       <div className="plan-price-sub-wrap">
-                        <span className="plan-inr-chip">≈ ₹{getPlanInrPrice(p.price)}</span>
+                        <span className="plan-inr-chip" style={{ textDecoration: 'line-through', opacity: 0.65 }}>
+                          ₹{baseInr}
+                        </span>
                         <span className="plan-card-period">
                           {isLifetime ? '/ one-time' : '/ pack'}
                         </span>
                       </div>
                     )}
                   </div>
+
+                  {/* Big Coupon Price Tag on Dashboard cards */}
+                  {!isFree && (
+                    <div className="coupon-tag-price-row">
+                      <span className="coupon-tag-label">🏷️ Coupon Price:</span>
+                      <span className="coupon-tag-amount">${Math.round(p.price * 0.5 * 10) / 10}</span>
+                      <span className="coupon-tag-inr">₹{calculateDiscount(baseInr, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Plan Description */}
@@ -1113,8 +1233,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <>
                           <span>
                             {isLifetime
-                              ? `Get Lifetime ($49 / ₹${getPlanInrPrice(49)})`
-                              : `Select Plan ($${p.price} / ₹${getPlanInrPrice(p.price)})`}
+                              ? `Get Lifetime (${appliedCoupon ? `$${effectiveUsd} / ₹${effectiveInr}` : `$49 / ₹${getPlanInrPrice(49)}`})`
+                              : `Select Plan (${appliedCoupon ? `$${effectiveUsd} / ₹${effectiveInr}` : `$${p.price} / ₹${baseInr}`})`}
                           </span>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="btn-arrow">
                             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -1165,6 +1285,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         plan={selectedPlanForPayment}
+        initialCoupon={appliedCoupon}
         onSelectRazorpay={handleRazorpayUpgrade}
         onSelectDodo={handleDodoUpgrade}
         isProcessing={isUpgrading}

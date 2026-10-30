@@ -20093,14 +20093,74 @@ section[id] {
   margin-top: 0.45rem;
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   font-size: 0.72rem;
   font-weight: 850;
   color: #4ade80;
   background: rgba(74, 222, 128, 0.15);
   border: 1px solid rgba(74, 222, 128, 0.35);
-  padding: 0.18rem 0.6rem;
+  padding: 0.22rem 0.65rem;
   border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
   animation: pulse-glow-green 2.5s infinite;
+}
+
+/* Coupon Price Tag & Sizing */
+.coupon-tag-price-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+  padding: 0.35rem 0.65rem;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px dashed rgba(74, 222, 128, 0.45);
+  border-radius: 10px;
+  width: fit-content;
+  animation: pulse-glow-green 2.5s infinite;
+}
+
+.coupon-tag-label {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #4ade80;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.coupon-tag-amount {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #4ade80;
+  line-height: 1;
+  text-shadow: 0 0 16px rgba(74, 222, 128, 0.45);
+}
+
+.coupon-tag-inr {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+}
+
+.coupon-tag-price-row.unlimited {
+  padding: 0.45rem 0.85rem;
+  margin-top: 0.75rem;
+}
+
+.coupon-tag-price-row.unlimited .coupon-tag-amount {
+  font-size: 2.1rem;
+}
+
+.coupon-tag-price-row.unlimited .coupon-tag-inr {
+  font-size: 1.05rem;
+  padding: 0.2rem 0.6rem;
 }
 
 @keyframes pulse-glow-green {

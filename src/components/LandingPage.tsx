@@ -1983,28 +1983,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           <div className="plan-price">
                             {isFree ? (
                               <span className="price-val">Free</span>
-                            ) : appliedCoupon ? (
-                              <>
-                                <span className="price-currency">$</span>
-                                <span className="price-orig-strikethrough">${p.price}</span>
-                                <span className="price-val discounted">{effectiveUsd}</span>
-                                <span className="price-inr-chip discounted">
-                                  <span className="inr-orig">₹{baseInr}</span> ₹{effectiveInr}
-                                </span>
-                                <span className="price-period">{isLifetime ? '/ life' : '/ pack'}</span>
-                              </>
                             ) : (
                               <>
                                 <span className="price-currency">$</span>
-                                <span className="price-val">{p.price}</span>
-                                <span className="price-inr-chip">₹{baseInr}</span>
+                                <span className="price-orig-strikethrough">${p.price}</span>
+                                <span className="price-inr-chip" style={{ textDecoration: 'line-through', opacity: 0.65 }}>
+                                  ₹{baseInr}
+                                </span>
                                 <span className="price-period">{isLifetime ? '/ life' : '/ pack'}</span>
                               </>
                             )}
                           </div>
-                          {appliedCoupon && !isFree && (
-                            <div className="coupon-active-subbadge">
-                              <span>🔥 50% Creator Code Active</span>
+
+                          {/* Big Coupon Price Tag with Slash Strikethrough */}
+                          {!isFree && (
+                            <div className="coupon-tag-price-row">
+                              <span className="coupon-tag-label">🏷️ Coupon Price:</span>
+                              <span className="coupon-tag-amount">${Math.round(p.price * 0.5 * 10) / 10}</span>
+                              <span className="coupon-tag-inr">₹{calculateDiscount(baseInr, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</span>
                             </div>
                           )}
                         </div>
@@ -2101,29 +2097,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                             <div className="unlimited-pricing-block">
                               <div className="unlimited-price-tag">
                                 <span className="unlimited-currency">$</span>
-                                {appliedCoupon ? (
-                                  <>
-                                    <span className="unlimited-orig-strikethrough">${unlimitedPlan.price}</span>
-                                    <span className="unlimited-amount discounted">{unlEffectiveUsd}</span>
-                                  </>
-                                ) : (
-                                  <span className="unlimited-amount">{unlimitedPlan.price}</span>
-                                )}
+                                <span className="unlimited-orig-strikethrough">${unlimitedPlan.price}</span>
                                 <span className="unlimited-period">USD / 30 Days</span>
                               </div>
                               <div className="unlimited-inr-row">
-                                {appliedCoupon ? (
-                                  <span className="unlimited-inr-base discounted">
-                                    <span className="inr-orig">₹{unlBaseInr.toLocaleString('en-IN')}</span> ≈ ₹{unlEffectiveInr.toLocaleString('en-IN')} INR
-                                  </span>
-                                ) : (
-                                  <span className="unlimited-inr-base">≈ ₹{unlBaseInr.toLocaleString('en-IN')} INR</span>
-                                )}
-                                {appliedCoupon && (
-                                  <span className="unlimited-coupon-deal">
-                                    🔥 50% CREATOR DISCOUNT APPLIED
-                                  </span>
-                                )}
+                                <span className="unlimited-inr-base" style={{ textDecoration: 'line-through', opacity: 0.65 }}>
+                                  ₹{unlBaseInr.toLocaleString('en-IN')} INR
+                                </span>
+                              </div>
+
+                              {/* Big Coupon Price Tag on Unlimited Card */}
+                              <div className="coupon-tag-price-row unlimited">
+                                <span className="coupon-tag-label">🏷️ Coupon Price:</span>
+                                <span className="coupon-tag-amount">$10.50</span>
+                                <span className="coupon-tag-inr">₹999 INR</span>
                               </div>
                             </div>
 
