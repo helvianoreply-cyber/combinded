@@ -435,7 +435,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setCouponFeedback(null)
     const raw = couponInputText.trim()
     if (!raw) {
-      setCouponFeedback({ text: 'Please enter official coupon code: FIRST_50', type: 'error' })
+      setCouponFeedback({ text: 'Please enter a coupon code (e.g. stranger78 or FIRST_50)', type: 'error' })
       return
     }
     const found = validateCoupon(raw)
@@ -444,9 +444,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
       try {
         localStorage.setItem('helvia_creator_coupon', found.code)
       } catch {}
-      setCouponFeedback({ text: '🎉 Official code FIRST_50 applied! 50% discount activated on all plans!', type: 'success' })
+      setCouponFeedback({ text: `🎉 Official code "${found.code}" applied! ${found.discountPercent}% discount activated on all plans!`, type: 'success' })
     } else {
-      setCouponFeedback({ text: `Code "${raw}" is invalid. Please enter official code: FIRST_50`, type: 'error' })
+      setCouponFeedback({ text: `Code "${raw}" is invalid. Please enter a valid coupon code (e.g. stranger78 or FIRST_50)`, type: 'error' })
     }
   }
 
@@ -459,7 +459,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     } catch {}
   }
 
-  const handleQuickApplyCoupon = (code: string = 'FIRST_50') => {
+  const handleQuickApplyCoupon = (code: string = 'stranger78') => {
     setCouponFeedback(null)
     const valid = validateCoupon(code)
     if (valid) {
@@ -468,7 +468,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       try {
         localStorage.setItem('helvia_creator_coupon', valid.code)
       } catch {}
-      setCouponFeedback({ text: '🎉 Official code FIRST_50 applied! 50% discount activated on all plans!', type: 'success' })
+      setCouponFeedback({ text: `🎉 Official code "${valid.code}" applied! ${valid.discountPercent}% discount activated on all plans!`, type: 'success' })
     }
   }
 
@@ -764,7 +764,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="upgrade-hero-badge">STARTER QUOTA EXHAUSTED</div>
                 <h3 className="upgrade-hero-title">Keep Your Practice Momentum Going!</h3>
                 <p className="upgrade-hero-desc">
-                  Unlock <strong>500 AI Answers + 300 Remote Minutes + 200 Job Auto-Applies</strong> for just <strong>₹349 / $4</strong> with coupon <span className="upgrade-hero-code">FIRST_50</span> (50% OFF).
+                  Unlock <strong>500 AI Answers + 300 Remote Minutes + 200 Job Auto-Applies</strong> for just <strong>{appliedCoupon?.code === 'FIRST_50' ? '₹349 / $4' : '₹279 / $3.20'}</strong> with coupon <span className="upgrade-hero-code">{appliedCoupon?.code || 'stranger78'}</span> ({appliedCoupon ? `${appliedCoupon.discountPercent}%` : '60%'} OFF).
                 </p>
               </div>
             </div>
@@ -887,7 +887,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="roi-pill-tag">CAREER BREAKTHROUGH INVESTMENT</div>
               <h4 className="roi-headline">A Single Remote Offer Pays $80,000 – $140,000 / Year (₹15L – ₹35L)</h4>
               <p className="roi-subtext">
-                Helvia Pro is just <strong className="roi-price-glow">$4 / ₹349</strong> with coupon <strong>FIRST_50</strong>. 
+                Helvia Pro is just <strong className="roi-price-glow">{appliedCoupon?.code === 'FIRST_50' ? '$4 / ₹349' : '$3.20 / ₹279'}</strong> with coupon <strong>{appliedCoupon?.code || 'stranger78'}</strong>. 
                 That's less than a single coffee for the stealth interview intelligence that secures your offer.
               </p>
             </div>
@@ -903,7 +903,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="urgency-left">
             <span className="urgency-flame">🔥</span>
             <span className="urgency-text">
-              <strong>Founder’s Flash Deal:</strong> 50% OFF unlocked with code <span className="urgency-code-badge">FIRST_50</span>
+              <strong>Founder’s Flash Deal:</strong> {appliedCoupon ? `${appliedCoupon.discountPercent}% OFF unlocked with code ` : '60% OFF unlocked with code '}<span className="urgency-code-badge">{appliedCoupon?.code || 'stranger78'}</span>
             </span>
           </div>
           <div className="urgency-right">
@@ -913,10 +913,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
             <button 
               type="button" 
-              className={`urgency-action-btn ${appliedCoupon?.code === 'FIRST_50' ? 'applied' : ''}`}
-              onClick={() => handleQuickApplyCoupon('FIRST_50')}
+              className={`urgency-action-btn ${appliedCoupon ? 'applied' : ''}`}
+              onClick={() => handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')}
             >
-              {appliedCoupon?.code === 'FIRST_50' ? '✓ 50% OFF Active' : '⚡ Auto-Apply Code'}
+              {appliedCoupon ? `✓ ${appliedCoupon.discountPercent}% OFF Active` : '⚡ Auto-Apply Code (60% OFF)'}
             </button>
           </div>
         </div>
@@ -928,18 +928,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <input 
               type="text" 
               className="pricing-coupon-input"
-              placeholder="Enter coupon code (e.g. FIRST_50 for 50% OFF)"
+              placeholder="Enter coupon code (e.g. stranger78 or FIRST_50)"
               value={couponInputText}
               onChange={(e) => setCouponInputText(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon() }}
             />
             {appliedCoupon ? (
               <button className="pricing-coupon-apply-btn applied" onClick={handleRemoveCoupon} type="button">
-                ✓ {appliedCoupon.code} Active (50% OFF) • Remove
+                ✓ {appliedCoupon.code} Active ({appliedCoupon.discountPercent}% OFF) • Remove
               </button>
             ) : (
               <button className="pricing-coupon-apply-btn" onClick={handleApplyCoupon} type="button">
-                Apply Coupon
+                Apply Code
               </button>
             )}
           </div>
@@ -995,21 +995,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </div>
 
                       {/* Big Coupon Price Tag on Unlimited Spotlight Card & 1-Click Auto-Apply */}
-                      <div className="coupon-tag-price-row unlimited">
-                        <span className="coupon-tag-label">🏷️ Coupon Price:</span>
-                        <span className="coupon-tag-amount">$10.50</span>
-                        <span className="coupon-tag-inr">₹999 INR</span>
-                        <button 
-                          type="button" 
-                          className={`coupon-apply-pill-btn ${appliedCoupon?.code === 'FIRST_50' ? 'active' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleQuickApplyCoupon('FIRST_50')
-                          }}
-                        >
-                          {appliedCoupon?.code === 'FIRST_50' ? '✓ 50% OFF Active' : '⚡ Click to Apply FIRST_50'}
-                        </button>
-                      </div>
+                      {(() => {
+                        const previewCoupon = appliedCoupon || { code: 'stranger78', discountPercent: 60, description: '' }
+                        const previewInr = calculateDiscount(inrPrice, previewCoupon).discountedInr
+                        const previewUsd = calculateUsdDiscount(unlimitedPlan.price, previewCoupon).discountedUsd
+                        return (
+                          <div className="coupon-tag-price-row unlimited">
+                            <span className="coupon-tag-label">🏷️ Coupon Price:</span>
+                            <span className="coupon-tag-amount">${previewUsd}</span>
+                            <span className="coupon-tag-inr">₹{previewInr} INR</span>
+                            <button 
+                              type="button" 
+                              className={`coupon-apply-pill-btn ${appliedCoupon ? 'active' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')
+                              }}
+                            >
+                              {appliedCoupon ? `✓ ${appliedCoupon.code} Active (${appliedCoupon.discountPercent}% OFF)` : '⚡ Click to Apply stranger78 (60% OFF)'}
+                            </button>
+                          </div>
+                        )
+                      })()}
                     </div>
 
                     {/* Unlimited Badges / Quotas */}
@@ -1202,23 +1209,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
 
                   {/* Big Coupon Price Tag on Dashboard cards & 1-Click Auto-Apply */}
-                  {!isFree && (
-                    <div className="coupon-tag-price-row">
-                      <span className="coupon-tag-label">🏷️ Coupon Price:</span>
-                      <span className="coupon-tag-amount">${Math.round(p.price * 0.5 * 10) / 10}</span>
-                      <span className="coupon-tag-inr">₹{calculateDiscount(baseInr, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</span>
-                      <button 
-                        type="button" 
-                        className={`coupon-apply-pill-btn ${appliedCoupon?.code === 'FIRST_50' ? 'active' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleQuickApplyCoupon('FIRST_50')
-                        }}
-                      >
-                        {appliedCoupon?.code === 'FIRST_50' ? '✓ 50% OFF Active' : '⚡ Click to Apply FIRST_50'}
-                      </button>
-                    </div>
-                  )}
+                  {!isFree && (() => {
+                    const previewCoupon = appliedCoupon || { code: 'stranger78', discountPercent: 60, description: '' }
+                    const previewInr = calculateDiscount(baseInr, previewCoupon).discountedInr
+                    const previewUsd = calculateUsdDiscount(p.price, previewCoupon).discountedUsd
+                    return (
+                      <div className="coupon-tag-price-row">
+                        <span className="coupon-tag-label">🏷️ Coupon Price:</span>
+                        <span className="coupon-tag-amount">${previewUsd}</span>
+                        <span className="coupon-tag-inr">₹{previewInr}</span>
+                        <button 
+                          type="button" 
+                          className={`coupon-apply-pill-btn ${appliedCoupon ? 'active' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')
+                          }}
+                        >
+                          {appliedCoupon ? `✓ ${appliedCoupon.code} Active (${appliedCoupon.discountPercent}% OFF)` : '⚡ Click to Apply stranger78 (60% OFF)'}
+                        </button>
+                      </div>
+                    )
+                  })()}
                 </div>
 
                 {/* Plan Description */}

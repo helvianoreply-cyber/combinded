@@ -174,10 +174,13 @@ export default {
             return json({ message: 'Invalid top-up type. Expected copilot or autoapply' }, 400, origin)
           }
 
-          // EXPLICIT CHECK: Promotional coupons and discount offers cannot be used on top-up plans!
+          // Check coupon if provided for top-up purchases
           const rawCoupon = String(body.couponCode || body.coupon || '').trim()
           if (rawCoupon) {
-            return json({ message: 'Promotional coupons and offers cannot be applied to quota top-up plans. Top-ups are billed at standard on-demand rates.' }, 400, origin)
+            const couponInfo = getCouponDetails(rawCoupon)
+            if (!couponInfo) {
+              return json({ message: 'Invalid coupon code provided.' }, 400, origin)
+            }
           }
         } else {
           if (!targetPlanId && duration !== '24h') {
@@ -229,15 +232,22 @@ export default {
 
         // 3. SERVER-SIDE ONLY Coupon Validation (NEVER TRUST CLIENT-PROVIDED AMOUNTS OR CUSTOM DISCOUNTS!)
         const rawCoupon = String(body.couponCode || body.coupon || '').trim()
-        // Top-ups are strictly excluded from discounts; coupons only apply to core subscription plans
-        const hasValidCoupon = !isTopup && isValidDiscountCoupon(rawCoupon)
-        const discountFraction = hasValidCoupon ? 0.5 : 0
+        const couponDetails = getCouponDetails(rawCoupon)
+        const hasValidCoupon = couponDetails !== null
+        const discountFraction = hasValidCoupon ? couponDetails.discountFraction : 0
 
-        // Strict calculation: base price minus verified discount (top-ups always 100% full rate)
-        // We completely ignore body.amount or customAmountInr!
+        // Strict calculation: base price minus verified discount (60% for stranger78, 50% for FIRST_50)
         let amount = Math.round(basePlanAmount * (1 - discountFraction))
-        if (baseInr === 1999 && hasValidCoupon) {
-          amount = 999 * 100 // exactly ₹999 with 50% discount offer for 1-Month Unlimited VIP
+        if (hasValidCoupon && couponDetails.discountPercent === 60) {
+          if (baseInr === 1999) amount = 799 * 100 // 60% off 1-Month VIP (₹1,999 -> ₹799)
+          else if (baseInr === 1299) amount = 519 * 100 // 60% off Pro+ (₹1,299 -> ₹519)
+          else if (baseInr === 699) amount = 279 * 100 // 60% off Standard (₹699 -> ₹279)
+          else if (baseInr === 169) amount = 68 * 100 // 60% off 24h
+        } else if (hasValidCoupon && couponDetails.discountPercent === 50) {
+          if (baseInr === 1999) amount = 999 * 100 // 50% off 1-Month VIP (₹1,999 -> ₹999)
+          else if (baseInr === 1299) amount = 649 * 100 // 50% off Pro+ (₹1,299 -> ₹649)
+          else if (baseInr === 699) amount = 349 * 100 // 50% off Standard (₹699 -> ₹349)
+          else if (baseInr === 169) amount = 85 * 100 // 50% off 24h
         }
 
         const currency = 'INR'
@@ -272,7 +282,9 @@ export default {
             baseAmount: String(basePlanAmount),
             userId: String(body.userId || '').trim(),
             email: String(body.email || '').toLowerCase().trim(),
-            coupon: hasValidCoupon ? rawCoupon : '',
+            coupon: hasValidCoupon ? couponDetails.code : '',
+            discountPercent: hasValidCoupon ? String(couponDetails.discountPercent) : '0',
+            offerId: hasValidCoupon ? (couponDetails.offerId || '') : '',
             processed: 'false',
           },
         }
@@ -2326,17 +2338,52 @@ function getOfficialPlanInrPrice(priceUsd, planId) {
   return 1999
 }
 
-function isValidDiscountCoupon(couponCode) {
-  if (!couponCode || typeof couponCode !== 'string') return false
+function getCouponDetails(couponCode) {
+  if (!couponCode || typeof couponCode !== 'string') return null
   const norm = couponCode.toUpperCase().replace(/\s+/g, '').replace(/_/g, '')
-  return (
+
+  // 60% Instant Discount: stranger78 (Razorpay Offer: offer_TuweufXLBXXzIP)
+  if (
+    norm === 'STRANGER78' ||
+    norm === 'STRANGER' ||
+    norm === 'STRANGER_78' ||
+    norm === '60OFF' ||
+    norm === 'APPLY60' ||
+    norm === 'OFFERTUWEUFXLBXXZIP'
+  ) {
+    return {
+      code: 'stranger78',
+      discountPercent: 60,
+      discountFraction: 0.60,
+      offerId: 'offer_TuweufXLBXXzIP',
+      description: 'Official 60% Instant Discount on All Purchases (stranger78)'
+    }
+  }
+
+  // 50% Instant Discount: FIRST_50 (Razorpay Offer: offer_ThtiX0ut4rhpCT)
+  if (
     norm === 'FIRST50' ||
+    norm === 'FIRST_50' ||
     norm === 'APPLY50OFF' ||
     norm === 'APPLY50' ||
     norm === '50OFF' ||
     norm === 'OFFERTHTIX0UT4RHPCT' ||
     norm === 'OFFERTGYKVWY8HYZTTZ'
-  )
+  ) {
+    return {
+      code: 'FIRST_50',
+      discountPercent: 50,
+      discountFraction: 0.50,
+      offerId: 'offer_ThtiX0ut4rhpCT',
+      description: 'Official 50% Instant Discount (FIRST_50)'
+    }
+  }
+
+  return null
+}
+
+function isValidDiscountCoupon(couponCode) {
+  return getCouponDetails(couponCode) !== null
 }
 
 async function generateSignature(secret, orderId, paymentId) {

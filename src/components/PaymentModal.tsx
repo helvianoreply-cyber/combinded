@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { type DbPlan, getPlanInrPrice } from '../lib/database.types'
-import { type CouponInfo, validateCoupon, calculateDiscount } from '../lib/coupons'
+import { type CouponInfo, validateCoupon, calculateDiscount, calculateUsdDiscount } from '../lib/coupons'
 
 interface PaymentModalProps {
   isOpen: boolean
@@ -69,6 +69,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const effectiveInrAmount = discountCalc ? discountCalc.discountedInr : originalInrAmount
 
+  // Preview coupon (active or default featured stranger78 with 60% OFF)
+  const previewCoupon = activeCoupon || { code: 'stranger78', discountPercent: 60, description: '' }
+  const previewDiscount = calculateDiscount(originalInrAmount, previewCoupon)
+  const previewUsdDiscount = calculateUsdDiscount(plan.price, previewCoupon)
+
   const handleApplyCoupon = () => {
     setCouponError(null)
     setCouponSuccess(null)
@@ -85,7 +90,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       const calc = calculateDiscount(originalInrAmount, found)
       setCouponSuccess(`Official Coupon "${found.code}" applied! ${calc.label}`)
     } else {
-      setCouponError(`Invalid coupon code. Please enter official code: FIRST_50`)
+      setCouponError(`Invalid coupon code. Please enter a valid code (e.g. stranger78 or FIRST_50)`)
     }
   }
 
@@ -96,12 +101,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setCouponSuccess(null)
   }
 
-  const handleQuickApplyModalCoupon = (code: string = 'FIRST_50') => {
+  const handleQuickApplyModalCoupon = (code: string = 'stranger78') => {
     setCouponInput(code)
     const valid = validateCoupon(code)
     if (valid) {
       setAppliedCoupon(valid)
-      setCouponSuccess(`${valid.code} (50% OFF applied)`)
+      setCouponSuccess(`${valid.code} (${valid.discountPercent}% OFF applied)`)
       setCouponError(null)
     }
   }
@@ -168,16 +173,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <span style={{ textDecoration: 'line-through', opacity: 0.65 }}>≈ ₹{originalInrAmount.toLocaleString('en-IN')}</span> <span className="payment-curr-sub">INR</span>
             </div>
             <div className="payment-plan-coupon-tag">
-              <span>🏷️ Coupon Price: <strong>${Math.round(plan.price * 0.5 * 10) / 10} / ₹{calculateDiscount(originalInrAmount, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr}</strong></span>
+              <span>🏷️ Coupon Price: <strong>${previewUsdDiscount.discountedUsd} / ₹{previewDiscount.discountedInr}</strong></span>
               <button 
                 type="button" 
                 className={`modal-coupon-quick-apply-btn ${appliedCoupon ? 'applied' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleQuickApplyModalCoupon('FIRST_50')
+                  handleQuickApplyModalCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')
                 }}
               >
-                {appliedCoupon ? '✓ 50% OFF Active' : '⚡ Click to Apply FIRST_50 (50% OFF)'}
+                {appliedCoupon ? `✓ ${appliedCoupon.code} Active (${appliedCoupon.discountPercent}% OFF)` : '⚡ Click to Apply stranger78 (60% OFF)'}
               </button>
             </div>
           </div>
@@ -221,16 +226,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             {/* Prominent Coupon Price Tag on Razorpay card */}
             <div className="modal-coupon-tag-row">
               <span className="modal-coupon-tag-label">🏷️ Coupon Price:</span>
-              <span className="modal-coupon-tag-amount">₹{calculateDiscount(originalInrAmount, { code: 'FIRST_50', discountPercent: 50, description: '' }).discountedInr.toLocaleString('en-IN')}</span>
+              <span className="modal-coupon-tag-amount">₹{previewDiscount.discountedInr.toLocaleString('en-IN')}</span>
               <button 
                 type="button" 
                 className={`modal-coupon-quick-apply-btn ${appliedCoupon ? 'applied' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleQuickApplyModalCoupon('FIRST_50')
+                  handleQuickApplyModalCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')
                 }}
               >
-                {appliedCoupon ? '✓ Code FIRST_50 Active' : '⚡ Click to Apply FIRST_50'}
+                {appliedCoupon ? `✓ Code ${appliedCoupon.code} Active` : '⚡ Click to Apply stranger78 (60% OFF)'}
               </button>
             </div>
 
@@ -258,7 +263,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   <input
                     type="text"
                     className={`payment-coupon-input ${appliedCoupon ? 'applied' : ''}`}
-                    placeholder="Enter coupon code (FIRST_50)"
+                    placeholder="Enter coupon code (e.g. stranger78 or FIRST_50)"
                     value={couponInput}
                     onChange={(e) => {
                       setCouponInput(e.target.value)
@@ -376,16 +381,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             {/* Prominent Coupon Price Tag on Dodo card */}
             <div className="modal-coupon-tag-row">
               <span className="modal-coupon-tag-label">🏷️ Coupon Price:</span>
-              <span className="modal-coupon-tag-amount">${Math.round(plan.price * 0.5 * 10) / 10}</span>
+              <span className="modal-coupon-tag-amount">${previewUsdDiscount.discountedUsd}</span>
               <button 
                 type="button" 
                 className={`modal-coupon-quick-apply-btn ${appliedCoupon ? 'applied' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleQuickApplyModalCoupon('FIRST_50')
+                  handleQuickApplyModalCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')
                 }}
               >
-                {appliedCoupon ? '✓ Code FIRST_50 Active' : '⚡ Click to Apply FIRST_50'}
+                {appliedCoupon ? `✓ Code ${appliedCoupon.code} Active` : '⚡ Click to Apply stranger78 (60% OFF)'}
               </button>
             </div>
 
