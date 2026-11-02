@@ -449,7 +449,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     setCouponFeedback(null)
     const raw = couponInputText.trim()
     if (!raw) {
-      setCouponFeedback({ text: 'Please enter a coupon code (e.g. stranger78 or FIRST_50)', type: 'error' })
+      setCouponFeedback({ text: 'Please enter a coupon code (e.g. TAMILBROSSQUAD10, stranger78 or FIRST_50)', type: 'error' })
       return
     }
     const found = validateCoupon(raw)
@@ -460,7 +460,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       } catch {}
       setCouponFeedback({ text: `🎉 Official code "${found.code}" applied! ${found.discountPercent}% discount activated on all plans!`, type: 'success' })
     } else {
-      setCouponFeedback({ text: `Code "${raw}" is invalid. Please enter a valid coupon code (e.g. stranger78 or FIRST_50)`, type: 'error' })
+      setCouponFeedback({ text: `Code "${raw}" is invalid. Please enter a valid coupon code (e.g. TAMILBROSSQUAD10, stranger78 or FIRST_50)`, type: 'error' })
     }
   }
 
@@ -2222,7 +2222,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <input 
                   type="text" 
                   className="pricing-coupon-input"
-                  placeholder="Enter coupon code (e.g. stranger78 or FIRST_50)"
+                  placeholder="Enter coupon code (e.g. TAMILBROSSQUAD10, stranger78 or FIRST_50)"
                   value={couponInputText}
                   onChange={(e) => setCouponInputText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon() }}

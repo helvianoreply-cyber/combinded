@@ -2342,6 +2342,22 @@ function getCouponDetails(couponCode) {
   if (!couponCode || typeof couponCode !== 'string') return null
   const norm = couponCode.toUpperCase().replace(/\s+/g, '').replace(/_/g, '')
 
+  // 60% Instant Discount: TAMILBROSSQUAD10 (Razorpay Offer: offer_TvJzHL1gF2jcQ5)
+  if (
+    norm === 'TAMILBROSSQUAD10' ||
+    norm === 'TAMILBROSSQUAD' ||
+    norm === 'TAMILBROS10' ||
+    norm === 'OFFERTVJZHL1GF2JCQ5'
+  ) {
+    return {
+      code: 'TAMILBROSSQUAD10',
+      discountPercent: 60,
+      discountFraction: 0.60,
+      offerId: 'offer_TvJzHL1gF2jcQ5',
+      description: 'Official 60% Instant Discount on All Purchases (TAMILBROSSQUAD10)'
+    }
+  }
+
   // 60% Instant Discount: stranger78 (Razorpay Offer: offer_TuweufXLBXXzIP)
   if (
     norm === 'STRANGER78' ||
