@@ -7,13 +7,11 @@ export interface CouponInfo {
 }
 
 /**
- * Official Featured Coupon Codes:
- * - TAMILBROSSQUAD10: 60% instant discount across all purchases (Offer ID: offer_TvJzHL1gF2jcQ5)
- * - stranger78: 60% instant discount across all purchases (Offer ID: offer_TuweufXLBXXzIP)
- * - FIRST_50: 50% instant discount (Offer ID: offer_ThtiX0ut4rhpCT)
+ * The single official coupon displayed publicly across the website is FIRST_50.
+ * Partner / Creator codes (e.g. TAMILBROSSQUAD10, stranger78) are supported and applicable
+ * when entered directly by customers or via campaign links, but not advertised on site.
  */
-export const OFFICIAL_COUPON_CODE = 'TAMILBROSSQUAD10'
-export const FALLBACK_COUPON_CODE = 'stranger78'
+export const OFFICIAL_COUPON_CODE = 'FIRST_50'
 
 export const ACTIVE_COUPONS: Record<string, CouponInfo> = {
   // New 60% Creator Offer: TAMILBROSSQUAD10

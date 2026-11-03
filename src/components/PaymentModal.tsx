@@ -69,8 +69,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const effectiveInrAmount = discountCalc ? discountCalc.discountedInr : originalInrAmount
 
-  // Preview coupon (active or default featured stranger78 with 60% OFF)
-  const previewCoupon = activeCoupon || { code: 'stranger78', discountPercent: 60, description: '' }
+  // Preview coupon (active or default official FIRST_50 with 50% OFF)
+  const previewCoupon = activeCoupon || { code: 'FIRST_50', discountPercent: 50, description: '' }
   const previewDiscount = calculateDiscount(originalInrAmount, previewCoupon)
   const previewUsdDiscount = calculateUsdDiscount(plan.price, previewCoupon)
 
@@ -90,7 +90,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       const calc = calculateDiscount(originalInrAmount, found)
       setCouponSuccess(`Official Coupon "${found.code}" applied! ${calc.label}`)
     } else {
-      setCouponError(`Invalid coupon code. Please enter a valid code (e.g. TAMILBROSSQUAD10, stranger78 or FIRST_50)`)
+      setCouponError(`Invalid coupon code. Please enter official code: FIRST_50`)
     }
   }
 
@@ -101,7 +101,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setCouponSuccess(null)
   }
 
-  const handleQuickApplyModalCoupon = (code: string = 'stranger78') => {
+  const handleQuickApplyModalCoupon = (code: string = 'FIRST_50') => {
     setCouponInput(code)
     const valid = validateCoupon(code)
     if (valid) {
@@ -179,10 +179,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 className={`modal-coupon-quick-apply-btn ${appliedCoupon ? 'applied' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleQuickApplyModalCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')
+                  handleQuickApplyModalCoupon(appliedCoupon ? appliedCoupon.code : 'FIRST_50')
                 }}
               >
-                {appliedCoupon ? `✓ ${appliedCoupon.code} Active (${appliedCoupon.discountPercent}% OFF)` : '⚡ Click to Apply stranger78 (60% OFF)'}
+                {appliedCoupon ? `✓ ${appliedCoupon.code} Active (${appliedCoupon.discountPercent}% OFF)` : '⚡ Click to Apply FIRST_50 (50% OFF)'}
               </button>
             </div>
           </div>
@@ -232,10 +232,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 className={`modal-coupon-quick-apply-btn ${appliedCoupon ? 'applied' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleQuickApplyModalCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')
+                  handleQuickApplyModalCoupon(appliedCoupon ? appliedCoupon.code : 'FIRST_50')
                 }}
               >
-                {appliedCoupon ? `✓ Code ${appliedCoupon.code} Active` : '⚡ Click to Apply stranger78 (60% OFF)'}
+                {appliedCoupon ? `✓ Code ${appliedCoupon.code} Active` : '⚡ Click to Apply FIRST_50'}
               </button>
             </div>
 
@@ -263,7 +263,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   <input
                     type="text"
                     className={`payment-coupon-input ${appliedCoupon ? 'applied' : ''}`}
-                    placeholder="Enter coupon code (e.g. TAMILBROSSQUAD10, stranger78 or FIRST_50)"
+                    placeholder="Enter coupon code (FIRST_50)"
                     value={couponInput}
                     onChange={(e) => {
                       setCouponInput(e.target.value)
@@ -387,10 +387,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 className={`modal-coupon-quick-apply-btn ${appliedCoupon ? 'applied' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleQuickApplyModalCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')
+                  handleQuickApplyModalCoupon(appliedCoupon ? appliedCoupon.code : 'FIRST_50')
                 }}
               >
-                {appliedCoupon ? `✓ Code ${appliedCoupon.code} Active` : '⚡ Click to Apply stranger78 (60% OFF)'}
+                {appliedCoupon ? `✓ Code ${appliedCoupon.code} Active` : '⚡ Click to Apply FIRST_50'}
               </button>
             </div>
 

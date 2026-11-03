@@ -449,7 +449,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     setCouponFeedback(null)
     const raw = couponInputText.trim()
     if (!raw) {
-      setCouponFeedback({ text: 'Please enter a coupon code (e.g. TAMILBROSSQUAD10, stranger78 or FIRST_50)', type: 'error' })
+      setCouponFeedback({ text: 'Please enter official coupon code: FIRST_50', type: 'error' })
       return
     }
     const found = validateCoupon(raw)
@@ -460,7 +460,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       } catch {}
       setCouponFeedback({ text: `🎉 Official code "${found.code}" applied! ${found.discountPercent}% discount activated on all plans!`, type: 'success' })
     } else {
-      setCouponFeedback({ text: `Code "${raw}" is invalid. Please enter a valid coupon code (e.g. TAMILBROSSQUAD10, stranger78 or FIRST_50)`, type: 'error' })
+      setCouponFeedback({ text: `Code "${raw}" is invalid. Please enter official code: FIRST_50`, type: 'error' })
     }
   }
 
@@ -475,7 +475,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const [stealthViewMode, setStealthViewMode] = useState<'candidate' | 'screenshare'>('candidate')
 
-  const handleQuickApplyCoupon = (code: string = 'stranger78') => {
+  const handleQuickApplyCoupon = (code: string = 'FIRST_50') => {
     setCouponFeedback(null)
     const valid = validateCoupon(code)
     if (valid) {
@@ -2075,20 +2075,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="bundle-offer-chip">97% BUNDLE SAVINGS</div>
             <div className="bundle-helvia-price-box">
               <span className="bundle-label">Helvia 3-in-1 Suite:</span>
-              <span className="bundle-highlight-price">{appliedCoupon?.code === 'FIRST_50' ? '$4 / ₹349' : '$3.20 / ₹279'}</span>
-              <span className="bundle-code-tag">with coupon {appliedCoupon?.code || 'stranger78'}</span>
+              <span className="bundle-highlight-price">{appliedCoupon ? (appliedCoupon.discountPercent === 60 ? '$3.20 / ₹279' : '$4 / ₹349') : '$4 / ₹349'}</span>
+              <span className="bundle-code-tag">with coupon {appliedCoupon?.code || 'FIRST_50'}</span>
             </div>
             <div className="bundle-meter-track">
               <div className="bundle-meter-fill">
-                <span>98% Saved ($161 / ₹13,221)</span>
+                <span>97% Saved ($160 / ₹13,150)</span>
               </div>
             </div>
             <a 
               href="#pricing" 
               className="bundle-claim-btn"
-              onClick={() => handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')}
+              onClick={() => handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'FIRST_50')}
             >
-              ⚡ Claim {appliedCoupon ? `${appliedCoupon.discountPercent}% OFF` : '60% OFF'} Bundle Deal ↓
+              ⚡ Claim {appliedCoupon ? `${appliedCoupon.discountPercent}% OFF` : '97%'} Bundle Deal (50% OFF) ↓
             </a>
           </div>
         </div>
@@ -2181,7 +2181,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <div className="roi-pill-tag">CAREER BREAKTHROUGH INVESTMENT</div>
                   <h4 className="roi-headline">A Single Remote Offer Pays $80,000 – $140,000 / Year (₹15L – ₹35L)</h4>
                   <p className="roi-subtext">
-                    Helvia Pro is just <strong className="roi-price-glow">{appliedCoupon?.code === 'FIRST_50' ? '$4 / ₹349' : '$3.20 / ₹279'}</strong> with coupon <strong>{appliedCoupon?.code || 'stranger78'}</strong>. 
+                    Helvia Pro is just <strong className="roi-price-glow">{appliedCoupon ? (appliedCoupon.discountPercent === 60 ? '$3.20 / ₹279' : '$4 / ₹349') : '$4 / ₹349'}</strong> with coupon <strong>{appliedCoupon?.code || 'FIRST_50'}</strong>. 
                     That's less than a single coffee for the stealth interview intelligence that secures your offer.
                   </p>
                 </div>
@@ -2197,7 +2197,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="urgency-left">
                 <span className="urgency-flame">🔥</span>
                 <span className="urgency-text">
-                  <strong>Founder’s Flash Deal:</strong> {appliedCoupon ? `${appliedCoupon.discountPercent}% OFF unlocked with code ` : '60% OFF unlocked with code '}<span className="urgency-code-badge">{appliedCoupon?.code || 'stranger78'}</span>
+                  <strong>Founder’s Flash Deal:</strong> {appliedCoupon ? `${appliedCoupon.discountPercent}% OFF unlocked with code ` : '50% OFF unlocked with code '}<span className="urgency-code-badge">{appliedCoupon?.code || 'FIRST_50'}</span>
                 </span>
               </div>
               <div className="urgency-right">
@@ -2208,9 +2208,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <button 
                   type="button" 
                   className={`urgency-action-btn ${appliedCoupon ? 'applied' : ''}`}
-                  onClick={() => handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')}
+                  onClick={() => handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'FIRST_50')}
                 >
-                  {appliedCoupon ? `✓ ${appliedCoupon.discountPercent}% OFF Active` : '⚡ Auto-Apply Code (60% OFF)'}
+                  {appliedCoupon ? `✓ ${appliedCoupon.discountPercent}% OFF Active` : '⚡ Auto-Apply Code'}
                 </button>
               </div>
             </div>
@@ -2222,7 +2222,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <input 
                   type="text" 
                   className="pricing-coupon-input"
-                  placeholder="Enter coupon code (e.g. TAMILBROSSQUAD10, stranger78 or FIRST_50)"
+                  placeholder="Enter influencer coupon code (e.g. FIRST_50)"
                   value={couponInputText}
                   onChange={(e) => setCouponInputText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon() }}
@@ -2233,7 +2233,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </button>
                 ) : (
                   <button className="pricing-coupon-apply-btn" onClick={handleApplyCoupon} type="button">
-                    Apply Code
+                    Apply FIRST_50
                   </button>
                 )}
               </div>
@@ -2320,7 +2320,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                           {/* Big Coupon Price Tag with Slash Strikethrough & 1-Click Auto-Apply */}
                           {!isFree && (() => {
-                            const previewCoupon = appliedCoupon || { code: 'stranger78', discountPercent: 60, description: '' }
+                            const previewCoupon = appliedCoupon || { code: 'FIRST_50', discountPercent: 50, description: '' }
                             const previewInr = calculateDiscount(baseInr, previewCoupon).discountedInr
                             const previewUsd = calculateUsdDiscount(p.price, previewCoupon).discountedUsd
                             return (
@@ -2333,10 +2333,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                                   className={`coupon-apply-pill-btn ${appliedCoupon ? 'active' : ''}`}
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')
+                                    handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'FIRST_50')
                                   }}
                                 >
-                                  {appliedCoupon ? `✓ ${appliedCoupon.code} Active (${appliedCoupon.discountPercent}% OFF)` : '⚡ Click to Apply stranger78 (60% OFF)'}
+                                  {appliedCoupon ? `✓ ${appliedCoupon.code} Active (${appliedCoupon.discountPercent}% OFF)` : '⚡ Click to Apply FIRST_50'}
                                 </button>
                               </div>
                             )
@@ -2446,7 +2446,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                               {/* Big Coupon Price Tag on Unlimited Card & 1-Click Auto-Apply */}
                               {(() => {
-                                const previewCoupon = appliedCoupon || { code: 'stranger78', discountPercent: 60, description: '' }
+                                const previewCoupon = appliedCoupon || { code: 'FIRST_50', discountPercent: 50, description: '' }
                                 const previewInr = calculateDiscount(unlBaseInr, previewCoupon).discountedInr
                                 const previewUsd = calculateUsdDiscount(unlimitedPlan.price, previewCoupon).discountedUsd
                                 return (
@@ -2459,10 +2459,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                                       className={`coupon-apply-pill-btn ${appliedCoupon ? 'active' : ''}`}
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')
+                                        handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'FIRST_50')
                                       }}
                                     >
-                                      {appliedCoupon ? `✓ ${appliedCoupon.code} Active (${appliedCoupon.discountPercent}% OFF)` : '⚡ Click to Apply stranger78 (60% OFF)'}
+                                      {appliedCoupon ? `✓ ${appliedCoupon.code} Active (${appliedCoupon.discountPercent}% OFF)` : '⚡ Click to Apply FIRST_50'}
                                     </button>
                                   </div>
                                 )
@@ -2986,16 +2986,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="sticky-deal-left">
               <span className="sticky-flame-icon">🔥</span>
               <div className="sticky-deal-text">
-                <strong>Founder's {appliedCoupon ? `${appliedCoupon.discountPercent}% OFF` : '60% OFF'} Active:</strong> Unlock 500 AI Answers + 300 Remote Mins for just <span className="sticky-price-glow">{appliedCoupon?.code === 'FIRST_50' ? '$4 / ₹349' : '$3.20 / ₹279'}</span>
+                <strong>Founder's {appliedCoupon ? `${appliedCoupon.discountPercent}% OFF` : '50% OFF'} Active:</strong> Unlock 500 AI Answers + 300 Remote Mins for just <span className="sticky-price-glow">{appliedCoupon ? (appliedCoupon.discountPercent === 60 ? '$3.20 / ₹279' : '$4 / ₹349') : '$4 / ₹349'}</span>
               </div>
             </div>
             <div className="sticky-deal-right">
               <a 
                 href="#pricing" 
                 className="sticky-deal-cta"
-                onClick={() => handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'stranger78')}
+                onClick={() => handleQuickApplyCoupon(appliedCoupon ? appliedCoupon.code : 'FIRST_50')}
               >
-                ⚡ Claim {appliedCoupon ? `${appliedCoupon.discountPercent}% OFF` : '60% OFF'} Deal ↓
+                ⚡ Claim {appliedCoupon ? `${appliedCoupon.discountPercent}% OFF` : '50% OFF'} Deal ↓
               </a>
               <button 
                 type="button" 
